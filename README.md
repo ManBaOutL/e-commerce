@@ -1,10 +1,8 @@
-# 电子商务系统开发需求说明文档
+# *电子商务系统开发需求说明文档*
 
 **开发技术栈**：前端 Vue、后端 Node.js
 
-**开发小组**：黄钰坤、刘俊宏
-
-**提交时间**：[填写提交时间]
+**开发小组**：黄钰坤(2023211049)、刘俊宏(2023211058)
 
 ## 一、开发工具与平台
 
@@ -72,7 +70,7 @@ address(<u>address_id</u>,recipient_name,phone,address_line1,address_line2,city,
 
 订单基本信息
 
-order(<u>order_id</u>,total_amount,create_time,update_time,**user_id,address_id**);
+order(<u>order_id</u>,total_amount,status,create_time,update_time,**user_id,address_id**);
 
 订单明细
 
@@ -92,7 +90,7 @@ comment(<u>review_id</u>,**product_id,user_id,order_id**,rating,comment,create_t
 
 
 
-## 一、数据库创建流程
+## 四、数据库创建流程
 
 ### 1. 创建数据库
 
@@ -277,14 +275,12 @@ CREATE TABLE comment (
 
 - 使用`utf8mb4`支持emoji和所有Unicode字符
 
-## 三、后续开发建议
+## 五、后续开发建议
 
 1. **数据迁移工具**：可以使用 Sequelize 或 TypeORM 进行数据库迁移管理
 2. **数据备份**：定期使用 mysqldump 备份数据库
 3. **性能优化**：根据实际查询情况添加适当的索引
 4. **分表策略**：订单表等大数据量表可考虑按时间分表
-
-
 
 ## 电商系统测试数据
 
@@ -303,8 +299,6 @@ INSERT INTO user (user_id, type, username, password, email, phone, age, gender, 
 (6, '普通用户', 'liu_yang', '$2a$10$X7VYx/h1K3X9K8Z7Q5R2Uu6W1q2r3t4y5u6i7o8p9a0s1d2f3g4h5j6k', 'liuyang@email.com', '13800138006', 29, '男', FALSE, '2024-01-15 13:10:00'),
 (7, '商家', 'zhao_li', '$2a$10$X7VYx/h1K3X9K8Z7Q5R2Uu6W1q2r3t4y5u6i7o8p9a0s1d2f3g4h5j6k', 'zhaoli@email.com', '13800138007', 35, '女', TRUE, '2024-02-01 10:30:00');
 ```
-
-
 
 ### 2. 商品分类表数据 (category)
 
@@ -343,11 +337,7 @@ INSERT INTO category (category_id, name, parent_id) VALUES
 (1005, '轻薄本', 102);
 ```
 
-
-
 ### 3. 商品基本信息表数据 (products)
-
-sql
 
 ```
 -- 商品测试数据
@@ -379,8 +369,6 @@ INSERT INTO products (product_id, name, description, price, stock, category_id, 
 (10014, 'Python编程从入门到实践', '编程入门经典教材', 89.00, 500, 5, '2024-02-08 15:40:00'),
 (10015, '三体全集', '刘慈欣科幻巨著', 128.00, 400, 5, '2024-02-08 15:40:00');
 ```
-
-
 
 ### 4. 地址基本信息表数据 (address)
 
@@ -523,8 +511,6 @@ INSERT INTO comment (review_id, product_id, user_id, order_id, rating, comment, 
 
 ### 导入命令
 
-bash
-
 ```
 # 命令行导入
 mysql -u 用户名 -p 数据库名 < 文件名.sql
@@ -541,14 +527,6 @@ SOURCE /path/to/file.sql;
 - 商品评价
 - 购物车数据
 - 优惠券信息
-
-
-
-### （二）数据安全要求
-
-1. 用户、商家密码均加密存储，防止信息泄露。
-2. 做精细化数据权限控制，普通用户仅查看本人数据，商家仅查看本店数据，管理员可查看全平台数据。
-3. 配置数据库定期自动备份机制，支持数据异常时的快速恢复。
 
 
 
