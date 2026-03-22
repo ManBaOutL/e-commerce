@@ -1,0 +1,35 @@
+{
+    "users": [
+        {
+            "id": "1",
+            "username": "admin",
+            "password": "123456"
+        },
+        {
+            "id": "d8d2",
+            "phone": "13985334309",
+            "code": "222222",
+            "username": "adis",
+            "email": "",
+            "password": "123456",
+            "repassword": "123456"
+        },
+        {
+            "id": "d386",
+            "phone": "13988888888",
+            "code": "222222",
+            "username": "manager",
+            "email": "",
+            "password": "123456",
+            "repassword": "123456",
+            "type": "管理员"
+        }
+    ],
+    "products": [
+        {
+            "id": "1",
+            "name": "商品1",
+            "price": 100
+        }
+    ]
+}

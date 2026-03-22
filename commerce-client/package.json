@@ -9,10 +9,17 @@
     "preview": "vite preview",
     "build-only": "vite build",
     "type-check": "vue-tsc --build",
-    "format": "prettier --write --experimental-cli src/"
+    "format": "prettier --write --experimental-cli src/",
+    "server": "json-server ./server/data.json --port 8887"
   },
   "dependencies": {
+    "@eslint/js": "^10.0.1",
+    "ant-design-vue": "^4.2.6",
+    "axios": "^1.13.6",
+    "eslint": "^10.0.3",
+    "eslint-plugin-vue": "^10.8.0",
     "pinia": "^3.0.4",
+    "vant": "^4.9.22",
     "vue": "^3.5.29",
     "vue-router": "^5.0.3"
   },
@@ -21,6 +28,7 @@
     "@types/node": "^24.11.0",
     "@vitejs/plugin-vue": "^6.0.4",
     "@vue/tsconfig": "^0.8.1",
+    "json-server": "^1.0.0-beta.13",
     "npm-run-all2": "^8.0.4",
     "prettier": "3.8.1",
     "typescript": "~5.9.3",
