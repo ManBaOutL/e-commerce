@@ -69,7 +69,7 @@
           :md="6"
           :lg="6"
         >
-          <ProductCard :name="item.name" :price="item.price" />
+          <ProductCard :name="item.name" :price="item.price" :image="item.image"/>
         </el-col>
       </el-row>
     </div>
@@ -77,26 +77,25 @@
 </template>
 
 <script setup lang="ts">
-const recommendProducts = [
-  { id: 1, name: '智能运动手表', price: '599.00' },
-  { id: 2, name: '人体工学办公椅', price: '1299.00' },
-  { id: 3, name: '便携式咖啡机', price: '399.00' },
-  { id: 4, name: '全棉亲肤床品四件套', price: '268.00' },
-  { id: 5, name: '多功能料理机', price: '899.00' },
-  { id: 6, name: '降噪头戴式耳机', price: '1599.00' },
-  { id: 1, name: '智能运动手表', price: '599.00' },
-  { id: 2, name: '人体工学办公椅', price: '1299.00' },
-  { id: 3, name: '便携式咖啡机', price: '399.00' },
-  { id: 4, name: '全棉亲肤床品四件套', price: '268.00' },
-  { id: 5, name: '多功能料理机', price: '899.00' },
-  { id: 6, name: '降噪头戴式耳机', price: '1599.00' },
-  { id: 1, name: '智能运动手表', price: '599.00' },
-  { id: 2, name: '人体工学办公椅', price: '1299.00' },
-  { id: 3, name: '便携式咖啡机', price: '399.00' },
-  { id: 4, name: '全棉亲肤床品四件套', price: '268.00' },
-  { id: 5, name: '多功能料理机', price: '899.00' },
-  { id: 6, name: '降噪头戴式耳机', price: '1599.00' },
-]
+import { ref, onMounted } from 'vue'
+import type { Product } from '@/api/product/types'
+import { useProductStore } from '@/stores/modules/product'
+
+const productStore = useProductStore()
+
+// 推荐商品
+const recommendProducts = ref<Product[]>([])
+
+// 获取商品数据
+const getProducts = async () => {
+  await productStore.getProductList()
+  
+  recommendProducts.value = productStore.productList.slice(0, 6)
+}
+
+onMounted(() => {
+  getProducts()
+})
 </script>
 
 <style scoped>

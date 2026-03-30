@@ -7,9 +7,7 @@
         <!-- 左侧菜单 -->
         <el-col :md="5" :sm="0" :xs="0">
           <div class="side-menu">
-            <div v-for="cat in categories" :key="cat" class="menu-item">
-              {{ cat }}
-            </div>
+            <HomeMenu />
           </div>
         </el-col>
         <!-- 右侧轮播图 -->
@@ -34,35 +32,45 @@
       </el-row>
 
       <section class="goods-section">
-        <h3 class="grid-title">猜你喜欢</h3>
+        <div class="guess-you-like">
+        <h3 class="section-title">猜你喜欢</h3>
         <el-row :gutter="15">
-          <el-col 
-            v-for="product in productList" 
-            :key="product.id"
-            :xs="12" :sm="8" :md="6" :lg="6" :xl="4"
+          <el-col
+            v-for="item in recommendProducts"
+            :key="item.id"
+            :xs="12"
+            :sm="8"
+            :md="6"
+            :lg="6"
           >
-            <ProductCard 
-              :name="product.name" 
-              :price="product.price" 
-            />
+            <ProductCard :name="item.name" :price="item.price" :image="item.image"/>
           </el-col>
         </el-row>
+      </div>
       </section>
     </main>
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
+import HomeMenu from './HomeMenu.vue'
 import {useRouter} from 'vue-router'
+import { ref, onMounted, computed } from 'vue'
+import { useProductStore } from '@/stores/modules/product'
 
 const router = useRouter()
+const productStore = useProductStore()
 
-const categories = ['女装/内衣', '男装/运动', '美妆/洗护', '手机/数码', '家电/办公', '零食/茶酒', '家居/家纺']
-const productList = Array.from({ length: 12 }).map((_, i) => ({
-  id: i,
-  name: `2026新款 智能穿戴设备 极客系列第 ${i+1} 代`,
-  price: (Math.random() * 2000 + 100).toFixed(2)
-}))
+// 推荐商品
+const recommendProducts = computed(() => productStore.productList.slice(0, 6))
+// 获取商品数据
+const getProducts = () => {
+  productStore.getProductList()
+}
+
+onMounted(() => {
+  getProducts()
+})
   
 const handleToLogin = () => {
   router.push('/login')

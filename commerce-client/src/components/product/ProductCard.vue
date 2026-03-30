@@ -1,14 +1,14 @@
 <template>
   <div class="product-card">
     <div class="image-placeholder">
-      <el-image :src="image" fit="cover">
+      <el-image :src="props.image" fit="cover">
         <template #error><div class="err-txt">暂无图片</div></template>
       </el-image>
     </div>
     <div class="info">
-      <div class="title">{{ name }}</div>
+      <div class="title">{{ props.name }}</div>
       <div class="footer">
-        <span class="price">¥{{ price }}</span>
+        <span class="price">¥{{ props.price }}</span>
         <span class="sales">99+人付款</span>
       </div>
     </div>
@@ -16,7 +16,8 @@
 </template>
 
 <script setup>
-defineProps(['name', 'price', 'image'])
+const props = defineProps(['name', 'price', 'image'])
+// console.log(props)
 </script>
 
 <style scoped>
@@ -37,11 +38,19 @@ defineProps(['name', 'price', 'image'])
 }
 
 .image-placeholder {
+  width: 100%;
   height: 180px;
   background: #f5f7fa;
   display: flex;
   justify-content: center;
   align-items: center;
+    overflow: hidden; /* 新增：防止图片溢出 */
+}
+.image-placeholder img {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+  border: 1px solid red;
 }
 
 .err-txt {

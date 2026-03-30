@@ -263,6 +263,7 @@ CREATE TABLE user (
     phone VARCHAR(20),
     age INT,
     gender ENUM('男', '女', '保密') DEFAULT '保密',
+    avatar VARCHAR(100),
     is_vip BOOLEAN DEFAULT FALSE,
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -276,6 +277,7 @@ CREATE TABLE category (
     category_id INT PRIMARY KEY AUTO_INCREMENT,
     name VARCHAR(100) NOT NULL,
     parent_id INT,
+    level INT
     FOREIGN KEY (parent_id) REFERENCES category(category_id) ON DELETE CASCADE
 ) ;
 ```
@@ -288,15 +290,46 @@ CREATE TABLE category (
         name VARCHAR(200) NOT NULL,
         description TEXT,
         price DECIMAL(10,2) NOT NULL,
-        stock INT NOT NULL DEFAULT 0,
+        sales int DEFAULT '0' COMMENT '销量',
+  		stock int DEFAULT '0' COMMENT '库存',
         category_id INT,
+        user_id INT,
         create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
         update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        FOREIGN KEY (category_id) REFERENCES category(category_id) ON DELETE SET NULL
+        FOREIGN KEY (category_id) REFERENCES category(category_id) ON DELETE CASCADE
+        FOREIGN KEY (user_id) REFERENCES user(user_id) ON DELETE CASCADE
     ) ;
 ```
 
-#### 2.4 地址基本信息表 (address)
+#### 2.4 商品图片地址信息 （product_images）
+
+```
+CREATE TABLE product_images (
+    image_id INT PRIMARY KEY AUTO_INCREMENT,
+    product_id INT NOT NULL,
+    url VARCHAR(255) NOT NULL, -- 图片地址
+    sort_order INT DEFAULT 0,  -- 排序，决定轮播图顺序
+    FOREIGN KEY (product_id) REFERENCES products(product_id) ON DELETE CASCADE
+);
+```
+
+####  2.5 商品规格表 (`product_sku`)
+
+这是电商中最复杂也最重要的部分。一个“耳机”可能有“黑色”、“白色”等不同颜色，价格和库存可能不同。这就是 **SKU (Stock Keeping Unit)**。
+
+```
+CREATE TABLE product_sku (
+    sku_id INT PRIMARY KEY AUTO_INCREMENT,
+    product_id INT NOT NULL,
+    specs_json JSON, -- 存储规格，如 {"color": "黑色", "size": "16G"}
+    price DECIMAL(10,2) NOT NULL, -- 该规格的具体价格
+    stock INT NOT NULL DEFAULT 0,  -- 该规格的实际库存
+    sku_code VARCHAR(100), -- 条形码或内部编号
+    FOREIGN KEY (product_id) REFERENCES products(product_id) ON DELETE CASCADE
+);
+```
+
+#### 2.6 地址基本信息表 (address)
 
 ```
 CREATE TABLE address (
@@ -316,7 +349,7 @@ CREATE TABLE address (
 );
 ```
 
-#### 2.5 订单基本信息表 (order)
+#### 2.7 订单基本信息表 (order)
 
 ```
 CREATE TABLE orders (
@@ -332,7 +365,7 @@ CREATE TABLE orders (
 ) ;
 ```
 
-#### 2.6 订单明细表 (order_details)
+#### 2.8 订单明细表 (order_details)
 
 ```
 CREATE TABLE order_details (
@@ -346,7 +379,7 @@ CREATE TABLE order_details (
 ) ;
 ```
 
-#### 2.7 优惠券表 (coupon)
+#### 2.9 优惠券表 (coupon)
 
 ```
 CREATE TABLE coupon (
@@ -364,7 +397,7 @@ CREATE TABLE coupon (
 ) ;
 ```
 
-#### 2.8 购物车表 (cart)
+#### 2.10 购物车表 (cart)
 
 ```
 CREATE TABLE cart (
@@ -379,7 +412,7 @@ CREATE TABLE cart (
 ) ;
 ```
 
-#### 2.9 商品评论表 (comment)
+#### 2.11 商品评论表 (comment)
 
 ```
 CREATE TABLE comment (
@@ -396,6 +429,26 @@ CREATE TABLE comment (
     FOREIGN KEY (order_id) REFERENCES orders(order_id) ON DELETE CASCADE
 ) ;
 ```
+
+#### 2.12 商家店铺表（marchart）
+
+```
+CREATE TABLE merchant (
+  marchart_id int NOT NULL AUTO_INCREMENT COMMENT '店铺主键ID',
+  user_id int NOT NULL COMMENT '关联的用户ID',
+  shop_name varchar(100) NOT NULL COMMENT '店铺名称',
+  logo varchar(255) DEFAULT NULL COMMENT '店铺Logo地址',
+  shop_desc text COMMENT '店铺简介',
+  rating decimal(3,2) DEFAULT '5.00' COMMENT '店铺评分',
+  status tinyint DEFAULT '0' COMMENT '店铺状态：0审核中，1正常，2封禁',
+  create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (marchart_id),
+  -- 建立与用户表的关联
+  FOREIGN KEY (user_id) REFERENCES user(user_id) ON DELETE CASCADE
+) ;
+```
+
+
 
 ## 二、补充说明
 
@@ -433,9 +486,96 @@ CREATE TABLE comment (
 
 ## 电商系统测试数据
 
-以下是可直接导入MySQL的测试数据，按照表依赖关系排序：
+### 一、 前端测试数据
 
-### 1. 用户表数据 (user)
+> 使用json-sever插件模拟api接口
+
+```
+{
+  "users": [
+    {
+      "id": 1,
+      "type": "普通用户",
+      "username": "coder_k",
+      "password": "hashed_password",
+      "email": "test@example.com",
+      "phone": "13800000000",
+      "age": 25,
+      "gender": "男",
+      "is_vip": false,
+      "create_time": "2026-03-28 10:00:00"
+    }
+  ],
+  "categories": [
+    { "id": 1, "name": "数码", "parent_id": null, "level": 1 },
+    { "id": 2, "name": "耳机", "parent_id": 1, "level": 2 }
+  ],
+  "products": [
+    {
+      "id": 101,
+      "name": "新款无线降噪耳机",
+      "description": "高品质音质，强力降噪",
+      "price": 299.00,
+      "stock": 50,
+      "category_id": 2,
+      "main_image": "https://example.com/p1.jpg"
+    }
+  ],
+  "product_images": [
+    { "id": 1, "product_id": 101, "url": "https://example.com/p1_detail1.jpg", "sort_order": 1 }
+  ],
+  "product_skus": [
+    {
+      "id": 1,
+      "product_id": 101,
+      "specs_json": { "color": "黑色" },
+      "price": 299.00,
+      "stock": 30,
+      "sku_code": "SN-001-B"
+    }
+  ],
+  "addresses": [
+    {
+      "id": 1,
+      "user_id": 1,
+      "recipient_name": "张三",
+      "phone": "13800000000",
+      "address_line1": "某某省某某市某某区",
+      "is_default": true
+    }
+  ],
+  "orders": [
+    {
+      "id": 20260328001,
+      "user_id": 1,
+      "address_id": 1,
+      "total_amount": 299.00,
+      "status": "待支付",
+      "create_time": "2026-03-28 11:00:00"
+    }
+  ],
+  "order_details": [
+    { "order_id": 20260328001, "product_id": 101, "quantity": 1, "price": 299.00 }
+  ],
+  "coupons": [
+    { "id": 1, "user_id": 1, "type": "满减", "discount_value": 20.00, "min_order_amount": 100.00, "status": "未使用" }
+  ],
+  "cart": [
+    { "id": 1, "user_id": 1, "product_id": 101, "quantity": 2 }
+  ],
+  "comments": [
+    { "id": 1, "product_id": 101, "user_id": 1, "order_id": 20260328001, "rating": 5, "comment": "非常好用！" }
+  ]
+}
+```
+
+
+
+### 二、MySQL
+
+> 以下是可直接导入MySQL的测试数据，按照表依赖关系排序：
+
+1. 用户表数据 (user)
 
 ```
 -- 用户表测试数据
@@ -449,9 +589,7 @@ INSERT INTO user (user_id, type, username, password, email, phone, age, gender, 
 (7, '商家', 'zhao_li', '$2a$10$X7VYx/h1K3X9K8Z7Q5R2Uu6W1q2r3t4y5u6i7o8p9a0s1d2f3g4h5j6k', 'zhaoli@email.com', '13800138007', 35, '女', TRUE, '2024-02-01 10:30:00');
 ```
 
-
-
-### 2. 商品分类表数据 (category)
+2. 商品分类表数据 (category)
 
 ```
 -- 商品分类测试数据（多级分类）
@@ -488,11 +626,7 @@ INSERT INTO category (category_id, name, parent_id) VALUES
 (1005, '轻薄本', 102);
 ```
 
-
-
-### 3. 商品基本信息表数据 (products)
-
-sql
+3. 商品基本信息表数据 (products)
 
 ```
 -- 商品测试数据
@@ -525,9 +659,7 @@ INSERT INTO products (product_id, name, description, price, stock, category_id, 
 (10015, '三体全集', '刘慈欣科幻巨著', 128.00, 400, 5, '2024-02-08 15:40:00');
 ```
 
-
-
-### 4. 地址基本信息表数据 (address)
+4. 地址基本信息表数据 (address)
 
 ```
 -- 地址测试数据
@@ -538,10 +670,8 @@ INSERT INTO address (address_id, user_id, recipient_name, phone, address_line1, 
 (4, 4, '王明', '13800138004', '翠竹苑8栋1501室', NULL, '广州市', '天河区', '510630', TRUE, '2024-01-08 09:45:00'),
 (5, 5, '陈洁', '13800138005', '书香门第3栋101室', NULL, '深圳市', '南山区', '518057', TRUE, '2024-01-12 16:20:00'),
 (6, 6, '刘洋', '13800138006', '碧水湾21栋602室', NULL, '杭州市', '西湖区', '310013', TRUE, '2024-01-18 11:10:00'),
-(7, 7, '赵丽', '13800138007', '翡翠城15栋203室', NULL, '成都市', '高新区', '610041', TRUE, '2024-02-05 13:15:00');
+(7, 7, '赵丽', '13800138007', '翡翠城15栋203室', NULL, '成都市', '高新区', '610041', TRUE, '2024-02-05 13:15:00');5. 订单基本信息表数据 (orders)
 ```
-
-### 5. 订单基本信息表数据 (orders)
 
 ```
 -- 订单测试数据
@@ -560,10 +690,8 @@ INSERT INTO orders (order_id, user_id, address_id, total_amount, status, create_
 (2024007, 7, 7, 458.00, '已发货', '2024-02-29 10:10:00'),
 
 -- 已取消订单
-(2024008, 3, 3, 159.00, '已取消', '2024-02-20 13:25:00');
+(2024008, 3, 3, 159.00, '已取消', '2024-02-20 13:25:00');6. 订单明细表数据 (order_details)
 ```
-
-### 6. 订单明细表数据 (order_details)
 
 ```
 -- 订单明细测试数据
@@ -592,10 +720,8 @@ INSERT INTO order_details (order_id, product_id, quantity, price) VALUES
 (2024007, 10010, 1, 458.00),
 
 -- 订单2024008：坚果
-(2024008, 10012, 1, 159.00);
+(2024008, 10012, 1, 159.00);7. 优惠券表数据 (coupon)
 ```
-
-### 7. 优惠券表数据 (coupon)
 
 ```
 -- 优惠券测试数据
@@ -609,7 +735,7 @@ INSERT INTO coupon (coupon_id, user_id, type, discount_value, min_order_amount, 
 (7, NULL, '满减', 20.00, 100.00, '2024-03-01 00:00:00', '2024-04-01 23:59:59', '未使用', '2024-03-01 10:30:00');
 ```
 
-### 8. 购物车表数据 (cart)
+8. 购物车表数据 (cart)
 
 ```
 -- 购物车测试数据
@@ -623,7 +749,7 @@ INSERT INTO cart (cart_id, user_id, product_id, quantity, create_time) VALUES
 (7, 7, 10003, 1, '2024-03-02 13:40:00');
 ```
 
-### 9. 商品评论表数据 (comment)
+9. 商品评论表数据 (comment)
 
 ```
 -- 商品评论测试数据

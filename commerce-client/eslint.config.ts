@@ -1,27 +1,31 @@
-// eslint.config.js
-import pluginVue from 'eslint-plugin-vue'
-import js from '@eslint/js'
+import js from '@eslint/js';
+import pluginVue from 'eslint-plugin-vue';
+import tsParser from '@typescript-eslint/parser';
+import tsPlugin from '@typescript-eslint/eslint-plugin';
+import prettierPlugin from 'eslint-plugin-prettier';
+import prettierConfig from 'eslint-config-prettier';
 
 export default [
   js.configs.recommended,
-  ...pluginVue.configs['flat/recommended'],
-
+  ...pluginVue.configs['flat/recommended'], // 使用 vue 推荐配置
   {
-    files: ['**/*.{js,vue}'],
+    files: ['**/*.{js,mjs,cjs,ts,vue}'],
+    languageOptions: {
+      parser: tsParser, // 使用 TS 解析器
+      parserOptions: {
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+      },
+    },
+    plugins: {
+      '@typescript-eslint': tsPlugin,
+      prettier: prettierPlugin,
+    },
     rules: {
-      // 允许单单词组件名（兼容组件库）
-      'vue/multi-word-component-names': 'off',
-
-      // 修改这里：开发环境允许 console 和 debugger
-      'no-console': 'off',           // 完全关闭 console 检查
-      'no-debugger': 'off',          // 完全关闭 debugger 检查
-
-      // 或者改成警告但不阻止构建
-      // 'no-console': 'warn',
-      // 'no-debugger': 'warn',
-
-      // 其他自定义规则
-      'vue/require-default-prop': 'error'
-    }
-  }
-]
+      ...tsPlugin.configs.recommended.rules, // 启用 TS 推荐规则
+      'prettier/prettier': 'error', // 将 prettier 错误显示为 eslint 错误
+      'vue/multi-word-component-names': 'off', // 关闭组件名多单词限制（按需开启）
+    },
+  },
+     prettierConfig, // 最后应用 prettier 配置，覆盖冲突规则
+];

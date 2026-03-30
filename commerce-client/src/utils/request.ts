@@ -28,7 +28,7 @@ request.interceptors.response.use(
     (response) => {
         // 后端返回的原始数据
         const res = response.data;
-        console.log("res: ", res);
+        // console.log("res: ", res);
         // 假设后端约定 status=200 为成功
         // if (res.status !== 200) {
 
