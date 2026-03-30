@@ -83,7 +83,25 @@ const router = createRouter({
       name: 'buy',
       component: () => import('@/views/buy/buy.vue'),
       meta: { title: '购买' }
-    }
+    },
+    {
+      path: '/user/orders/detail',
+      name: 'order-detail',
+      component: () => import('@/views/user/orders/order-detail.vue'),
+      meta: { title: '订单详情' }
+    },
+    {
+      path: '/user/orders/comment',
+      name: 'order-comment',
+      component: () => import('@/views/user/orders/order-comment.vue'),
+      meta: { title: '订单评价' }
+    },
+    {
+      path: '/user/orders/order-pay',
+      name: 'order-pay',
+      component: () => import('@/views/user/orders/pay-order.vue'),
+      meta: { title: '订单支付' }
+    },
   ],
 })
 

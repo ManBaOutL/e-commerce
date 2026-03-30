@@ -1,10 +1,6 @@
 <template>
   <div class="order-page">
     <main class="order-container">
-      <el-breadcrumb separator="/" class="breadcrumb">
-        <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
-        <el-breadcrumb-item>我的订单</el-breadcrumb-item>
-      </el-breadcrumb>
 
       <div class="filter-bar card">
         <el-input v-model="orderSearch" placeholder="订单编号搜索" class="search-input" clearable />
@@ -149,10 +145,10 @@ const formatTime = time => dayjs(time).format('YYYY-MM-DD HH:mm:ss')
 const getStatusTagType = status => ({ 待支付: 'warning', 已支付: 'primary', 已发货: 'info', 已完成: 'success', 已取消: 'danger' }[status] || '')
 const resetFilter = () => { orderSearch.value = ''; dateRange.value = null; statusFilter.value = '' }
 
-const handlePay = order => router.push({ path: '/buy', state: { goods: order.details[0], orderId: order.order_id } })
+const handlePay = order => router.push({ path: '/user/orders/order-pay', query: { orderId: order.order_id } })
 const cancelOrder = orderId => ElMessageBox.confirm('确定取消？').then(() => { const o = orderList.value.find(x => x.order_id === orderId); if (o) o.status = '已取消'; ElMessage.success('已取消') })
-const toComment = order => ElMessage.success('去评价：' + order.order_id)
-const viewDetail = order => router.push('/order/detail/' + order.order_id)
+const toComment = order => router.push({ path: '/user/orders/comment', query: { orderId: order.order_id } })
+const viewDetail = order => router.push({ path: '/user/orders/detail', query: { orderId: order.order_id } })
 </script>
 
 <style scoped>

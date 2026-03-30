@@ -3,7 +3,8 @@
     <main class="buy-container">
       <el-breadcrumb separator="/" class="breadcrumb">
         <el-breadcrumb-item :to="{ path: '/' }">首页</el-breadcrumb-item>
-        <el-breadcrumb-item>立即购买</el-breadcrumb-item>
+        <el-breadcrumb-item :to="{ path: '/user/orders' }">我的订单</el-breadcrumb-item>
+        <el-breadcrumb-item>订单支付</el-breadcrumb-item>
       </el-breadcrumb>
 
       <el-row :gutter="20">
@@ -37,11 +38,10 @@
             <div class="goods-item">
               <div class="goods-img"></div>
               <div class="goods-info">
-                <div class="name">{{ goodsInfo.name }}</div>
+                <div class="name">{{ orderInfo.details[0]?.product_name }}</div>
                 <div class="spec">规格：默认</div>
-                <div class="price">¥{{ goodsInfo.price }}</div>
               </div>
-              <div class="count">x{{ buyCount }}</div>
+              <div class="price">¥{{ orderInfo.details[0]?.price }}</div>
             </div>
           </div>
 
@@ -68,19 +68,19 @@
           <div class="card settle-card">
             <div class="card-title">结算信息</div>
             <div class="settle-row">
-              <span>商品总价</span>
-              <span>¥{{ (goodsInfo.price * buyCount).toFixed(2) }}</span>
+              <span>订单总价</span>
+              <span>¥{{ orderInfo.total_amount }}</span>
             </div>
-            <div class="settle-row">
-              <span>运费</span>
-              <span>包邮</span>
+            <div class="settle-row" v-if="orderInfo.coupon">
+              <span>优惠券</span>
+              <span>-¥{{ orderInfo.coupon.discount }}</span>
             </div>
             <div class="total-row">
               <span>实付款</span>
-              <span>¥{{ (goodsInfo.price * buyCount).toFixed(2) }}</span>
+              <span>¥{{ orderInfo.total_amount }}</span>
             </div>
             <el-button type="primary" class="pay-btn" @click="handlePay">
-              提交订单
+              确认支付
             </el-button>
           </div>
         </el-col>
@@ -97,8 +97,13 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 const route = useRoute()
 const router = useRouter()
 
-const goodsInfo = ref({})
-const buyCount = ref(1)
+const orderId = ref('')
+const orderInfo = ref({
+  total_amount: 0,
+  details: [],
+  coupon: null
+})
+
 const addressList = ref([])
 const selectedAddressId = ref('')
 const payMethods = ref([
@@ -108,11 +113,17 @@ const payMethods = ref([
 ])
 const selectedPayId = ref(1)
 
+const orderDatabase = [
+  { order_id: 2024001, total_amount: 10698, coupon: { discount: 200 }, details: [{ product_name: 'iPhone 15 Pro', price: 8999 }] },
+  { order_id: 2024004, total_amount: 299, details: [{ product_name: '女士针织衫', price: 299 }] },
+  { order_id: 2024005, total_amount: 1699, coupon: { discount: 200 }, details: [{ product_name: 'AirPods Pro 2', price: 1899 }] },
+]
+
 onMounted(() => {
-  // 从商品详情页接收数据
-  if (history.state?.goods) {
-    goodsInfo.value = history.state.goods
-    buyCount.value = goodsInfo.value.count || 1
+  // 接收订单ID
+  if (route.query.orderId) {
+    orderId.value = route.query.orderId
+    orderInfo.value = orderDatabase.find(o => o.order_id == orderId.value) || {}
   }
 
   addressList.value = [
@@ -129,15 +140,15 @@ onMounted(() => {
 })
 
 const handlePay = () => {
-  ElMessageBox.confirm('确认提交订单？').then(() => {
-    ElMessage.success('支付成功！')
+  ElMessageBox.confirm('确认支付该订单？').then(() => {
+    ElMessage.success(`订单${orderId.value}支付成功！`)
     router.push('/order')
   })
 }
 </script>
 
 <style scoped>
-/* 样式保持你原来的不变 */
+/* 和上面完全一样，保持统一 */
 .buy-page {
   background: #f5f5f5;
   padding: 20px;
@@ -212,9 +223,6 @@ const handlePay = () => {
 .price {
   color: #ff5000;
   font-weight: 500;
-}
-.count {
-  color: #666;
 }
 .pay-item {
   display: flex;
