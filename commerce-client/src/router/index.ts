@@ -36,6 +36,12 @@ const router = createRouter({
       component: () => import('@/views/cart/cart.vue'),
     },
     {
+      path: '/product',
+      name: 'Product',
+      component: () => import('@/views/product/ProductList.vue'),
+      meta: { title: '商品列表' },
+    },
+    {
       path: '/user',
       redirect: '/user/house',
       component: () => import('@/views/user/index.vue'),
@@ -102,6 +108,74 @@ const router = createRouter({
       component: () => import('@/views/user/orders/pay-order.vue'),
       meta: { title: '订单支付' }
     },
+    {
+      path: '/merchant',
+      name: 'merchant',
+      component: () => import('@/views/merchant/merchant.vue'),
+      meta: { title: '商家管理后台' },
+      redirect: '/merchant/showdata',
+      children: [
+        {
+          path: 'showdata',
+          name: 'MerchantShowData',
+          component: () => import('@/views/merchant/showData.vue'),
+        },
+        {
+          path: 'order',
+          name: 'MerchantOrder',
+          component: () => import('@/views/merchant/order.vue'),
+        },
+        {
+          path: 'product',
+          name: 'MerchantProduct',
+          component: () => import('@/views/merchant/product.vue'),
+        },
+        {
+          path: 'comment',
+          name: 'MerchantComment',
+          component: () => import('@/views/merchant/comment.vue'),
+        }
+      ]
+    },
+    {
+      path: '/manager',
+      name: 'manager',
+      component: () => import('@/views/manager/manager.vue'),
+      meta: { title: '管理员管理后台' },
+      redirect: '/manager/showdata',
+      children: [
+        {
+          path: 'showdata',
+          name: 'ManagerShowData',
+          component: () => import('@/views/manager/showData.vue'),
+        },
+        {
+          path: 'user',
+          name: 'ManagerUser',
+          component: () => import('@/views/manager/user.vue'),
+        },
+        {
+          path: 'allOrder',
+          name: 'ManagerOrder',
+          component: () => import('@/views/manager/allOrder.vue'),
+        },
+        {
+          path: 'allProduct',
+          name: 'ManagerProduct',
+          component: () => import('@/views/manager/allProduct.vue'),
+        },
+        {
+          path: 'category',
+          name: 'ManagerCategory',
+          component: () => import('@/views/manager/category.vue'),
+        },
+        {
+          path: 'coupon',
+          name: 'ManagerCoupon',
+          component: () => import('@/views/manager/coupon.vue'),
+        }
+      ]
+    }
   ],
 })
 

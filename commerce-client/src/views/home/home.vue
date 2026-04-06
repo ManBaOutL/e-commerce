@@ -7,9 +7,10 @@
         <!-- 左侧菜单 -->
         <el-col :md="5" :sm="0" :xs="0">
           <div class="side-menu">
-            <div v-for="cat in categories" :key="cat" class="menu-item">
+            <!-- <div v-for="cat in categories" :key="cat" class="menu-item">
               {{ cat }}
-            </div>
+            </div> -->
+            <HomeMenu />
           </div>
         </el-col>
         <!-- 右侧轮播图 -->
@@ -54,6 +55,7 @@
 </template>
 
 <script setup>
+import HomeMenu from './HomeMenu.vue'
 import {useRouter} from 'vue-router'
 
 const router = useRouter()

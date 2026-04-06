@@ -5,7 +5,7 @@
       <van-form @submit="handleSubmit">
         <van-cell-group inset>
           <van-field
-            v-if="type === 'username'"
+            v-if="loginType === 'username'"
             v-model="form.username"
             name="username"
             label="用户名"
@@ -13,7 +13,7 @@
             :rules="[{ required: true, message: '请填写用户名' }]"
           />
           <van-field
-            v-if="type === 'email'"
+            v-if="loginType === 'email'"
             v-model="form.email"
             name="email"
             label="邮箱"
@@ -21,7 +21,7 @@
             :rules="[{ required: true, message: '请填写邮箱' }]"
           />
           <van-field
-            v-if="type === 'phone'"
+            v-if="loginType === 'phone'"
             v-model="form.phone"
             type="number"
             name="phone"
@@ -46,9 +46,9 @@
       </van-form>
       <!-- 登录方式切换 -->
       <div class="login-switch">
-          <div @click="type = 'username'">用户名登录</div>
-          <div @click="type = 'email'">邮箱登录</div>
-          <div @click="type = 'phone'">手机号登录</div>
+          <div @click="loginType = 'username'">用户名登录</div>
+          <div @click="loginType = 'email'">邮箱登录</div>
+          <div @click="loginType = 'phone'">手机号登录</div>
       </div>
       <!-- 忘记密码 -->
       <div class="login-forgot">
@@ -77,26 +77,26 @@ const form = ref<LoginData>({
   email: '',
   phone:''
 })
-const type = ref('username')
+const loginType = ref('username')
 
 
 const handleSubmit = async (e: Event) => {
   const sendData = {} as any
-  if(type.value === 'username'){
+  if(loginType.value === 'username'){
     if(!form.value.username){
       showFailToast('请输入用户名！');
       return;
     }
     sendData.username = form.value.username;
   }
-  else if(type.value === 'email'){
+  else if(loginType.value === 'email'){
     if(!form.value.email){
       showFailToast('请输入邮箱！');
       return;
     }
     sendData.email = form.value.email;
   }
-  else if(type.value === 'phone'){
+  else if(loginType.value === 'phone'){
     if(!form.value.phone){
       showFailToast('请输入手机号！');
       return;
@@ -108,8 +108,8 @@ const handleSubmit = async (e: Event) => {
     return;
   }
   sendData.password = form.value.password;
-  sendData.type = type.value;
-  console.log(sendData);
+  sendData.loginType = loginType.value;
+  console.log("登录数据:", sendData);
 
   try {
     // 发起登录请求（baseURL 已封装，只需写相对路径）
@@ -124,8 +124,15 @@ const handleSubmit = async (e: Event) => {
     //模拟登录成功后，存储token
     localStorage.setItem('token', JSON.stringify(resData[0]));
 
-
-    router.push('/');
+    if(resData[0].type === '普通用户'){
+      router.push('/');
+    }
+    else if(resData[0].type === '商家'){
+      router.push('/merchant');
+    }
+    else if(resData[0].type === '管理员'){
+      router.push('/manager');
+    }
   } catch (error) {
     console.error('登录失败：', error);
     showFailToast('登录失败！');

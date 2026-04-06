@@ -3,13 +3,18 @@
     <div class="container-inner">
       <el-row :gutter="20" align="middle">
         <el-col :sm="4" :xs="0">
-          <div class="logo">MALL</div>
+          <div class="logo" @click="router.push('/')">MALL</div>
         </el-col>
 
         <el-col :sm="16" :xs="24">
-          <el-input placeholder="输入喜欢的宝贝..." class="search-input">
+          <el-input 
+            v-model="searchKeyword" 
+            placeholder="输入喜欢的宝贝..." 
+            class="search-input"
+            @keyup.enter="handleSearch"
+          >
             <template #append>
-              <el-button type="primary">搜索</el-button>
+              <el-button type="primary" @click="handleSearch">搜索</el-button>
             </template>
           </el-input>
         </el-col>
@@ -33,16 +38,33 @@
 </template>
 
 <script setup>
-import { useRouter } from 'vue-router'
+import { ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 
 const router = useRouter()
+const route = useRoute()
 
+// 搜索框输入内容
+const searchKeyword = ref('')
+
+
+// 跳转逻辑
 const handleToCart = () => {
   router.push('/cart')
 }
-
 const handleToUserCenter = () => {
   router.push('/user')
+}
+const handleSearch = () => {
+  router.push({
+    path: '/product',
+    query: {
+      ...route.query,
+      keyword: searchKeyword.value,
+      // 搜索新词时，建议重置分类 ID 
+      category_id: undefined 
+    }
+  })
 }
 </script>
 
@@ -65,6 +87,7 @@ const handleToUserCenter = () => {
   font-size: 28px;
   color: #ff5000;
   font-weight: bold;
+  cursor: pointer;
 }
 
 .text-right {

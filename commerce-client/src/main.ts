@@ -9,7 +9,6 @@ import 'element-plus/dist/index.css'
 import GlobalComponents from './components/index'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
 
-
 import App from './App.vue'
 import router from './router'
 
@@ -18,6 +17,7 @@ const pinia = createPinia()
 
 app.use(pinia)
 app.use(router)
+
 
 // 3. 注册 Vant 组件
 app.use(Vant)
