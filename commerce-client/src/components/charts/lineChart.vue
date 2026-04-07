@@ -39,7 +39,25 @@ function setChart(chart, xd, yd) {
     title: { text: props.title },
     xAxis: { type: 'category', data: xd },
     yAxis: { type: 'value' },
-    series: [{ data: yd, type: 'line', smooth: true }]
+    tooltip: {  // 开启tooltip显示具体数据
+      trigger: 'axis'
+    },
+    series: [{ 
+      data: yd, 
+      type: 'line', 
+      smooth: true,
+      label: {  // 在折点上显示具体数值
+        show: true,
+        position: 'top',  // 数值显示在折点上方
+        fontSize: 12
+      },
+      markPoint: {  // 可选：标记最大值/最小值
+        data: [
+          {type: 'max', name: '最大值'},
+          {type: 'min', name: '最小值'}
+        ]
+      }
+    }]
   })
 }
 

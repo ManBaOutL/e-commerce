@@ -42,6 +42,7 @@ const menuList = [
   { key: 'allOrder', name: '订单管理' },
   { key: 'category', name: '分类管理' },
   { key: 'coupon', name: '优惠券管理' },
+  { key: 'operationLog', name: '操作日志管理' },
 ]
 
 const goMenu = (key) => {

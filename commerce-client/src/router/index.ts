@@ -134,6 +134,11 @@ const router = createRouter({
           path: 'comment',
           name: 'MerchantComment',
           component: () => import('@/views/merchant/comment.vue'),
+        },
+        {
+          path: 'merchantCenter',
+          name: 'MerchantCenter',
+          component: () => import('@/views/merchant/merchantCenter.vue'),
         }
       ]
     },
@@ -173,6 +178,11 @@ const router = createRouter({
           path: 'coupon',
           name: 'ManagerCoupon',
           component: () => import('@/views/manager/coupon.vue'),
+        },
+        {
+          path: 'operationLog',
+          name: 'ManagerOperationLog',
+          component: () => import('@/views/manager/operationLog.vue'),
         }
       ]
     }

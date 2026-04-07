@@ -34,15 +34,32 @@ onMounted(() => {
 })
 
 function setChart(chart, data) {
+  // 计算总和用于计算占比
+  const total = data.reduce((sum, item) => sum + item.value, 0)
+  
   chart.setOption({
     title: { text: props.title },
-    tooltip: { trigger: 'item' },
+    tooltip: { 
+      trigger: 'item',
+      // tooltip中显示名称、数值、占比
+      formatter: '{a} <br/>{b}: {c} ({d}%)'
+    },
     legend: { orient: 'vertical', left: 'left' },
     series: [{
       name: '成交额',
       type: 'pie',
       radius: '65%',
       data: data,
+      label: {  // 在饼图上显示名称、数值、占比
+        show: true,
+        formatter: (params) => {
+          // 自定义显示格式：名称 + 数值 + 占比(保留1位小数)
+          return `${params.name}: ${params.value} (${params.percent.toFixed(1)}%)`
+        }
+      },
+      labelLine: {  // 显示标签连接线
+        show: true
+      }
     }]
   })
 }

@@ -39,7 +39,19 @@ function setChart(chart, xd, yd) {
     title: { text: props.title },
     xAxis: { type: 'category', data: xd },
     yAxis: { type: 'value' },
-    series: [{ data: yd, type: 'bar' }]
+    tooltip: {  // 开启tooltip显示具体数据
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' }
+    },
+    series: [{ 
+      data: yd, 
+      type: 'bar',
+      label: {  // 在柱子上显示具体数值
+        show: true,
+        position: 'top',  // 数值显示在柱子顶部
+        fontSize: 12
+      }
+    }]
   })
 }
 

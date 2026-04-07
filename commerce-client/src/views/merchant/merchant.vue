@@ -48,6 +48,7 @@ const menuList = ref([
   { key: 'product', label: '商品管理' },
   { key: 'order', label: '订单管理' },
   { key: 'comment', label: '评价管理' },
+  { key: 'merchantCenter', label: '商家中心' },
 ])
 
 // 菜单切换 -> 跳转对应二级路由
