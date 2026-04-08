@@ -36,6 +36,11 @@ const router = createRouter({
       component: () => import('@/views/cart/cart.vue'),
     },
     {
+      path: '/favorites',
+      name: 'favorites',
+      component: () => import('@/views/favorites/favorites.vue'),
+    },
+    {
       path: '/product',
       name: 'Product',
       component: () => import('@/views/product/ProductList.vue'),
@@ -65,6 +70,11 @@ const router = createRouter({
           path: 'coupons',
           component: () => import('@/views/user/coupons/index.vue'),
           meta: { title: '我的优惠券' },
+        },
+        {
+          path: 'consumption',
+          component: () => import('@/views/user/ConsumptionStats/index.vue'),
+          meta: { title: '消费统计' },
         },
         {
           path: 'address',

@@ -31,7 +31,7 @@
         </el-card>
       </el-col>
       <el-col :span="5">
-        <el-card class="content-card">
+        <el-card class="content-card" @click="$router.push('/favorites')">
           <template #header>
             <div>
               <span>我的收藏 ></span>
@@ -44,7 +44,7 @@
         </el-card>
       </el-col>
       <el-col :span="5">
-        <el-card class="content-card">
+        <el-card class="content-card" @click="$router.push('/cart')">
           <template #header>
             <div>
               <span>购物车 ></span>
@@ -115,6 +115,7 @@ const recommendProducts = [
 /* 右侧内容样式 */
 .content-card {
   margin-bottom: 30px;
+  cursor: pointer;
 }
 
 .status-item {

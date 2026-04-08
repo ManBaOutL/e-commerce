@@ -43,6 +43,11 @@
                 <span>我的优惠券</span>
               </el-menu-item>
 
+              <el-menu-item index="/user/consumption">
+                <el-icon><FullScreen /></el-icon>
+                <span>消费统计</span>
+              </el-menu-item>
+
               <el-menu-item index="/user/address">
                 <el-icon><Location /></el-icon>
                 <span>收货地址</span>

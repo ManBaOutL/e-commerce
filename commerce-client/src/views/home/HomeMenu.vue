@@ -1,6 +1,6 @@
 <template>
   <div class="home-menu-container">
-    <div class="taobao-menu">
+    <div class="my-menu">
       <div 
         v-for="mainItem in categoryTree.slice(0, 10)" 
         :key="mainItem.id" 
@@ -58,67 +58,67 @@ onMounted(fetchCategories);
 
 <style scoped>
 .home-menu-container {
-  height: 380px; /* 承接父级盒子的 380px 高度 */
+  height: 380px; 
   background: #fff;
   border-radius: 8px;
-  overflow: hidden;
+  /* 移除 overflow: hidden 否则如果内容多一点会被切断 */
   box-sizing: border-box;
+  padding: 8px 0; /* 增加上下内边距，让首尾不贴边 */
 }
 
-.taobao-menu {
+.my-menu {
   height: 100%;
   display: flex;
-  flex-direction: column; /* 垂直排列 */
+  flex-direction: column;
 }
 
 .menu-row {
-  flex: 1; /* 核心：10行平分 380px 高度，每行约 38px */
+  /* 核心：固定高度，380px 除去 padding 16px，10行每行约 36px */
+  height: 36px; 
+  line-height: 36px;
   display: flex;
   align-items: center;
-  padding: 0 12px;
+  padding: 0 16px;
   cursor: pointer;
   transition: all 0.2s;
-  border-left: 3px solid transparent;
+  font-size: 14px; /* 稍微加大一点点字号更清晰 */
 }
 
 .menu-row:hover {
-  background-color: #fff1eb;
+  background: linear-gradient(90deg, #fff1eb 0%, #fff 100%); /* 渐变背景更高级 */
   color: #ff5000;
-  border-left-color: #ff5000;
 }
 
 .main-icon {
-  font-size: 15px; /* 缩小图标 */
-  margin-right: 8px;
+  font-size: 16px;
+  margin-right: 12px;
+  color: #666; /* 初始图标颜色淡一点 */
+}
+
+.menu-row:hover .main-icon {
+  color: #ff5000;
 }
 
 .content-wrapper {
   flex: 1;
   display: flex;
   align-items: center;
-  /* 修改点：缩小整体字体大小，更接近截图风格 */
-  font-size: 12px; 
-  color: #333;
   white-space: nowrap;
   overflow: hidden;
 }
 
 .main-name {
   font-weight: 500;
-}
-
-.main-name:hover, .sub-name:hover {
-  text-decoration: underline;
+  margin-right: 4px;
 }
 
 .sub-links {
-  color: #666;
-  display: flex;
-  align-items: center;
+  color: #999; /* 子类链接颜色调淡，突出主类 */
+  font-size: 12px;
 }
 
 .separator {
-  margin: 0 3px;
+  margin: 0 2px;
   color: #e0e0e0;
 }
 

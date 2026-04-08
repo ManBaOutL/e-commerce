@@ -29,6 +29,7 @@
             :xs="12" :sm="8" :md="6" :lg="4.8"
           >
             <ProductCard 
+              :id = "item.id"
               :name="item.name" 
               :price="item.price" 
               :image="item.image"
@@ -64,7 +65,8 @@ const queryParams = reactive({
 const sortOptions = [
   { label: '综合', value: 'id' },
   { label: '销量', value: 'sales' },
-  { label: '价格', value: 'price' }
+  { label: '价格', value: 'price' },
+  { label: '上架时间', value: 'created_at' },
 ]
 // 补充：排序点击逻辑
 const handleSort = (value: string) => {

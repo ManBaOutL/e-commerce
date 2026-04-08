@@ -1,3 +1,7 @@
+(window as any)._AMapSecurityConfig = {
+  securityJsCode: "e4fdb7aef8b3dafc569d37bc6d52648c",
+};
+
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 // 导入 Vant 样式和全部组件
