@@ -7,9 +7,6 @@
         <!-- 左侧菜单 -->
         <el-col :md="5" :sm="0" :xs="0">
           <div class="side-menu">
-            <!-- <div v-for="cat in categories" :key="cat" class="menu-item">
-              {{ cat }}
-            </div> -->
             <HomeMenu />
           </div>
         </el-col>
@@ -43,9 +40,9 @@
             :xs="12" :sm="8" :md="6" :lg="6" :xl="4"
           >
             <ProductCard 
+              :id = "product.id" 
               :name="product.name" 
               :price="product.price" 
-              @click="handleToGoodsDetail(product.id)"
             />
           </el-col>
         </el-row>
@@ -60,7 +57,6 @@ import {useRouter} from 'vue-router'
 
 const router = useRouter()
 
-const categories = ['女装/内衣', '男装/运动', '美妆/洗护', '手机/数码', '家电/办公', '零食/茶酒', '家居/家纺']
 const productList = Array.from({ length: 12 }).map((_, i) => ({
   id: i,
   name: `2026新款 智能穿戴设备 极客系列第 ${i+1} 代`,
@@ -74,9 +70,6 @@ const handleToRegister = () => {
   router.push('/login/register')
 }
 
-const handleToGoodsDetail = (id) => {
-  router.push(`/goods/${id}`)
-}
 </script>
 
 <style scoped>

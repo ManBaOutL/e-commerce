@@ -133,6 +133,9 @@ const handleSubmit = async (e: Event) => {
     else if(resData[0].type === '管理员'){
       router.push('/manager');
     }
+    else {
+      router.push('/');
+    }
   } catch (error) {
     console.error('登录失败：', error);
     showFailToast('登录失败！');

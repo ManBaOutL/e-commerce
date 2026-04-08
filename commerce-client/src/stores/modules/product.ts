@@ -40,6 +40,7 @@ export const useProductStore = defineStore('product', {
     async getCategoryList() {
       try {
         const res = await reqGetCategories();
+        console.log("用戶端获取分类列表成功: ", res);
         this.categoryList = res;
         this.categoryTree = translateTree(res);
       } catch (error) {
