@@ -1,5 +1,5 @@
 <template>
-  <div class="product-card">
+  <div class="product-card"   @click="handleToGoodsDetail(id)">
     <div class="image-placeholder">
       <el-image :src="image" fit="cover">
         <template #error><div class="err-txt">暂无图片</div></template>
@@ -16,7 +16,13 @@
 </template>
 
 <script setup>
-defineProps(['name', 'price', 'image'])
+import { useRouter } from 'vue-router'
+const router = useRouter()
+defineProps(['id','name', 'price', 'image'])
+
+const handleToGoodsDetail = (id) => {
+  router.push(`/goods/${id}`)
+}
 </script>
 
 <style scoped>
