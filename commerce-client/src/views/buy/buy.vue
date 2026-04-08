@@ -131,7 +131,7 @@ onMounted(() => {
 const handlePay = () => {
   ElMessageBox.confirm('确认提交订单？').then(() => {
     ElMessage.success('支付成功！')
-    router.push('/order')
+    router.push('/user/orders')
   })
 }
 </script>

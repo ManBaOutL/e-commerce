@@ -27,7 +27,16 @@
           </el-tag>
         </template>
       </el-table-column>
-      <!-- 新增：驳回理由列 -->
+      <!-- 新增：用户退款原因列 -->
+      <el-table-column label="用户退款原因">
+        <template #default="scope">
+          <el-tag v-if="scope.row.userRefundReason" type="warning" size="small">
+            {{ scope.row.userRefundReason }}
+          </el-tag>
+          <span v-else>无</span>
+        </template>
+      </el-table-column>
+      <!-- 原有：驳回理由列 -->
       <el-table-column label="驳回理由">
         <template #default="scope">
           <el-tag v-if="scope.row.refundRejectReason" type="info" size="small">
@@ -38,6 +47,12 @@
       </el-table-column>
       <el-table-column label="操作">
         <template #default="scope">
+          <!-- 新增：详情按钮 -->
+          <el-button
+            type="primary"
+            text
+            @click="viewDetail(scope.row)"
+          >查看详情</el-button>
           <!-- 只有申请退款的订单能审核 -->
           <el-button
             type="success"
@@ -54,6 +69,40 @@
         </template>
       </el-table-column>
     </el-table>
+
+    <!-- 订单详情弹窗 -->
+    <el-dialog
+      v-model="detailDialogVisible"
+      title="订单详情"
+      width="600px"
+      destroy-on-close
+    >
+      <el-descriptions :column="2" border style="margin-top:10px;">
+        <el-descriptions-item label="订单号">{{ currentOrder.orderId }}</el-descriptions-item>
+        <el-descriptions-item label="商品名称">{{ currentOrder.goodsName }}</el-descriptions-item>
+        <el-descriptions-item label="订单金额">¥{{ currentOrder.money }}</el-descriptions-item>
+        <el-descriptions-item label="订单状态">
+          <el-tag 
+            :type="currentOrder.status ==='申请退款'?'warning':currentOrder.status ==='已退款'?'success':currentOrder.status ==='退款驳回'?'danger':''"
+          >
+            {{ currentOrder.status }}
+          </el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item label="下单用户">{{ currentOrder.userName || '无' }}</el-descriptions-item>
+        <el-descriptions-item label="用户手机号">{{ currentOrder.userPhone || '无' }}</el-descriptions-item>
+        <el-descriptions-item label="下单时间">{{ currentOrder.createTime || '无' }}</el-descriptions-item>
+        <el-descriptions-item label="收货地址">{{ currentOrder.address || '无' }}</el-descriptions-item>
+        <el-descriptions-item label="用户退款原因" :span="2">
+          {{ currentOrder.userRefundReason || '无' }}
+        </el-descriptions-item>
+        <el-descriptions-item label="退款驳回理由" :span="2">
+          {{ currentOrder.refundRejectReason || '无' }}
+        </el-descriptions-item>
+      </el-descriptions>
+      <template #footer>
+        <el-button @click="detailDialogVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -64,31 +113,107 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 // 筛选条件
 const statusFilter = ref('')
 
-// 订单列表：新增refundRejectReason字段，和allOrder.vue数据结构对齐
+// 详情弹窗控制
+const detailDialogVisible = ref(false)
+// 当前选中的订单
+const currentOrder = ref({})
+
+// 订单列表：补充完整字段（userName/userPhone/createTime/address）
 const orderList = ref([
-  { orderId: '20260407001', goodsName: '手机', money: '3999', status: '待发货', refundRejectReason: '' },
-  { orderId: '20260407002', goodsName: '电脑', money: '5999', status: '已发货', refundRejectReason: '' },
-  { orderId: '20260407003', goodsName: '耳机', money: '299', status: '申请退款', refundRejectReason: '' },
-  { orderId: '20260407004', goodsName: '平板', money: '2499', status: '已完成', refundRejectReason: '' },
-  { orderId: '20260407005', goodsName: '手表', money: '1299', status: '申请退款', refundRejectReason: '' },
-  // 示例：已驳回的订单（带理由）
-  { orderId: '20260407006', goodsName: '音箱', money: '899', status: '退款驳回', refundRejectReason: '商品影响二次销售，拒绝退款' },
+  { 
+    orderId: '20260407001', 
+    goodsName: '手机', 
+    money: '3999', 
+    status: '待发货', 
+    refundRejectReason: '', 
+    userRefundReason: '',
+    userName: '张三',
+    userPhone: '13800138000',
+    createTime: '2026-04-07 10:00:00',
+    address: '北京市朝阳区XX路XX号'
+  },
+  { 
+    orderId: '20260407002', 
+    goodsName: '电脑', 
+    money: '5999', 
+    status: '已发货', 
+    refundRejectReason: '', 
+    userRefundReason: '',
+    userName: '李四',
+    userPhone: '13900139000',
+    createTime: '2026-04-07 11:00:00',
+    address: '上海市浦东新区XX路XX号'
+  },
+  { 
+    orderId: '20260407003', 
+    goodsName: '耳机', 
+    money: '299', 
+    status: '申请退款', 
+    refundRejectReason: '', 
+    userRefundReason: '商品音质差，不符合预期',
+    userName: '王五',
+    userPhone: '13700137000',
+    createTime: '2026-04-07 12:00:00',
+    address: '广州市天河区XX路XX号'
+  },
+  { 
+    orderId: '20260407004', 
+    goodsName: '平板', 
+    money: '2499', 
+    status: '已完成', 
+    refundRejectReason: '', 
+    userRefundReason: '',
+    userName: '赵六',
+    userPhone: '13600136000',
+    createTime: '2026-04-07 13:00:00',
+    address: '深圳市南山区XX路XX号'
+  },
+  { 
+    orderId: '20260407005', 
+    goodsName: '手表', 
+    money: '1299', 
+    status: '申请退款', 
+    refundRejectReason: '', 
+    userRefundReason: '商品质量有问题',
+    userName: '孙七',
+    userPhone: '13500135000',
+    createTime: '2026-04-07 14:00:00',
+    address: '杭州市西湖区XX路XX号'
+  },
+  { 
+    orderId: '20260407006', 
+    goodsName: '音箱', 
+    money: '899', 
+    status: '退款驳回', 
+    refundRejectReason: '商品影响二次销售，拒绝退款', 
+    userRefundReason: '音箱有杂音，质量问题',
+    userName: '周八',
+    userPhone: '13400134000',
+    createTime: '2026-04-07 15:00:00',
+    address: '成都市锦江区XX路XX号'
+  },
 ])
 
-// 筛选
+// 筛选逻辑（保留原有）
 const filterList = computed(() => {
   if (!statusFilter.value) return orderList.value
   return orderList.value.filter(item => item.status === statusFilter.value)
 })
 
-// 同意退款
+// 新增：查看订单详情
+const viewDetail = (row) => {
+  currentOrder.value = { ...row } // 深拷贝避免弹窗修改影响原数据
+  detailDialogVisible.value = true
+}
+
+// 同意退款（保留原有逻辑）
 const agree = (row) => {
   row.status = '已退款'
   row.refundRejectReason = '' // 同意退款时清空驳回理由
   ElMessage.success('已同意退款')
 }
 
-// 驳回退款：强制填写理由并存储
+// 驳回退款（保留原有逻辑）
 const reject = async (row) => {
   try {
     const { value: reason } = await ElMessageBox.prompt(

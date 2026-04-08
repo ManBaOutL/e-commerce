@@ -183,6 +183,21 @@ const router = createRouter({
           path: 'operationLog',
           name: 'ManagerOperationLog',
           component: () => import('@/views/manager/operationLog.vue'),
+        },
+        {
+          path: 'activity',
+          name: 'ManagerActivity',
+          component: () => import('@/views/manager/activity.vue'),
+        },
+        {
+          path: 'allComment',
+          name: 'ManagerComment',
+          component: () => import('@/views/manager/allComment.vue'),
+        },
+        {
+          path: 'allShop',
+          name: 'ManagerShop',
+          component: () => import('@/views/manager/allShop.vue'),
         }
       ]
     }
