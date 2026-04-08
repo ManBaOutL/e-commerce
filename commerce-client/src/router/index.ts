@@ -67,6 +67,11 @@ const router = createRouter({
           meta: { title: '我的优惠券' },
         },
         {
+          path: 'consumption',
+          component: () => import('@/views/user/ConsumptionStats/index.vue'),
+          meta: { title: '消费统计' },
+        },
+        {
           path: 'address',
           component: () => import('@/views/user/address/index.vue'),
           meta: { title: '收货地址' },
