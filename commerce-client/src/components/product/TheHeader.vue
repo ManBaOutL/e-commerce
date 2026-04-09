@@ -31,6 +31,12 @@
             style="margin-left: 10px"
             @click="handleToUserCenter"
           />
+          <el-button
+            icon="SwitchButton"
+            circle
+            style="margin-left: 10px"
+            @click="handleToLogin"
+          />
         </el-col>
       </el-row>
     </div>
@@ -54,6 +60,9 @@ const handleToCart = () => {
 }
 const handleToUserCenter = () => {
   router.push('/user')
+}
+const handleToLogin = () => {
+  router.push('/login')
 }
 const handleSearch = () => {
   router.push({
