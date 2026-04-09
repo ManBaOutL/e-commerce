@@ -6,7 +6,7 @@
     </div>
 
     <el-row :gutter="20">
-      <el-col :span="12" v-for="item in addressList" :key="item.id">
+      <el-col :span="12" v-for="item in userStore.addressList" :key="item.address_id">
         <el-card shadow="hover" class="address-card" :class="{ 'is-default': item.is_default }">
           <div class="card-header">
             <span class="name">{{ item.recipient_name }}</span>
@@ -14,16 +14,16 @@
             <el-tag v-if="item.is_default" type="danger" size="small" effect="dark">默认</el-tag>
           </div>
           <div class="address-detail">
-            <p>{{ item.address_line1 }}</p>
+            <p>{{ item.address }}</p>
           </div>
           <div class="card-footer">
             <el-button link type="primary" @click="openAddressDialog(item)">编辑</el-button>
-            <el-button link type="danger" @click="handleDelete(item.id)">删除</el-button>
+            <el-button link type="danger" @click="handleDelete(item.address_id)">删除</el-button>
             <el-button 
-              v-if="!item.is_default" 
+              v-if="item.is_default" 
               link 
               type="info" 
-              @click="handleSetDefault(item.id)"
+              @click="handleSetDefault(item.address_id)"
             >设为默认</el-button>
           </div>
         </el-card>
@@ -32,7 +32,7 @@
 
     <el-dialog 
       v-model="dialogVisible" 
-      :title="formData.id ? '编辑地址' : '新增地址'" 
+      :title="formData.address_id ? '编辑地址' : '新增地址'" 
       width="800px"
     >
       <el-form :model="formData" label-width="80px" ref="formRef" :rules="rules">
@@ -43,8 +43,8 @@
           <el-input v-model="formData.phone" placeholder="手机号码" />
         </el-form-item>
         <!-- 地图选择器 -->
-        <el-form-item label="选择地址" prop="address_line1" style="width: 100%;">
-          <AmapSelect v-model="formData.address_line1" />
+        <el-form-item label="选择地址" prop="address" style="width: 100%;">
+          <AmapSelect v-model="formData.address" />
         </el-form-item>
         <el-form-item>
           <el-checkbox v-model="formData.is_default">设为默认收货地址</el-checkbox>
@@ -58,95 +58,100 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import AmapSelect from '@/components/address/AmapSelector.vue'
-import { ref, reactive, nextTick } from 'vue'
+import { ref, reactive } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useUserStore } from '@/stores/modules/userStore'
+import type { AddressItem } from '@/api/user/types'
 
-// 模拟初始数据 (后续对接 data.json)
-const addressList = ref([
-  { id: 1, recipient_name: '张三', phone: '13800000000', address_line1: '某某省某某市某某区 某某街道1号', is_default: true }
-])
+const userStore = useUserStore()
+userStore.init()
 
 const dialogVisible = ref(false)
 const formRef = ref(null)
-const formData = reactive({
-  id: null,
+// formData字段匹配接口
+const formData = reactive<AddressItem>({
+  address_id: 0,
+  user_id: 1001, // 绑定当前用户
   recipient_name: '',
   phone: '',
-  address_line1: '',
-  is_default: false
+  address: '', 
+  lng: 0,
+  lat: 0,
+  province: '',
+  city: '',
+  district: '',
+  street: '',
+  streetNumber: '',
+  is_default: false,
+  type: 'delivery'
 })
 
 const rules = {
   recipient_name: [{ required: true, message: '请输入收货人姓名', trigger: 'blur' }],
   phone: [{ required: true, message: '请输入手机号', trigger: 'blur' }],
-  address_line1: [{ required: true, message: '请输入详细地址', trigger: 'blur' }]
+  address: [{ required: true, message: '请输入详细地址', trigger: 'blur' }]
 }
 
 // 打开弹窗（新增/编辑共用）
-const openAddressDialog = (row = null) => {
-  console.log('打开地址弹窗', row)
+const openAddressDialog = (row?: AddressItem) => {
+  // console.log('打开地址弹窗', row)
   if (row) {
     Object.assign(formData, JSON.parse(JSON.stringify(row)))
-    console.log('编辑地址数据:', formData)
+    // console.log('编辑地址数据:', formData)
   } else {
     resetForm()
   }
   dialogVisible.value = true
 }
-// 地图弹窗初始化
-// const handleDialogOpen = () => {
-//   nextTick(() => {
-//     // 如果是编辑地址，地图组件会自动加载并显示当前地址位置
-//   })
-// }
 
 const resetForm = () => {
-  formData.id = null
+  formData.address_id = 0
   formData.recipient_name = ''
   formData.phone = ''
-  formData.address_line1 = ''
+  formData.address = ''
+  formData.lng = 0
+  formData.lat = 0
+  formData.province = ''
+  formData.city = ''
+  formData.district = ''
+  formData.street = ''
+  formData.streetNumber = ''
   formData.is_default = false
+  formData.type = 'delivery'
 }
 
 // 提交表单
 const submitForm = async () => {
-  await formRef.value.validate((valid) => {
+  await (formRef.value as any).validate((valid : boolean) => {
     if (valid) {
-      if (formData.id) {
-        // 编辑逻辑
-        const index = addressList.value.findIndex(i => i.id === formData.id)
-        addressList.value[index] = { ...formData }
+      if (formData.address_id) {
+        // 调用store编辑方法
+        userStore.editAddress(formData)
       } else {
-        // 新增逻辑
-        addressList.value.push({ ...formData, id: Date.now() })
+        // 调用store新增方法
+        userStore.addAddress(formData)
       }
       
-      // 如果设为默认，需取消其他默认
-      if (formData.is_default) {
-        handleSetDefault(formData.id || addressList.value[addressList.value.length - 1].id)
-      }
+      // 设置默认地址(在add/edit中完成)
       
       dialogVisible.value = false
       ElMessage.success('操作成功')
-      console.log('地址表单数据:', formData)
-      console.log('地址列表数据:', addressList.value)
     }
   })
 }
 
-// 设置默认地址
-const handleSetDefault = (id) => {
-  addressList.value.forEach(item => {
-    item.is_default = (item.id === id)
-  })
+// 设置默认地址（调用store方法）
+const handleSetDefault = (addressId : number) => {
+  userStore.setDefaultAddress(addressId)
+  ElMessage.success('默认地址设置成功')
 }
 
-// 删除地址
-const handleDelete = (id) => {
+// 删除地址（调用store方法）
+const handleDelete = (addressId : number) => {
   ElMessageBox.confirm('确定删除该地址吗？', '提示', { type: 'warning' }).then(() => {
-    addressList.value = addressList.value.filter(i => i.id !== id)
+    userStore.deleteAddress(addressId)
     ElMessage.success('删除成功')
   })
 }

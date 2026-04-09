@@ -1,5 +1,9 @@
 // 这里存放仓库数据的类型
 // 用户仓库
+import type { AddressItem } from '@/api/user/types';
+export interface UserState {
+  addressList: AddressItem[];
+}
 
 // 商品仓库
 import type { Product,CategoryItem } from '@/api/product/types';
@@ -8,7 +12,10 @@ export interface ProductState {
   categoryList: CategoryItem[];
   categoryTree: CategoryItem[];
   productList: Product[];
-  total: number;
+  page: number;
+  pageSize: number;
+  loading: boolean;
+  finished: boolean;
 }
 
 // 购物车仓库

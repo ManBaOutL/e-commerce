@@ -31,7 +31,7 @@ export interface ProductQueryParams extends PageParams {
 }
 
 export interface Product extends BaseEntity {
-  id: number;
+  id?: number;
   name: string;
   price?: number;
   description?: string;
@@ -41,7 +41,7 @@ export interface Product extends BaseEntity {
   // attrs?: Record<string, any>;
   user_id?: number;
   category_id?: number;
-  shop_id: number;
+  shop_id?: number;
   status: '待审核' | '通过' | '已驳回';
   specs?: ProductSpec[]; // 聚合规格数据
 }

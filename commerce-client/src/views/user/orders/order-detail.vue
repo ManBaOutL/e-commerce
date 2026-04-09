@@ -33,19 +33,34 @@
           </div>
         </div>
 
-        <!-- 收货地址 + 【预留地图区域】 -->
-        <div class="card">
+        <!-- 收货地址 + 地图选择器 -->
+        <div class="card address-card">
           <div class="card-title">收货地址</div>
-          <div class="address-info" v-if="order.address">
-            {{ order.address.recipient_name }}　{{ order.address.phone }}<br>
-            {{ order.address.address_line1 }} {{ order.address.city }} {{ order.address.state }}
-          </div>
-          <div class="address-info empty" v-else>
-            暂无收货地址信息
-          </div>
+          <div class="address-main">
+            <!-- 地址信息 -->
+            <div class="address-info-wrap" v-if="order.address">
+              <div class="address-info">
+                <div class="recipient-info">
+                  <span class="name">{{ order.address.recipient_name }}</span>
+                  <span class="phone">{{ order.address.phone }}</span>
+                </div>
+                <div class="address-detail">
+                  {{ order.address.address_line1 }} {{ order.address.city }} {{ order.address.state }}
+                </div>
+              </div>
+            </div>
+            <div class="address-info empty" v-else>
+              暂无收货地址信息
+            </div>
 
-          <div class="map-placeholder">
-            <div class="map-tip">这里将显示地图配送位置（地图 API）</div>
+            <!-- 地图选择器（淘宝风格） -->
+            <div class="address-map-wrap">
+              <div class="map-label">收货地址定位：</div>
+              <AmapSelector 
+                v-model="addressValue"
+                class="amap-selector"
+              />
+            </div>
           </div>
         </div>
 
@@ -114,6 +129,8 @@ const order = ref({
   coupon: null,
   details: []
 })
+// 地图选择器绑定值
+const addressValue = ref('')
 
 // 模拟订单数据库
 const orderDatabase = [
@@ -169,6 +186,10 @@ const fetchOrderDetail = async (orderId) => {
     const foundOrder = orderDatabase.find(item => item.order_id === Number(orderId))
     if (foundOrder) {
       order.value = { ...foundOrder }
+      // 初始化地图选择器值为订单地址
+      if (foundOrder.address) {
+        addressValue.value = `${foundOrder.address.address_line1} ${foundOrder.address.city} ${foundOrder.address.state}`
+      }
     } else {
       order.value = {}
       ElMessage.warning('未找到该订单信息')
@@ -290,31 +311,62 @@ onMounted(() => {
   padding-bottom: 8px;
   border-bottom: 1px solid #f0f0f0;
 }
-.address-info {
-  color: #555;
-  line-height: 1.6;
-  margin-bottom: 12px;
+
+/* 淘宝风格地址卡片样式 */
+.address-card {
+  position: relative;
+}
+.address-main {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.address-info-wrap {
+  padding: 12px;
+  background: #fafafa;
+  border-radius: 4px;
+  border: 1px solid #eee;
+}
+.address-info .recipient-info {
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+.address-info .name {
+  font-weight: 500;
+  margin-right: 16px;
+}
+.address-info .phone {
+  color: #666;
+}
+.address-info .address-detail {
+  font-size: 14px;
+  color: #333;
+  line-height: 1.5;
 }
 .address-info.empty {
   color: #999;
   font-style: italic;
+  padding: 12px;
 }
 
-/* 地图预留区域 */
-.map-placeholder {
-  width: 100%;
-  height: 280px;
-  background: #f9f9f9;
-  border: 1px dashed #ccc;
-  border-radius: 6px;
+/* 地图选择器样式（淘宝风格） */
+.address-map-wrap {
   display: flex;
   align-items: center;
-  justify-content: center;
-  color: #999;
+  gap: 8px;
+  padding: 8px 0;
 }
-.map-tip {
-  text-align: center;
-  line-height: 1.5;
+.map-label {
+  font-size: 14px;
+  color: #666;
+  white-space: nowrap;
+}
+.amap-selector :deep(.map-input) {
+  width: 300px;
+  max-width: 600px;
+  height: 36px;
+  border-radius: 4px;
+  border: 1px solid #ddd;
 }
 
 /* 商品样式 */

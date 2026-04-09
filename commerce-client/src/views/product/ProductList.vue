@@ -21,33 +21,14 @@
         </div>
       </div>
       <!-- 商品列表 -->
-      <div class="product-grid">
-        <el-row :gutter="15">
-          <el-col
-            v-for="item in showList"
-            :key="item.id"
-            :xs="12"
-            :sm="8"
-            :md="6"
-            :lg="4.8"
-          >
-            <ProductCard v-bind="item" />
-          </el-col>
-        </el-row>
-
-        <!-- 加载提示 -->
-        <div class="load-tip">
-          <span v-if="loading">加载中...</span>
-          <span v-else-if="finished">已加载全部商品</span>
-        </div>
-      </div>
+      <ProductPage />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import FilterTreeItem from './FilterTreeItem.vue'
-import { ref, onMounted,onUnmounted, reactive, watch, computed } from 'vue'
+import { ref, onMounted, reactive, watch } from 'vue'
 import { useProductStore } from '@/stores/modules/productStore'
 import { CaretBottom } from '@element-plus/icons-vue'
 import { useRoute } from 'vue-router'
@@ -56,45 +37,6 @@ import type { ProductQueryParams } from '@/api/product/types'
 const route = useRoute()
 const productStore = useProductStore()
 
-// 加载控制
-const loading = ref(false)
-const page = ref(1)
-const pageSize = 10 // 每页10条
-const finished = ref(false)
-
-// 展示列表：根据页码截取数据
-const showList = computed(() => {
-  const start = 0
-  const end = page.value * pageSize
-  return productStore.productList.slice(start, end)
-})
-
-// 滚动到底部加载
-const loadMore = () => {
-  if (loading.value || finished.value) return
-  if (showList.value.length >= productStore.productList.length) {
-    finished.value = true
-    return
-  }
-
-  loading.value = true
-  setTimeout(() => {
-    page.value++
-    loading.value = false
-  }, 500)
-}
-
-// 监听滚动
-// 监听页面滚动（最标准写法）
-const onScroll = () => {
-  const windowHeight = document.documentElement.clientHeight
-  const scrollTop = document.documentElement.scrollTop
-  const totalHeight = document.documentElement.scrollHeight
-
-  if (scrollTop + windowHeight + 100 >= totalHeight) {
-    loadMore()
-  }
-}
 // 排序切换（重置页码）
 const handleSort = (value: string) => {
   if (queryParams.sort_field === value) {
@@ -155,13 +97,8 @@ onMounted(() => {
   // 初始化测试数据
   productStore.init()
   productStore.getCategoryList()
-  // 监听滚动
-  window.addEventListener('scroll', onScroll)
 })
 
-onUnmounted(() => {
-  window.removeEventListener('scroll', onScroll)
-})
 </script>
 
 <style scoped>
@@ -203,20 +140,4 @@ onUnmounted(() => {
   font-weight: bold;
 }
 
-/* 淘宝式 5 列布局 */
-@media (min-width: 1200px) {
-  .el-col-lg-4-8 {
-    width: 20%;
-    max-width: 20%;
-    flex: 0 0 20%;
-  }
-}
-
-/* 加载状态样式 */
-.load-status {
-  text-align: center;
-  padding: 20px 0;
-  color: #999;
-  font-size: 14px;
-}
 </style>

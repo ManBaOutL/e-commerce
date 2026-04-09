@@ -2,12 +2,15 @@
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import ProductCard from './product/ProductCard.vue'
 import TheHeader from './product/TheHeader.vue'
+import ProductPage from './product/ProductPage.vue'
 import AmapSelector from './address/AmapSelector.vue'
+
 
 const allComponent = {
   ProductCard,
   TheHeader,
   AmapSelector,
+  ProductPage,
 }
 
 export default {

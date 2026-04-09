@@ -72,6 +72,6 @@ export interface AddressItem extends BaseEntity {
   district: string;
   street: string;
   streetNumber: string;
-  is_default: 0 | 1;
+  is_default: boolean;
   type?: string; 
 }
