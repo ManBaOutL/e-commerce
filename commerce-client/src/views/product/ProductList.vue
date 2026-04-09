@@ -46,7 +46,7 @@
 <script setup lang="ts">
 import FilterTreeItem from './FilterTreeItem.vue'
 import { ref, onMounted, reactive, watch } from 'vue'
-import { useProductStore } from '@/stores/modules/product'
+import { useProductStore } from '@/stores/modules/productStore'
 import { CaretBottom } from '@element-plus/icons-vue'
 import {useRoute}from 'vue-router'
 
