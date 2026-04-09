@@ -12,7 +12,7 @@
             v-for="option in sortOptions" 
             :key="option.value"
             class="sort-item"
-            :class="{ active: queryParams?._sort === option.value }"
+            :class="{ active: queryParams?.sort_field === option.value }"
             @click="handleSort(option.value)"
           >
             <span>{{ option.label }}</span>
@@ -23,21 +23,23 @@
       <!-- 商品列表 -->
       <div class="product-grid">
         <el-row :gutter="15">
-          <el-col 
-            v-for="item in productStore.productList" 
-            :key="item.id" 
-            :xs="12" :sm="8" :md="6" :lg="4.8"
+          <el-col
+            v-for="item in showList"
+            :key="item.id"
+            :xs="12"
+            :sm="8"
+            :md="6"
+            :lg="4.8"
           >
-            <ProductCard 
-              :id = "item.id"
-              :name="item.name" 
-              :price="item.price" 
-              :image="item.image"
-            />
+            <ProductCard v-bind="item" />
           </el-col>
         </el-row>
 
-        <el-empty v-if="productStore.productList.length === 0" description="暂无相关商品" />
+        <!-- 加载提示 -->
+        <div class="load-tip">
+          <span v-if="loading">加载中...</span>
+          <span v-else-if="finished">已加载全部商品</span>
+        </div>
       </div>
     </div>
   </div>
@@ -45,69 +47,120 @@
 
 <script setup lang="ts">
 import FilterTreeItem from './FilterTreeItem.vue'
-import { ref, onMounted, reactive, watch } from 'vue'
+import { ref, onMounted,onUnmounted, reactive, watch, computed } from 'vue'
 import { useProductStore } from '@/stores/modules/productStore'
 import { CaretBottom } from '@element-plus/icons-vue'
-import {useRoute}from 'vue-router'
+import { useRoute } from 'vue-router'
+import type { ProductQueryParams } from '@/api/product/types'
 
 const route = useRoute()
 const productStore = useProductStore()
 
-// 1. 获取商品 API 支持不同参数 (响应式参数对象)
-const queryParams = reactive({
-  category_id: undefined as number | undefined,
-  keyword: '',    // 关键词
-  _sort: 'price',  // 此处json-server排序功能不响应，在后端部分实现
-  _page: 1,
-  _per_page: 5
+// 加载控制
+const loading = ref(false)
+const page = ref(1)
+const pageSize = 10 // 每页10条
+const finished = ref(false)
+
+// 展示列表：根据页码截取数据
+const showList = computed(() => {
+  const start = 0
+  const end = page.value * pageSize
+  return productStore.productList.slice(start, end)
+})
+
+// 滚动到底部加载
+const loadMore = () => {
+  if (loading.value || finished.value) return
+  if (showList.value.length >= productStore.productList.length) {
+    finished.value = true
+    return
+  }
+
+  loading.value = true
+  setTimeout(() => {
+    page.value++
+    loading.value = false
+  }, 500)
+}
+
+// 监听滚动
+// 监听页面滚动（最标准写法）
+const onScroll = () => {
+  const windowHeight = document.documentElement.clientHeight
+  const scrollTop = document.documentElement.scrollTop
+  const totalHeight = document.documentElement.scrollHeight
+
+  if (scrollTop + windowHeight + 100 >= totalHeight) {
+    loadMore()
+  }
+}
+// 排序切换（重置页码）
+const handleSort = (value: string) => {
+  if (queryParams.sort_field === value) {
+    queryParams.sort_order = queryParams.sort_order === 'asc' ? 'desc' : 'asc'
+  } else {
+    queryParams.sort_field = value as any
+    queryParams.sort_order = 'asc'
+  }
+  // 排序切换后重置为第一页
+  queryParams.page = 1
+}
+
+// 分页参数
+const queryParams = reactive<ProductQueryParams>({
+  page: 1,
+  pageSize: 10,
+  // 1. 基础搜索
+  keyword: '',                   // 商品名称模糊搜索
+  category_id: undefined,        // 分类 ID 筛选
+  shop_id: undefined,            // 店铺 ID 筛选
+  status: undefined,             // 商品状态 (如：通过)
+
+  // 2. 价格区间
+  minPrice: undefined,           // 最低价
+  maxPrice: undefined,           // 最高价
+
+  // 3. 时间区间 (对应 create_time)
+  start_time: undefined,         // 开始时间 (YYYY-MM-DD)
+  end_time: undefined,           // 结束时间 (YYYY-MM-DD)
+
+  // 4. 排序相关
+  // sortField: 排序字段，如 'price', 'create_time', 'stock'
+  // sortOrder: 'asc' (升序) 或 'desc' (降序)
+  sort_field: undefined,
+  sort_order: 'asc'
 })
 
 const sortOptions = [
   { label: '综合', value: 'id' },
   { label: '销量', value: 'sales' },
   { label: '价格', value: 'price' },
-  { label: '上架时间', value: 'created_at' },
+  { label: '上架时间', value: 'created_time' },
 ]
-// 补充：排序点击逻辑
-const handleSort = (value: string) => {
-  if (queryParams._sort === value && value === 'price') {
-    // 如果点击的是价格，切换升降序
-    // queryParams._order = queryParams._order === 'asc' ? 'desc' : 'asc';
-  } else {
-    queryParams._sort = value;
-    // queryParams._order = 'asc';
-  }
-  loadData();
-}
 
-// 执行搜索
-const loadData = () => {
-  // 调用 pinia actions，其内部封装了 reqGetProducts(params)
-  productStore.getProductList(queryParams)
-}
-
-// 监听路由 query 参数的变化
+// 监听路由参数（分类/关键词筛选）
 watch(
   () => route.query,
   (newQuery) => {
-    // console.log('路由参数变化了:', newQuery)
-    // 1. 同步路由参数到响应式变量 queryParams 中
-    // 注意：category_id 是从路由拿的字符串，需要转成 Number
-    queryParams.category_id = newQuery.category_id ? Number(newQuery.category_id) : undefined;
-    queryParams.keyword = (newQuery.keyword as string) || '';
-    
-    // 2. 重新请求数据
-    loadData();
+    // 这里可扩展分类/关键词筛选逻辑（基于init数据过滤）
+    queryParams.category_id = newQuery.category_id ? Number(newQuery.category_id) : undefined
+    queryParams.keyword = (newQuery.keyword as string) || ''
+    queryParams.page = 1 // 筛选后重置页码
   },
-  
-  { deep: true, immediate: true } // immediate 保证初次进入页面也会触发一次 loadData
+  { deep: true, immediate: true }
 )
 
 onMounted(() => {
-  // 获取分类树
+  // 初始化测试数据
+  productStore.init()
   productStore.getCategoryList()
-  // 获取初始商品数据
-  loadData()
+  // 监听滚动
+  window.addEventListener('scroll', onScroll)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('scroll', onScroll)
 })
 </script>
 
@@ -116,32 +169,18 @@ onMounted(() => {
   background-color: #f4f4f4;
   min-height: 100vh;
 }
+/* 滚动容器：必须设置高度 + 允许滚动 */
 .container {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 20px 0;
+  padding: 20px;
 }
-
 /* 分类筛选卡片 */
 .filter-card {
   background: #fff;
   border-radius: 8px;
   padding: 15px 20px;
   margin-bottom: 20px;
-}
-
-.filter-row {
-  display: flex;
-  align-items: flex-start;
-  padding-bottom: 15px;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.filter-label {
-  color: #999;
-  font-size: 14px;
-  width: 80px;
-  padding-top: 5px;
 }
 
 /* 排序栏 */
@@ -171,5 +210,13 @@ onMounted(() => {
     max-width: 20%;
     flex: 0 0 20%;
   }
+}
+
+/* 加载状态样式 */
+.load-status {
+  text-align: center;
+  padding: 20px 0;
+  color: #999;
+  font-size: 14px;
 }
 </style>
