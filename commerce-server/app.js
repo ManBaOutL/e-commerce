@@ -10,11 +10,9 @@ require('module-alias/register')
 const express = require('express')
 const app = express()
 //挂载登录路由
-const loginRouter = require('@/routes/user/login')
-const registerRouter = require('@/routes/user/register')
-const forgetRouter = require('@/routes/user/forget')
-const codeRouter = require('@/routes/user/code')
-
+const loginRouter = require('@/routes/front')
+// 挂载用户路由
+const userRouter = require('@/routes/user')
 //挂载管理员路由
 const managerRouter = require('@/routes/manager')
 
@@ -43,12 +41,8 @@ app.use((req, res, next) => {
 
 //挂载登录路由
 app.use('/api', loginRouter)
-//挂载注册路由
-app.use('/api', registerRouter)
-//挂载忘记密码路由
-app.use('/api', forgetRouter)
-//挂载验证码路由
-app.use('/api', codeRouter)
+// 挂载用户路由
+// app.use('/api', userRouter)
 //挂载管理员路由
 app.use('/api', managerRouter)
 
