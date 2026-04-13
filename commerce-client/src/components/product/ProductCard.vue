@@ -48,6 +48,7 @@ const handleToGoodsDetail = (id) => {
   display: flex;
   justify-content: center;
   align-items: center;
+  overflow: hidden;
 }
 
 .err-txt {

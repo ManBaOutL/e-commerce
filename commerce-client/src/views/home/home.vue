@@ -33,36 +33,18 @@
 
       <section class="goods-section">
         <h3 class="grid-title">猜你喜欢</h3>
-        <el-row :gutter="15">
-          <el-col 
-            v-for="product in productList" 
-            :key="product.id"
-            :xs="12" :sm="8" :md="6" :lg="6" :xl="4"
-          >
-            <ProductCard 
-              :id = "product.id" 
-              :name="product.name" 
-              :price="product.price" 
-            />
-          </el-col>
-        </el-row>
+           <ProductPage />
       </section>
     </main>
   </div>
 </template>
 
 <script setup>
-import HomeMenu from './HomeMenu.vue'
 import {useRouter} from 'vue-router'
+import HomeMenu from './HomeMenu.vue'
 
 const router = useRouter()
 
-const productList = Array.from({ length: 12 }).map((_, i) => ({
-  id: i,
-  name: `2026新款 智能穿戴设备 极客系列第 ${i+1} 代`,
-  price: (Math.random() * 2000 + 100).toFixed(2)
-}))
-  
 const handleToLogin = () => {
   router.push('/login')
 }
