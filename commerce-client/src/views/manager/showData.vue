@@ -6,7 +6,7 @@
       <el-col :span="6"><div class="data-card">总用户：{{ userCount }}</div></el-col>
       <el-col :span="6"><div class="data-card">总商品：{{ goodsCount }}</div></el-col>
       <el-col :span="6"><div class="data-card">总订单：{{ orderCount }}</div></el-col>
-      <el-col :span="6"><div class="data-card">今日销售额：¥12860</div></el-col>
+      <el-col :span="6"><div class="data-card">今日销售额：¥{{ saleAmount }}</div></el-col>
     </el-row>
 
     <el-row :gutter="20" style="margin-top:20px">
@@ -30,18 +30,22 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import LineChart from '@/components/Charts/LineChart.vue'
 import BarChart from '@/components/Charts/BarChart.vue'
 import PieChart from '@/components/Charts/PieChart.vue'
+import { useAdminStore } from '@/stores/modules/adminStore'
 
-const userCount = ref(328)
-const goodsCount = ref(126)
-const orderCount = ref(842)
+const adminStore = useAdminStore()
 
-const xData = ['1日','2日','3日','4日','5日','6日','7日']
-const orderData = [15,28,22,35,39,45,42]
-const saleData = [1500,2800,2200,3500,3900,4500,4200]
+const userCount = ref(0)
+const goodsCount = ref(0)
+const orderCount = ref(0)
+const saleAmount = ref(0)
+
+const xData = ref(['1日','2日','3日','4日','5日','6日','7日'])
+const orderData = ref([15,28,22,35,39,45,42])
+const saleData = ref([1500,2800,2200,3500,3900,4500,4200])
 
 const pieData = ref([
   { value: 186600, name: '电子产品' },
@@ -50,6 +54,19 @@ const pieData = ref([
   { value: 28900, name: '食品饮料' },
   { value: 15600, name: '美妆护肤' },
 ])
+
+onMounted(async () => {
+  await adminStore.initShowData()
+  console.log("初始化成功:", adminStore.showData)
+  userCount.value = adminStore.showData.totalUserCount
+  goodsCount.value = adminStore.showData.totalProductCount
+  orderCount.value = adminStore.showData.totalOrderCount
+  saleAmount.value = adminStore.showData.sumOrderAmount
+  orderData.value = adminStore.showData.orderData
+  saleData.value = adminStore.showData.saleData
+  pieData.value = adminStore.showData.pieData
+  xData.value = adminStore.showData.xData
+})
 </script>
 
 <style scoped>

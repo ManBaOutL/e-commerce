@@ -4,10 +4,22 @@ const router = express.Router()
 const db = require('../database')
 
 router.post('/register', async (req, res) => {
-    console.log(req.body)
-    const { username, password } = req.body
+    console.log("注册请求:", req.body)
+    const { username, password, repassword, email, phone, type } = req.body
     try {
-        const [rows] = await db.execute('INSERT INTO user (username, password) VALUES (?, ?)', [username, password])
+        // 检查用户名是否存在
+        const [rows1] = await db.execute('SELECT * FROM user WHERE username = ?', [username])
+        if (rows1.length > 0) {
+            return res.status(400).json({ message: '用户名已存在' })
+        }
+        // 检查密码是否一致
+        if (password !== repassword) {
+            return res.status(400).json({ message: '两次密码不一致' })
+        }
+
+        // 注册用户
+        const [rows] = await db.execute('INSERT INTO user (username, password,email,phone,user_type) VALUES (?, ?, ?, ?, ?)', [username, password, email, phone, type])
+        console.log("注册接口执行：", rows)
         if (rows.affectedRows === 0) {
             return res.status(400).json({ message: '注册失败' })
         }

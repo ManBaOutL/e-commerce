@@ -2,31 +2,42 @@
 const express = require('express')
 const router = express.Router()
 const db = require('../database')
+const jwt = require('jsonwebtoken')
 
 router.post('/login', async (req, res) => {
-    console.log(req.body)
-    const { phone, username, email, password, type } = req.body
+    console.log("登录请求体: ", req.body)
+    const { phone, username, email, password, loginType } = req.body
     let query = '' // 登录查询语句
-    if (type === 'username') {
+    if (loginType === 'username') {
         query = `SELECT * FROM user WHERE username = \'${username}\'`
-    } else if (type === 'email') {
+    } else if (loginType === 'email') {
         query = `SELECT * FROM user WHERE email = \'${email}\'`
-    } else if (type === 'phone') {
+    } else if (loginType === 'phone') {
         query = `SELECT * FROM user WHERE phone = \'${phone}\'`
     } else {
-        return res.status(400).json({ message: '登录类型错误' })
+        return res.status(400).json({ message: '登录类型错误', status: 400, success: false })
     }
-    //console.log(query)
+    console.log("登录query: ", query)
     try {
         const [rows] = await db.execute(query)
         if (rows.length === 0) {
-            return res.status(401).json({ message: '用户名不存在' })
+            return res.status(401).json({ message: '用户名不存在', status: 401, success: false })
         }
         const user = rows[0]
         if (user.password !== password) {
-            return res.status(401).json({ message: '密码错误' })
+            return res.status(401).json({ message: '密码错误', status: 401, success: false })
         }
-        res.json({ message: '登录成功', data: user, status: 200, success: true })
+        // 生成 JWT
+        const token = jwt.sign(
+            {
+                user_id: user.user_id,       // 只存 id！
+                user_type: user.user_type    // 存类型，也可以
+            },
+            'abcdef123456', // 密钥，随便写，别泄露
+            { expiresIn: '7d' } // 7天过期
+        )
+        // 返回登录成功响应
+        res.json({ message: '登录成功', data: { token, user }, status: 200, success: true })
     } catch (err) {
         // 只打印关键错误，不打印完整堆栈（避免刷屏）
         console.error(`登录错误[${new Date().toLocaleTimeString()}]：`, err.message);

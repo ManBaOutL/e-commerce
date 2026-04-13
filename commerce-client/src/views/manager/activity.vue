@@ -115,19 +115,16 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { storeToRefs } from 'pinia'
+import { useAdminStore } from '@/stores/modules/adminStore' 
+const adminStore = useAdminStore()
 
 const searchKey = ref('')
 const typeFilter = ref('')
 const statusFilter = ref('')
 const showAddDialog = ref(false)
 
-// 商品列表（绑定用）
-const goodsList = ref([
-  { goodsId: 1, goodsName: '苹果手机' },
-  { goodsId: 2, goodsName: '华为平板' },
-  { goodsId: 3, goodsName: '无线耳机' },
-  { goodsId: 4, goodsName: '机械键盘' },
-])
+const actList = storeToRefs(adminStore).actList
 
 // 活动表单
 const form = ref({
@@ -141,13 +138,6 @@ const form = ref({
   startTime: '',
   endTime: ''
 })
-
-// 活动数据
-const actList = ref([
-  { actId: 1, actName: '满300减50', actType: '满减', goodsName: '无线耳机', rule: '满300减50', startTime: '2026-04-01', endTime: '2026-04-07', status: '进行中' },
-  { actId: 2, actName: '耳机限时秒杀', actType: '秒杀', goodsName: '无线耳机', rule: '秒杀价 ¥199', startTime: '2026-04-08', endTime: '2026-04-09', status: '进行中' },
-  { actId: 3, actName: '新用户优惠券', actType: '优惠券', goodsName: '机械键盘', rule: '¥50 无门槛', startTime: '2026-04-05', endTime: '2026-04-15', status: '未开始' },
-])
 
 // 筛选
 const filterList = computed(() => {

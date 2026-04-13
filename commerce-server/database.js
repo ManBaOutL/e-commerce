@@ -4,7 +4,8 @@ const db = mysql.createPool({
     host: '127.0.0.1',
     user: 'root',
     password: '1597532648Ljh',
-    database: 'ecommerce_system'
+    database: 'ecommerce_system',
+    charset: 'utf8',
 })
 
 // 测试连接

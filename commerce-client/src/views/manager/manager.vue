@@ -33,6 +33,9 @@
 <script setup>
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { useAdminStore } from '@/stores/modules/adminStore'
+import { onMounted } from 'vue'
+const adminStore = useAdminStore()
 const router = useRouter()
 
 const menuList = [
@@ -45,7 +48,7 @@ const menuList = [
   { key: 'operationLog', name: '操作日志管理' },
   { key: 'activity', name: '营销活动管理' },
   { key: 'allComment', name: '评论管理' },
-  { key: 'allShop', name: '店铺监管' },
+  // { key: 'allShop', name: '店铺监管' },
 ]
 
 const goMenu = (key) => {
@@ -58,6 +61,10 @@ const logout = () => {
   ElMessage.success('退出成功')
   router.push('/login')
 }
+
+onMounted(()=>{
+  adminStore.initAdminStore() // 初始化数据
+})
 </script>
 
 <style scoped>

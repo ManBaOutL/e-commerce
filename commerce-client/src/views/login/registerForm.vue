@@ -117,14 +117,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref ,onUnmounted} from 'vue';
+import { ref, onUnmounted } from 'vue';
 import { showToast, showSuccessToast, showFailToast } from 'vant';
-import router from '@/router'; // 引入路由模块
-import request from '@/utils/request'; // 复用你之前的request封装
-import Title from '@/components/login/title.vue'
-import { register } from '@/api/user/user'; // 引入注册接口
-import { useRouter } from 'vue-router';
+import { useRouter } from 'vue-router'; // ✅ 用这个
+import request from '@/utils/request';
+import Title from '@/components/login/title.vue';
+import { register } from '@/api/user/user';
 
+const router = useRouter();
 
 // 表单数据
 const form = ref({
@@ -228,11 +228,10 @@ const handleSubmit = async () => {
     type: form.value.type,
   });
   showToast('注册成功，即将跳转到登录页');
+  console.log(res)
   
-  //注册成功后跳转登录页（需引入路由）
-  const router = useRouter();
   setTimeout(() => {
-    router.push('/login');
+     router.push('/login')
   }, 1500);
 
 };

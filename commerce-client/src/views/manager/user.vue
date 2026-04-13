@@ -59,15 +59,11 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useAdminStore } from '@/stores/modules/adminStore'
+import { storeToRefs } from 'pinia'
+const adminStore = useAdminStore()
 
-// 初始化用户列表：新增status（账号状态）、扩展type包含VIP用户
-const userList = ref([
-  { user_id: 1, username: 'admin', type: '管理员', phone: '13800138001', status: '正常' },
-  { user_id: 2, username: 'seller1', type: '商家', phone: '13800138002', status: '正常' },
-  { user_id: 3, username: 'user1', type: '普通用户', phone: '13800138003', status: '正常' },
-  { user_id: 4, username: 'vip1', type: 'VIP用户', phone: '13800138004', status: '正常' },
-  { user_id: 5, username: 'baduser', type: '普通用户', phone: '13800138005', status: '禁用' }, // 违规禁用示例
-])
+const { userList } = storeToRefs(adminStore)
 
 // 筛选表单：新增status（账号状态）筛选
 const filterForm = ref({
