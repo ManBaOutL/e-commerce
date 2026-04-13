@@ -69,9 +69,6 @@ export const useProductStore = defineStore('product', {
           // 普通搜索模式：重置数据
           this.productList = newList;
         }
-        
-        // 更新总数，用于判断是否加载完毕
-        this.total = res.total || res.items || this.productList.length; 
       } catch (error) {
         console.error('请求失败:', error);
       }
@@ -106,7 +103,7 @@ export const useProductStore = defineStore('product', {
       return findNode(state.categoryTree);
     },
 
-    mockData: (state) => {
+    mockData: () => {
       return Array.from({ length: 30 }, (_, i) => ({
         id: i + 1,
         name: `商品 ${i + 1}`,
