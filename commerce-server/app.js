@@ -1,3 +1,4 @@
+require('module-alias/register')
 //后端入口文件
 //定义返回数据格式为
 //{
@@ -9,13 +10,13 @@
 const express = require('express')
 const app = express()
 //挂载登录路由
-const loginRouter = require('./user/login')
-const registerRouter = require('./user/register')
-const forgetRouter = require('./user/forget')
-const codeRouter = require('./user/code')
+const loginRouter = require('@/routes/user/login')
+const registerRouter = require('@/routes/user/register')
+const forgetRouter = require('@/routes/user/forget')
+const codeRouter = require('@/routes/user/code')
 
 //挂载管理员路由
-const managerRouter = require('./manager')
+const managerRouter = require('@/routes/manager')
 
 const cors = require('cors')
 app.use(cors())

@@ -1,7 +1,7 @@
 // 忘记密码路由
 const express = require('express')
 const router = express.Router()
-const db = require('../database')
+const db = require('@/config/database')
 const { verifyCodeStore } = require('./code');
 
 router.post('/forget', async (req, res) => {

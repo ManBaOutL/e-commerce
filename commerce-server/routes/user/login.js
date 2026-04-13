@@ -1,7 +1,7 @@
 // 登录路由
 const express = require('express')
 const router = express.Router()
-const db = require('../database')
+const db = require('@/config/database')
 const jwt = require('jsonwebtoken')
 
 router.post('/login', async (req, res) => {

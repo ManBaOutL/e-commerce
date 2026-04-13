@@ -1,7 +1,7 @@
 // 注册路由
 const express = require('express')
 const router = express.Router()
-const db = require('../database')
+const db = require('@/config/database')
 
 router.post('/register', async (req, res) => {
     console.log("注册请求:", req.body)

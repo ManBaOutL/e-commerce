@@ -1,7 +1,7 @@
 // 验证码相关
 const express = require('express')
 const router = express.Router()
-const db = require('../database')
+const db = require('@/config/database')
 
 const verifyCodeStore = {};
 

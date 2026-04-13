@@ -1,33 +1,11 @@
-const express = require('express')
-const router = express.Router()
-const db = require('../database')
+// db = require('@/config/database')
+const db = require('@/config/database')
+const getLastDays = require('@/utils/getLastDays')
 
-// 管理员展示数据类型定义
-// interface managerShowData {
-//     //总体数据
-//     totalUserCount: number
-//     totalProductCount: number
-//     totalOrderCount: number
-//     sumOrderAmount: number
-//     // 图表数据
-//     xData: string[]
-//     orderData: number[]
-//     saleData: number[]
-//     pieData: { categoryName: string, value: number }[]
-// }
 
-function getLastDays(needDays = 7) {
-    let days = []
-    for (let i = needDays - 1; i >= 0; i--) {
-        const date = new Date()
-        date.setDate(date.getDate() - i)
-        const day = date.getDate() // 取出几号
-        days.push(day + '日')
-    }
-    return days
-}
 
-router.get('/showData', async (req, res) => {
+//处理管理员展示数据的具体逻辑
+exports.showData = async (req, res) => {
     console.log("管理员展示数据请求体: ", req.query)
     // 从数据库查询数据
     const [totalUserCountRaw] = await db.query('SELECT COUNT(*) as totalUserCount FROM user')
@@ -73,6 +51,4 @@ router.get('/showData', async (req, res) => {
     console.log("管理员展示数据: ", showData)
     // 返回数据
     res.json({ success: true, message: '获取管理员展示数据成功', status: 200, data: showData })
-})
-
-module.exports = router
+}
