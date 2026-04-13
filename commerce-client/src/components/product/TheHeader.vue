@@ -62,6 +62,8 @@ const handleToUserCenter = () => {
   router.push('/user')
 }
 const handleToLogin = () => {
+  localStorage.removeItem('token')
+  localStorage.removeItem('user')
   router.push('/login')
 }
 const handleSearch = () => {

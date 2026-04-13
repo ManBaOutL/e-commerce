@@ -49,19 +49,16 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { ElMessage } from 'element-plus'
+import { storeToRefs } from 'pinia'
+import { useAdminStore } from '@/stores/modules/adminStore' 
+const adminStore = useAdminStore()
+
 
 const searchKey = ref('')
 const typeFilter = ref('')
 
 // 日志数据（内存版，无存储）
-const logList = ref([
-  { logId: 1001, username: 'user01', role: '普通用户', content: '修改登录密码', type: '修改密码', time: '2026-04-07 18:20:11', result: '成功' },
-  { logId: 1002, username: 'user02', role: 'VIP用户', content: '删除订单评价', type: '删除评价', time: '2026-04-07 17:10:22', result: '成功' },
-  { logId: 1003, username: 'admin', role: '管理员', content: '将 user03 改为 VIP用户', type: '分配角色', time: '2026-04-07 16:30:10', result: '成功' },
-  { logId: 1004, username: 'admin', role: '管理员', content: '禁用违规账号 user05', type: '禁用账号', time: '2026-04-07 15:20:33', result: '成功' },
-  { logId: 1005, username: 'admin', role: '管理员', content: '同意订单 2026005 退款', type: '退款审核', time: '2026-04-07 14:10:15', result: '成功' },
-  { logId: 1006, username: 'user01', role: '普通用户', content: '尝试修改密码（原密码错误）', type: '修改密码', time: '2026-04-07 12:11:22', result: '失败' },
-])
+const logList = storeToRefs(adminStore).logList
 
 const filterList = computed(() => {
   return logList.value.filter(item => {

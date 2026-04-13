@@ -45,8 +45,8 @@ export const resetPassword = (data: ForgetCodeData) => {
 // 注册接口
 export const register = (data: RegisterData) => {
     return request({
-        //url: '/register',
-        url: 'http://localhost:10000/users',
+        url: '/register',
+        //url: 'http://localhost:10000/users',
         method: 'post',
         data
     })

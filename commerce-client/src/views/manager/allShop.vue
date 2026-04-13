@@ -82,6 +82,9 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { storeToRefs } from 'pinia'
+import { useAdminStore } from '@/stores/modules/adminStore' 
+const adminStore = useAdminStore()
 
 // 搜索
 const search = ref({
@@ -91,48 +94,7 @@ const search = ref({
 })
 
 // 店铺数据
-const shopList = ref([
-  {
-    shopId: 1001,
-    shopName: 'Apple官方旗舰店',
-    ownerName: '张店主',
-    phone: '13800138000',
-    address: '北京市朝阳区科技园区',
-    intro: '主营苹果全系列产品',
-    createTime: '2025-01-10 10:00',
-    status: 'normal'
-  },
-  {
-    shopId: 1002,
-    shopName: '华为数码专营店',
-    ownerName: '李店主',
-    phone: '13900139000',
-    address: '上海市浦东新区软件园',
-    intro: '华为手机、平板、电脑专卖',
-    createTime: '2025-02-15 14:20',
-    status: 'normal'
-  },
-  {
-    shopId: 1003,
-    shopName: '小米之家专卖店',
-    ownerName: '王店主',
-    phone: '13700137000',
-    address: '广州市天河区购物中心',
-    intro: '小米全品类官方授权',
-    createTime: '2025-03-01 09:30',
-    status: 'forbidden'
-  },
-  {
-    shopId: 1004,
-    shopName: 'OPPO体验店',
-    ownerName: '赵店主',
-    phone: '13600136000',
-    address: '深圳市南山区科技园',
-    intro: 'OPPO手机、IoT产品专卖',
-    createTime: '2025-03-10 11:10',
-    status: 'normal'
-  }
-])
+const shopList = storeToRefs(adminStore).shopList
 
 // 筛选
 const filteredList = computed(() => {

@@ -183,6 +183,8 @@ const goPage = (key) => {
 // 退出
 const logout = () => {
   router.push('/login')
+  localStorage.removeItem('token')
+  localStorage.removeItem('user')
   ElMessage.success('退出成功')
 }
 </script>

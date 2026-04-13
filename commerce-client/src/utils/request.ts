@@ -3,8 +3,8 @@ import { message } from 'ant-design-vue';
 
 // 创建 axios 实例
 const request = axios.create({
-    //baseURL: 'http://127.0.0.1:8888/api', // 后端接口基础地址
-    baseURL: 'http://localhost:8887', // 后端接口基础地址
+    baseURL: 'http://127.0.0.1:8888/api', // 后端接口基础地址
+    //baseURL: 'http://localhost:8887', // 后端接口基础地址
     timeout: 10000, // 请求超时时间
     headers: {
         'Content-Type': 'application/json',
@@ -29,16 +29,17 @@ request.interceptors.response.use(
         // 后端返回的原始数据
         const res = response.data;
         console.log("res: ", res);
-        // 假设后端约定 status=200 为成功
-        // if (res.status !== 200) {
+        //假设后端约定 status=200 为成功
+        if (res.status !== 200) {
 
-        //     message.error(res.message || '请求失败');
-        //     return Promise.reject(res);
-        // }
+            message.error(res.message || '请求失败');
+            return Promise.reject(res);
+        }
         return res;
     },
     (error) => {
-        //console.log("error: ", error);
+        //console.log("url: ", error.config.url);
+        console.log("相应拦截器error: ", error);
         message.error('网络错误或接口不存在！');
         return Promise.reject(error);
     }

@@ -113,24 +113,25 @@ const handleSubmit = async (e: Event) => {
 
   try {
     // 发起登录请求（baseURL 已封装，只需写相对路径）
-    //const resData = await login(sendData);
-    const resData:any = await mockLogin(sendData);
+    const resData = await login(sendData);
+    //const resData:any = await mockLogin(sendData);
     console.log("登录模拟接口返回数据:", resData);
 
     // 登录成功处理
     showSuccessToast('登录成功！');
-    //localStorage.setItem('token', JSON.stringify(resData.data));
+    localStorage.setItem('token', JSON.stringify(resData.data.token));
+    console.log("登录成功后，token:", resData.data.token);
 
     //模拟登录成功后，存储token
-    localStorage.setItem('token', JSON.stringify(resData[0]));
+    //localStorage.setItem('token', JSON.stringify(resData[0]));
 
-    if(resData[0].type === '普通用户'){
+    if(resData.data.user.user_type === '普通用户'){
       router.push('/');
     }
-    else if(resData[0].type === '商家'){
+    else if(resData.data.user.user_type === '商家'){
       router.push('/merchant');
     }
-    else if(resData[0].type === '管理员'){
+    else if(resData.data.user.user_type === '管理员'){
       router.push('/manager');
     }
     else {
