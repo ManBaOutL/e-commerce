@@ -4,6 +4,18 @@
     
     <div class="category-list">
       <div 
+        class="main-cat-wrapper"
+        :class="{ active: !route.query.category_id }"
+      >
+        <div 
+          class="main-cat-name"
+          @click="handleJump(undefined)"
+        >
+          全部
+        </div>
+      </div>
+
+      <div 
         v-for="mainCat in categoryTree" 
         :key="mainCat.id" 
         class="main-cat-wrapper"
@@ -47,31 +59,43 @@ const route = useRoute();
 const router = useRouter();
 
 /**
- * 判断一级分类是否应该高亮
- * 逻辑：当前路由 ID 等于一级 ID，或者路由 ID 在该一级的 children 数组中
+ * 🌟 核心递归：判断当前分类树节点（或其任意深度的子节点）是否被选中
  */
-const isMainCatActive = (mainCat: CategoryItem) => {
+const isMainCatActive = (mainCat: CategoryItem): boolean => {
   const currentId = Number(route.query.category_id);
-  if (currentId == mainCat.id) 
-  {
-    // console.log("一级分类直接匹配，应该高亮", mainCat.id);
-    return true;
-  }
-  // 检查子级是否有被选中的
-  if (mainCat.children) {
-    // console.log("一级分类有子级，检查是否有被选中", mainCat.children);
-    return mainCat.children.some(sub => sub.id == currentId);
-  }
-  return false;
+  if (!currentId) return false; // 如果 URL 里没有 category_id，全都不高亮
+
+  // 定义内部递归查找函数
+  const findRecursively = (cat: CategoryItem): boolean => {
+    // 命中自身
+    if (cat.id === currentId) return true;
+    // 自身没命中，且有子级，则递归遍历子级
+    if (cat.children && cat.children.length > 0) {
+      return cat.children.some(child => findRecursively(child));
+    }
+    return false;
+  };
+
+  return findRecursively(mainCat);
 };
 
-const handleJump = (id: number) => {
+/**
+ * 🌟 优化跳转逻辑：保留原有的 query 参数（比如搜索关键词），只修改 category_id
+ */
+const handleJump = (id?: number) => {
+  // 浅拷贝当前路由的所有查询参数
+  const newQuery = { ...route.query };
+  
+  if (id !== undefined) {
+    newQuery.category_id = String(id);
+  } else {
+    // 如果点击的是“全部”，则从 URL 中移除 category_id 参数
+    delete newQuery.category_id;
+  }
+
   router.push({
     path: '/product',
-    query: { 
-      ...route.query, 
-      category_id: id, 
-    }
+    query: newQuery
   });
 };
 </script>
@@ -117,49 +141,45 @@ const handleJump = (id: number) => {
   white-space: nowrap;
 }
 
-/* 移除原本只给 .main-cat-name 的 active，改为给 wrapper 及其子元素 */
 .main-cat-wrapper.active .main-cat-name {
   color: #ff5000;
   font-weight: bold;
 }
 
-/* 即使没 hover，只要是 active 状态，背景也可以稍微加深或加个底线 */
 .main-cat-wrapper.active {
-  background-color: #fff2e8; /* 浅橙色背景，更有选中感 */
+  background-color: #fff2e8; 
 }
 
-/* 一级激活状态 */
 .main-cat-wrapper:hover .main-cat-name {
-  color: #ff5000; /* 淘宝橙 */
+  color: #ff5000; 
 }
 
-/* 2. 美化 Hover 悬浮框 */
+/* 美化 Hover 悬浮框 */
 .sub-popover {
-  display: none; /* 默认隐藏 */
+  display: none; 
   position: absolute;
-  top: 100%; /* 在一级分类正下方 */
+  top: 100%; 
   left: 50%;
-  transform: translateX(-50%); /* 居中显示 */
-  margin-top: 10px; /* 留出一点空隙给小三角 */
+  transform: translateX(-50%); 
+  margin-top: 10px; 
   z-index: 100;
   background: #fff;
-  box-shadow: 0 4px 18px rgba(0,0,0,0.15); /* 更柔和的阴影 */
-  border-radius: 8px; /* 圆角 */
+  box-shadow: 0 4px 18px rgba(0,0,0,0.15); 
+  border-radius: 8px; 
   padding: 16px;
-  min-width: 220px; /* 保证宽度 */
+  min-width: 220px; 
   border: 1px solid #f0f0f0;
 }
 .sub-popover::before {
   content: "";
   position: absolute;
-  top: -12px; /* 覆盖掉那 10px 的 margin 缝隙 */
+  top: -12px; 
   left: 0;
   width: 100%;
   height: 12px;
-  background: transparent; /* 透明的，用户看不见 */
+  background: transparent; 
 }
 
-/* 增加一个小三角指针 */
 .sub-popover-arrow {
   position: absolute;
   top: -6px;
@@ -172,17 +192,16 @@ const handleJump = (id: number) => {
   border-top: 1px solid #f0f0f0;
 }
 
-/* 关键：滑动到一级分类上时显示二级 */
 .main-cat-wrapper:hover .sub-popover {
   display: block;
-  animation: fadeIn 0.2s ease; /* 增加淡入动画 */
+  animation: fadeIn 0.2s ease; 
 }
 
 /* 二级分类网格布局 */
 .sub-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr); /* 一行三个 */
-  gap: 12px 16px; /* 网格间距 */
+  grid-template-columns: repeat(3, 1fr); 
+  gap: 12px 16px; 
 }
 
 .sub-cat-item {
@@ -198,13 +217,11 @@ const handleJump = (id: number) => {
   text-decoration: underline;
 }
 
-/* 二级激活状态 */
 .sub-cat-item.active {
   color: #ff5000;
   font-weight: 500;
 }
 
-/* 淡入动画定义 */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateX(-50%) translateY(5px); }
   to { opacity: 1; transform: translateX(-50%) translateY(0); }

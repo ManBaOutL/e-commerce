@@ -12,4 +12,7 @@ router.post('/forget', loginController.forget)
 // 挂载验证码路由
 router.post('/code', loginController.getCode)
 
+// 挂载商品路由
+router.use('/front/product', require('./product'));
+
 module.exports = router

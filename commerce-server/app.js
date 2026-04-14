@@ -9,6 +9,9 @@ require('module-alias/register')
 //}
 const express = require('express')
 const app = express()
+const path = require('path');
+// 托管 public 文件夹
+app.use(express.static(path.join(__dirname, 'public')));
 //挂载登录路由
 const loginRouter = require('@/routes/front')
 // 挂载用户路由
@@ -42,7 +45,7 @@ app.use((req, res, next) => {
 //挂载登录路由
 app.use('/api', loginRouter)
 // 挂载用户路由
-// app.use('/api', userRouter)
+app.use('/api', userRouter)
 //挂载管理员路由
 app.use('/api', managerRouter)
 

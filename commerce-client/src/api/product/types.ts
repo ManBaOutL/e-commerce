@@ -1,7 +1,5 @@
 // 商品模块接口类型定义
 import type { BaseEntity } from '../types';
-import type { ApiResponse } from '../types';
-
 // 商品数据
 import type { PageParams } from '../types';
 
@@ -26,19 +24,18 @@ export interface ProductQueryParams extends PageParams {
   // 4. 排序相关
   // sortField: 排序字段，如 'price', 'create_time'
   // sortOrder: 'asc' (升序) 或 'desc' (降序)
-  sort_field?: 'price' | 'create_time' | 'sales';
+  sort_field?: 'id' | 'sales' | 'price' | 'created_time';
   sort_order?: 'asc' | 'desc';
 }
 
 export interface Product extends BaseEntity {
   id?: number;
   name: string;
-  price?: number;
+  price?: number | string;
   description?: string;
   image?: string;
   stock?: number;
   sales?: number;
-  // attrs?: Record<string, any>;
   user_id?: number;
   category_id?: number;
   shop_id?: number;
@@ -46,18 +43,17 @@ export interface Product extends BaseEntity {
   specs?: ProductSpec[]; // 聚合规格数据
 }
 
-export interface ResProductList extends ApiResponse {
-  data: Product[];
+export interface ResProductList {
+  list: Product[];
+  total: number;
 }
 
 // 定义分类项的接口
 export interface CategoryItem {
-  id: number;
-  name: string;
-  parent_id: number | null;
-  icon?: string;
-  level: number;
-  children?: CategoryItem[]; // 可选的子级数组
+  id: number;           // 分类ID (对应后端的 category_id)
+  name: string;         // 分类名称
+  parent_id: number;    // 父级ID
+  children?: CategoryItem[]; // 二级分类 (树形结构特有)
 }
 
 /**

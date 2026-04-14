@@ -297,11 +297,6 @@ my-shop-backend/
 │   └── admin/             # 处理管理员的具体逻辑
 │       └── verifyCtrl.js
 │
-├── models/                # 🗄️ 数据访问层 (专门写 SQL 语句的地方)
-│   ├── userModel.js       # 包含 findUserById, createUser 等纯数据库操作
-│   ├── orderModel.js
-│   └── productModel.js
-│
 └── utils/                 # 🛠️ 公共工具箱
     ├── response.js        # 统一标准化返回给前端的 JSON 格式 (成功/失败)
     └── calculate.js       # 价格计算工具 (处理商品规格 scale 乘积、满减逻辑等)

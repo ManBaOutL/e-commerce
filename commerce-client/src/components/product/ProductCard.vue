@@ -1,7 +1,7 @@
 <template>
   <div class="product-card"   @click="handleToGoodsDetail(id)">
     <div class="image-placeholder">
-      <el-image :src="image" fit="cover">
+      <el-image :src="getFullUrl(image)" fit="cover">
         <template #error><div class="err-txt">暂无图片</div></template>
       </el-image>
     </div>
@@ -9,18 +9,33 @@
       <div class="title">{{ name }}</div>
       <div class="footer">
         <span class="price">¥{{ price }}</span>
-        <span class="sales">99+人付款</span>
+        <span class="sales">{{salesText}}人付款</span>
       </div>
     </div>
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
+import getFullUrl from '@/utils/getFullUrl'
 const router = useRouter()
-defineProps(['id','name', 'price', 'image'])
+const props = defineProps(['id','name', 'price', 'image', 'sales'])
 
-const handleToGoodsDetail = (id) => {
+// 计算属性
+const salesText = computed(() => {
+  const { sales } = props
+  if (sales > 999) {
+    return '99+'
+  } 
+  else if (sales > 99){
+    return '999+'
+  }else {
+    return sales
+  }
+})
+
+const handleToGoodsDetail = (id : any) => {
   router.push(`/goods/${id}`)
 }
 </script>

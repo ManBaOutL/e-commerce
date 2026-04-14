@@ -11,80 +11,62 @@ export const useProductStore = defineStore('product', {
       categoryList: [],
       categoryTree: [],
       productList: [],
-      page: 1,            // 当前页码（存在store里）
-      pageSize: 10,       // 每页数量
+      total: 0,
       loading: false,     // 加载状态
       finished: false,    // 是否加载完
+
+    // 我们将当前的搜索参数存在 store 里，方便各种组件共用
+      currentParams: {} as any
     };
   },
   actions: {
-    // 测试数据
-    init() {
-      this.productList = []        // 清空旧数据
-      this.page = 1         // 重置页码为1（核心！）
-      this.loading = false
-      this.finished = false
-      this.loadList()       // 加载第一页
+    // 初始加载 (清空旧数据，带上新参数请求)
+    async init(params: any = {}) {
+      this.loading = true;
+      this.finished = false;
+      this.productList = []; // 清空列表
+      this.currentParams = params; // 保存当前的筛选条件
+      this.currentParams.page = 1;
+
+      await this.getProductList();
     },
-    // 加载当前页数据（根据 page 加载）
-    loadList() {
-      this.loading = true
+    // 滚动加载更多
+    async loadMore() {
+      if (this.loading || this.finished) return;
+      this.loading = true;
+      this.currentParams.page += 1; // 页码 +1
       
-      // 你这里用的是本地测试数据，所以直接slice
-      const start = 0
-      const end = this.page * this.pageSize
-      const data = this.mockData.slice(start, end)
-
-      this.productList = data as Product[]
-      this.loading = false
-
-      if (data.length >= this.mockData.length) {
-        this.finished = true
-      }
-    },
-
-    // 滚动加载下一页
-    loadMore() {
-      if (this.loading || this.finished) return
-      this.page++
-      this.loadList()
+      await this.getProductList();
     },
     // 统一的商品搜索/筛选 Action
-    async getProductList(params: ProductQueryParams, append = false) {
+    async getProductList() {
       try {
-        const res = await reqGetProducts(params);
-        
-        // 提取列表数据（适配你之前的兼容性处理）
-        let newList = [];
-        if (res && res.data && Array.isArray(res.data)) {
-          newList = res.data;
-        } else if (Array.isArray(res)) {
-          newList = res;
-        }
-  
-        if (append) {
-          // 滚动加载模式：追加数据
-          this.productList = [...this.productList, ...newList];
-        } else {
-          // 普通搜索模式：重置数据
-          this.productList = newList;
+        const res = await reqGetProducts(this.currentParams);
+        console.log('商品列表', res);
+        if (res.success) {
+          const { list, total } = res.data;
+          
+          // 拼接新数据到旧数据后面 (无限滚动核心)
+          this.productList = [...this.productList, ...list];
+          this.total = total;
+
+          // 判断是否已经加载完所有数据
+          if (this.productList.length >= total || list.length === 0) {
+            this.finished = true;
+          }
         }
       } catch (error) {
-        console.error('请求失败:', error);
+        console.error('获取商品失败', error);
+      } finally {
+        this.loading = false;
       }
     },
     
-    // 获取分类列表
+    // 获取分类字典
     async getCategoryList() {
-      try {
-        const res = await reqGetCategories();
-        // console.log("用戶端获取分类列表成功: ", res);
-        this.categoryList = res;
-        this.categoryTree = translateTree(res);
-      } catch (error) {
-        console.error('获取分类列表失败:', error);
-        this.categoryList = [];
-        this.categoryTree = [];
+      const res = await reqGetCategories();
+      if (res.success) {
+        this.categoryTree = res.data;
       }
     },
   },

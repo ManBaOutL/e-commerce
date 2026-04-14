@@ -6,16 +6,16 @@ export interface UserState {
 }
 
 // 商品仓库
-import type { Product,CategoryItem } from '@/api/product/types';
+import type { Product,CategoryItem,ProductQueryParams  } from '@/api/product/types';
 
 export interface ProductState {
   categoryList: CategoryItem[];
   categoryTree: CategoryItem[];
   productList: Product[];
-  page: number;
-  pageSize: number;
+  total: number;
   loading: boolean;
   finished: boolean;
+  currentParams: ProductQueryParams;
 }
 
 // 购物车仓库
