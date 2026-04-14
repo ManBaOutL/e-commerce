@@ -4,6 +4,13 @@
 //     type: string
 // }
 
+export interface pagination {
+    currentPage: number
+    pageSize: number
+    total: number
+    totalPages: number
+}
+
 export interface showCondition {
     day?: number // 最近几天的数据，默认为7天
 }
@@ -46,7 +53,9 @@ export interface userList {
     age?: number
     gender?: string
     create_time: string
+    update_time: string
     status: string
+    avatar?: string
 }
 
 //管理员商品管理参数,筛选条件

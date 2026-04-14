@@ -1,58 +1,104 @@
 <template>
   <div>
     <h3>用户管理</h3>
-    <!-- 筛选区域 -->
     <div style="margin-bottom: 10px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-      <el-input v-model="filterForm.username" placeholder="请输入账号" style="width: 200px;" />
-      <el-select v-model="filterForm.type" placeholder="请选择角色">
+      <el-input v-model="userCondition.username" placeholder="请输入账号" style="width: 200px;" />
+      <el-select v-model="userCondition.type" placeholder="请选择角色">
         <el-option label="管理员" value="管理员" />
         <el-option label="商家" value="商家" />
         <el-option label="普通用户" value="普通用户" />
         <el-option label="VIP用户" value="VIP用户" />
       </el-select>
-      <el-select v-model="filterForm.status" placeholder="账号状态">
+      <el-select v-model="userCondition.status" placeholder="账号状态">
         <el-option label="正常" value="正常" />
         <el-option label="禁用" value="禁用" />
       </el-select>
       <el-button type="primary" @click="handleFilter">筛选</el-button>
       <el-button @click="resetFilter">清空筛选</el-button>
-      <!-- 一键操作：批量删除普通用户 -->
-      <el-button type="danger" @click="batchDeleteUser" v-if="hasNormalUser">批量删除普通用户</el-button>
+
+      <!-- 批量操作按钮 -->
+      <el-button type="danger" @click="batchDelete" v-if="selectedIds.length">批量删除</el-button>
+      <el-button 
+        type="warning" 
+        @click="batchToggleVip" 
+        v-if="selectedIds.length"
+      >
+        {{ hasNonVipSelected ? '批量设为VIP' : '批量设为普通用户' }}
+      </el-button>
+      <el-button type="info" @click="batchDisable" v-if="selectedIds.length">批量禁用</el-button>
+      <el-button type="success" @click="batchEnable" v-if="selectedIds.length">批量启用</el-button>
     </div>
-    
-    <el-table :data="filteredUserList" border>
-      <el-table-column prop="user_id" label="用户ID" />
-      <el-table-column prop="username" label="账号" />
-      <el-table-column prop="type" label="角色">
+
+    <el-table 
+      :data="userList" 
+      border 
+      @selection-change="handleSelectionChange"
+    >
+      <!-- 复选框选中列 -->
+      <el-table-column type="selection" width="55" />
+
+      <el-table-column prop="user_id" label="用户ID" width="80" />
+      <el-table-column prop="username" label="账号" width="120" />
+      <el-table-column prop="type" label="角色" width="100">
         <template #default="scope">
-          <el-tag :type="scope.row.type === 'VIP用户' ? 'success' : 'info'">
+          <el-tag :type="getRoleTagType(scope.row.type)">
             {{ scope.row.type }}
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="phone" label="手机号" />
-      <el-table-column prop="status" label="账号状态">
+      <el-table-column prop="phone" label="手机号" width="150" />
+      <el-table-column prop="email" label="邮箱" width="200" :show-overflow-tooltip="true" />
+      <el-table-column prop="status" label="账号状态" width="100">
         <template #default="scope">
           <el-tag :type="scope.row.status === '正常' ? 'success' : 'danger'">
             {{ scope.row.status }}
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="操作" min-width="300px">
+
+      <el-table-column label="操作" min-width="300">
         <template #default="scope">
-          <el-button text @click="editUser(scope.row)">编辑</el-button>
-          <el-button text type="warning" @click="assignRole(scope.row)">分配角色</el-button>
+          <el-button text @click="openDetail(scope.row)">详情</el-button>
           <el-button 
             text 
-            :type="scope.row.status === '正常' ? 'danger' : 'success'" 
-            @click="toggleUserStatus(scope.row)"
+            :type="scope.row.type === 'VIP用户' ? 'info' : 'warning'" 
+            @click="toggleVip(scope.row)"
           >
+            {{ scope.row.type === 'VIP用户' ? '设为普通用户' : '设为VIP' }}
+          </el-button>
+          <el-button text 
+            :type="scope.row.status === '正常' ? 'danger' : 'success'" 
+            @click="toggleStatus(scope.row)">
             {{ scope.row.status === '正常' ? '禁用' : '启用' }}
           </el-button>
-          <el-button text type="danger" @click="deleteUser(scope.row)" v-if="scope.row.status !== '禁用'">删除</el-button>
+          <el-button text type="danger" @click="deleteUser(scope.row)">删除</el-button>
         </template>
       </el-table-column>
     </el-table>
+
+    <el-dialog v-model="detailVisible" title="用户详情" width="500px">
+      <div style="line-height: 2.2; padding: 10px 0;">
+        <p><strong>用户ID：</strong>{{ currentRow.user_id }}</p>
+        <p><strong>账号：</strong>{{ currentRow.username }}</p>
+        <p><strong>角色：</strong>{{ currentRow.type }}</p>
+        <p><strong>手机号：</strong>{{ currentRow.phone || '无' }}</p>
+        <p><strong>邮箱：</strong>{{ currentRow.email || '无' }}</p>
+        <p><strong>是否VIP：</strong>{{ currentRow.is_vip ? '是' : '否' }}</p>
+        <p><strong>创建时间：</strong>{{ formatDate(currentRow.create_time) }}</p>
+        <p><strong>账号状态：</strong>{{ currentRow.status }}</p>
+      </div>
+      <template #footer>
+        <el-button @click="detailVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
+
+    <el-pagination
+      v-model:current-page="pagination.currentPage"
+      v-model:page-size="pagination.pageSize"
+      :total="pagination.total"
+      layout="total, sizes, prev, pager, next, jumper"
+      @change="getPageData"  
+    />
   </div>
 </template>
 
@@ -61,127 +107,247 @@ import { ref, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAdminStore } from '@/stores/modules/adminStore'
 import { storeToRefs } from 'pinia'
+
 const adminStore = useAdminStore()
+const { userList, pagination } = storeToRefs(adminStore)
 
-const { userList } = storeToRefs(adminStore)
-
-// 筛选表单：新增status（账号状态）筛选
-const filterForm = ref({
+// 筛选
+const userCondition = ref({
   username: '',
   type: '',
   status: ''
 })
 
-// 筛选后的用户列表：兼容角色和状态筛选
-const filteredUserList = computed(() => {
-  return userList.value.filter(item => {
-    const matchName = item.username.includes(filterForm.value.username)
-    const matchType = filterForm.value.type ? item.type === filterForm.value.type : true
-    const matchStatus = filterForm.value.status ? item.status === filterForm.value.status : true
-    return matchName && matchType && matchStatus
-  })
+// 选中相关
+const selectedRows = ref([])
+const selectedIds = ref([])
+
+// 计算属性：判断选中的是否有非VIP用户（用于批量按钮显示）
+const hasNonVipSelected = computed(() => {
+  return selectedRows.value.some(item => item.type !== 'VIP用户')
 })
 
-// 是否有普通用户（控制批量操作按钮显示）
-const hasNormalUser = computed(() => {
-  return userList.value.some(item => item.type === '普通用户')
-})
-
-// 筛选
-const handleFilter = () => {
-  ElMessage.info('筛选条件已生效')
+// 表格选中事件
+const handleSelectionChange = (val) => {
+  selectedRows.value = val
+  selectedIds.value = val.map(item => item.user_id)
+  console.log('选中用户ID：', selectedIds.value)
 }
 
-// 重置筛选
-const resetFilter = () => {
-  filterForm.value = {
-    username: '',
-    type: '',
-    status: ''
+// 获取角色标签类型（不同角色不同颜色）
+const getRoleTagType = (role) => {
+  switch (role) {
+    case '管理员':
+      return 'primary' // 蓝色
+    case '商家':
+      return 'warning'  // 黄色
+    case 'VIP用户':
+      return 'success'  // 绿色
+    case '普通用户':
+      return 'info'     // 浅蓝
+    default:
+      return ''
   }
-  ElMessage.info('筛选条件已清空')
 }
 
-// 批量删除普通用户
-const batchDeleteUser = () => {
-  ElMessageBox.confirm('确定批量删除所有普通用户？').then(() => {
-    userList.value = userList.value.filter(item => item.type !== '普通用户')
-    ElMessage.success('批量删除普通用户完成')
-  })
-}
-
-// 编辑用户名
-const editUser = async (row) => {
-  // 禁用账号不允许编辑
-  if (row.status === '禁用') {
-    ElMessage.warning('禁用账号无法编辑，请先启用')
+// 批量删除
+const batchDelete = () => {
+  if (selectedIds.value.length === 0) {
+    ElMessage.warning('请选择用户')
     return
   }
-  const newName = await ElMessageBox.prompt('请输入新用户名', '编辑用户', {
-    inputValue: row.username
+  console.log('批量删除参数：', selectedIds.value)
+  adminStore.updateUserList({
+    user_id: selectedIds.value,
+    operation: 'delete'
+  }, userCondition.value).then(res => {
+    if (res.code === 200) {
+      ElMessage.success('批量删除参数已输出')
+    }
   })
-  row.username = newName.value
-  ElMessage.success('修改成功')
 }
 
-// 删除用户：禁用账号不允许删除（可选逻辑，可根据需求调整）
+// 批量切换VIP/普通用户
+const batchToggleVip = () => {
+  // 区分是批量设为VIP还是批量设为普通用户
+  if (hasNonVipSelected.value) {
+    // 批量设为VIP
+    const validIds = selectedRows.value
+      .filter(item => item.type !== 'VIP用户')
+      .map(item => item.user_id)
+    
+    if (validIds.length === 0) {
+      ElMessage.warning('选中的用户已是VIP')
+      return
+    }
+    console.log('批量设置VIP参数：', validIds)
+    adminStore.updateUserList({
+      user_id: validIds,
+      operation: 'setVip'
+    }, userCondition.value).then(res => {
+      if (res.code === 200) {
+        ElMessage.success('批量设置VIP参数已输出')
+      }
+    })
+  } else {
+    // 批量设为普通用户
+    const validIds = selectedRows.value
+      .filter(item => item.type === 'VIP用户')
+      .map(item => item.user_id)
+    
+    if (validIds.length === 0) {
+      ElMessage.warning('选中的用户已是普通用户')
+      return
+    }
+    console.log('批量设置普通用户参数：', validIds)
+    adminStore.updateUserList({
+      user_id: validIds,
+      operation: 'cancelVip'
+    }, userCondition.value).then(res => {
+      if (res.code === 200) {
+        ElMessage.success('批量设置普通用户参数已输出')
+      }
+    })
+  }
+}
+
+// 单个切换VIP/普通用户
+const toggleVip = (row) => {
+  const ids = [row.user_id]
+  if (row.type === 'VIP用户') {
+    // 设为普通用户
+    console.log('单个设置普通用户参数：', ids)
+    adminStore.updateUserList({
+      user_id: ids,
+      operation: 'cancelVip'
+    }, userCondition.value).then(res => {
+      if (res.code === 200) {
+        ElMessage.success('单个设置普通用户参数已输出')
+      }
+    })
+  } else {
+    // 设为VIP
+    console.log('单个设置VIP参数：', ids)
+    adminStore.updateUserList({
+      user_id: ids,
+      operation: 'setVip'
+    }, userCondition.value).then(res => {
+      if (res.code === 200) {
+        ElMessage.success('单个设置VIP参数已输出')
+      }
+    })
+  }
+}
+
+// 批量禁用
+const batchDisable = () => {
+  const validIds = selectedRows.value
+    .filter(item => item.status === '正常')
+    .map(item => item.user_id)
+  
+  if (validIds.length === 0) {
+    ElMessage.warning('选中的用户已禁用')
+    return
+  }
+  console.log('批量禁用参数：', validIds)
+  adminStore.updateUserList({
+    user_id: validIds,
+    operation: 'disable'
+  }, userCondition.value).then(res => {
+    if (res.code === 200) {
+      ElMessage.success('批量禁用参数已输出')
+    }
+  })
+}
+
+// 批量启用
+const batchEnable = () => {
+  const validIds = selectedRows.value
+    .filter(item => item.status === '禁用')
+    .map(item => item.user_id)
+  
+  if (validIds.length === 0) {
+    ElMessage.warning('选中的用户已启用')
+    return
+  }
+  console.log('批量启用参数：', validIds)
+  adminStore.updateUserList({
+    user_id: validIds,
+    operation: 'enable'
+  }, userCondition.value).then(res => {
+    if (res.code === 200) {
+      ElMessage.success('批量启用参数已输出')
+    }
+  })
+}
+
+// 单个删除
 const deleteUser = (row) => {
-  ElMessageBox.confirm('确定删除该用户？').then(() => {
-    userList.value = userList.value.filter(item => item.user_id !== row.user_id)
-    ElMessage.success('删除成功')
+  const ids = [row.user_id]
+  console.log('单个删除参数：', ids)
+  adminStore.updateUserList({
+    user_id: ids,
+    operation: 'delete'
+  }, userCondition.value).then(res => {
+    if (res.code === 200) {
+      ElMessage.success('单个删除参数已输出')
+    }
   })
 }
 
-// 分配用户角色（普通用户/VIP用户）
-const assignRole = async (row) => {
-  // 管理员/商家角色不允许修改（权限管控）
-  if (['管理员', '商家'].includes(row.type)) {
-    ElMessage.warning('仅支持修改普通用户/VIP用户的角色')
-    return
-  }
-  // 禁用账号不允许分配角色
-  if (row.status === '禁用') {
-    ElMessage.warning('禁用账号无法分配角色，请先启用')
+// 单个启用/禁用
+const toggleStatus = (row) => {
+  if (row.type === '管理员') {
+    ElMessage.warning('不可操作管理员')
     return
   }
 
-  const newRole = await ElMessageBox.confirm(
-    `当前角色：${row.type}\n是否切换为${row.type === '普通用户' ? 'VIP用户' : '普通用户'}？`,
-    '分配用户角色',
-    {
-      confirmButtonText: '确认切换',
-      cancelButtonText: '取消'
+  const isNormal = row.status === '正常'
+  const ids = [row.user_id]
+  if (isNormal) {
+    // 禁用
+
+    console.log('单个禁用参数：', ids)
+  } else {
+    // 启用
+    console.log('单个启用参数：', ids)
+  }
+  adminStore.updateUserList({
+    user_id: ids,
+    operation: isNormal ? 'disable' : 'enable'
+  }, userCondition.value).then(res => {
+    if (res.code === 200) {
+      ElMessage.success('状态参数已输出')
     }
-  )
-
-  if (newRole) {
-    row.type = row.type === '普通用户' ? 'VIP用户' : '普通用户'
-    ElMessage.success(`角色已切换为${row.type}`)
-  }
+  })
 }
 
-// 禁用/启用账号（管控违规账号）
-const toggleUserStatus = async (row) => {
-  // 管理员账号不允许禁用（权限管控）
-  if (row.type === '管理员') {
-    ElMessage.warning('禁止禁用管理员账号')
-    return
-  }
+// 详情
+const detailVisible = ref(false)
+const currentRow = ref({})
+const openDetail = (row) => {
+  currentRow.value = { ...row }
+  detailVisible.value = true
+}
 
-  const action = row.status === '正常' ? '禁用' : '启用'
-  const reason = row.status === '正常' 
-    ? await ElMessageBox.prompt('请输入禁用原因（违规类型）', '禁用账号', {
-        inputPlaceholder: '例如：发布违规内容、恶意刷单等'
-      })
-    : true
+// 时间格式化
+const formatDate = (timeStr) => {
+  if (!timeStr) return ''
+  const d = new Date(timeStr)
+  return `${d.getFullYear()}-${(d.getMonth()+1+'').padStart(2,'0')}-${(d.getDate()+'').padStart(2,'0')}`
+}
 
-  if (reason) {
-    row.status = row.status === '正常' ? '禁用' : '正常'
-    // 记录禁用原因（可选，可扩展到数据存储）
-    if (row.status === '禁用' && reason.value) {
-      row.disableReason = reason.value
-    }
-    ElMessage.success(`${row.username}账号已${action}`)
-  }
+// 筛选、分页、重置
+const handleFilter = async () => {
+  await adminStore.getUserListbyPage(userCondition.value, 1)
+  ElMessage.success('筛选完成')
+}
+const resetFilter = () => {
+  userCondition.value = { username: '', type: '', status: '' }
+  adminStore.initUserList({ page:1, pageSize:pagination.value.pageSize })
+  ElMessage.info('已清空筛选')
+}
+const getPageData = (currentPage, pageSize) => {
+  adminStore.getUserListbyPage(userCondition.value, currentPage, pageSize)
 }
 </script>

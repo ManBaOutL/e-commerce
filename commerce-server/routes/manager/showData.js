@@ -1,5 +1,7 @@
 const express = require('express')
 const router = express.Router()
+const auth = require('@/middlewares/auth')
+
 
 
 // 管理员展示数据类型定义
@@ -16,6 +18,6 @@ const router = express.Router()
 //     pieData: { categoryName: string, value: number }[]
 // }
 const showDataCtrl = require('@/controllers/manager/showDataCtrl')
-router.get('/showData', showDataCtrl.showData)
+router.get('/showData', auth.checkAdmin, showDataCtrl.showData)
 
 module.exports = router

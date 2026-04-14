@@ -2,7 +2,7 @@
 const express = require('express')
 const router = express.Router()
 const db = require('@/config/database')
-const jwt = require('jsonwebtoken')
+const jwtUtils = require('@/utils/jwt')
 
 router.post('/login', async (req, res) => {
     console.log("登录请求体: ", req.body)
@@ -28,14 +28,10 @@ router.post('/login', async (req, res) => {
             return res.status(401).json({ message: '密码错误', status: 401, success: false })
         }
         // 生成 JWT
-        const token = jwt.sign(
-            {
-                user_id: user.user_id,       // 只存 id！
-                user_type: user.user_type    // 存类型，也可以
-            },
-            'abcdef123456', // 密钥，随便写，别泄露
-            { expiresIn: '7d' } // 7天过期
-        )
+        const token = jwtUtils.createToken({
+            user_id: user.user_id,       // 只存 id！
+            user_type: user.user_type    // 存类型，也可以
+        })
         // 返回登录成功响应
         res.json({ message: '登录成功', data: { token, user }, status: 200, success: true })
     } catch (err) {

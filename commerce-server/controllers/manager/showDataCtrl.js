@@ -3,7 +3,6 @@ const db = require('@/config/database')
 const getLastDays = require('@/utils/getLastDays')
 
 
-
 //处理管理员展示数据的具体逻辑
 exports.showData = async (req, res) => {
     console.log("管理员展示数据请求体: ", req.query)

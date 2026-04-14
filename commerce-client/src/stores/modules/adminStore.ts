@@ -2,6 +2,8 @@
 import { defineStore } from 'pinia';
 import type { managerShowData } from '@/api/manager/type'
 import { getManagerShowData } from '@/api/manager/showData'
+import type { userList, pagination, userCondition, userOperation } from '@/api/manager/type'
+import { getManagerUserList, updateManagerUserList } from '@/api/manager/user'
 
 export const useAdminStore = defineStore('admin', {
   state: () => ({
@@ -10,9 +12,10 @@ export const useAdminStore = defineStore('admin', {
     logList: [] as any[],
     shopList: [] as any[],
     actList: [] as any[],
-    userList: [] as any[],
+    userList: [] as userList[],
     categoryList: [] as any[],
     showData: {} as managerShowData,
+    pagination: {} as pagination,
   }),
   actions: {
     // 初始化管理员数据
@@ -94,15 +97,24 @@ export const useAdminStore = defineStore('admin', {
         { actId: 3, actName: '新用户优惠券', actType: '优惠券', goodsName: '机械键盘', rule: '¥50 无门槛', startTime: '2026-04-05', endTime: '2026-04-15', status: '未开始' },
       ]
     },
-    initUserList() {
-      this.userList = [
-        { user_id: 1, username: 'admin', type: '管理员', phone: '13800138001', status: '正常' },
-        { user_id: 2, username: 'seller1', type: '商家', phone: '13800138002', status: '正常' },
-        { user_id: 3, username: 'user1', type: '普通用户', phone: '13800138003', status: '正常' },
-        { user_id: 4, username: 'vip1', type: 'VIP用户', phone: '13800138004', status: '正常' },
-        { user_id: 5, username: 'baduser', type: '普通用户', phone: '13800138005', status: '禁用' }, // 违规禁用示例
-      ]
+    async initUserList() {
+      const res = await getManagerUserList()
+      console.log("用户列表res:", res)
+      this.userList = res.data.userList
+      console.log("用户列表:", this.userList)
+      this.pagination = res.data.pagination
     },
+    async getUserListbyPage(params: userCondition, page: number, pageSize: number) {
+      console.log("传如参数:", params, page, pageSize)
+      const res = await getManagerUserList(params, page, pageSize)
+      this.userList = res.data.userList
+      this.pagination = res.data.pagination
+    },
+    async updateUserList(params: userOperation, condition: userCondition) {
+      const res = await updateManagerUserList(params)
+      this.getUserListbyPage(condition, this.pagination.currentPage, this.pagination.pageSize);
+      return res
+    }
   },
   getters: {
     // 统计用户数量
