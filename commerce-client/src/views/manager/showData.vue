@@ -35,6 +35,9 @@ import LineChart from '@/components/Charts/LineChart.vue'
 import BarChart from '@/components/Charts/BarChart.vue'
 import PieChart from '@/components/Charts/PieChart.vue'
 import { useAdminStore } from '@/stores/modules/adminStore'
+import { useOrderStore } from '@/stores/modules/orderStore'
+
+const orderStore = useOrderStore()
 
 const adminStore = useAdminStore()
 
@@ -57,6 +60,7 @@ const pieData = ref([
 
 onMounted(async () => {
   await adminStore.initShowData()
+  // await orderStore.initOrderList()
   console.log("初始化成功:", adminStore.showData)
   userCount.value = adminStore.showData.totalUserCount
   goodsCount.value = adminStore.showData.totalProductCount

@@ -98,10 +98,16 @@ export interface orderOperation {
 export interface orderList {
     orderId: number
     userId: number
-    goodsName: string
     money: number
     status: string
     createTime: string
+    goodList: {
+        name: string
+        merchant: string
+        price: number
+        size: string // 商品规格
+        num: number // 商品数量
+    }[]
     userRefundReason?: string
     merchantReason?: string
 }

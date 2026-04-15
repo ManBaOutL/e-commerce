@@ -26,7 +26,8 @@ exports.showData = async (req, res) => {
             IFNULL(SUM(od.price * od.quantity), 0) AS value
         FROM orders o
         JOIN order_details od ON o.order_id = od.order_id
-        JOIN product p ON od.product_id = p.product_id
+        JOIN skuproduct sku ON od.sku_id = sku.sku_id
+        JOIN product p ON sku.product_id = p.product_id
         JOIN category c ON p.category_id = c.category_id
         WHERE o.order_status = '已完成'
         GROUP BY c.category_id, c.name
