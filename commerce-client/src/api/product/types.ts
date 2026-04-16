@@ -27,7 +27,6 @@ export interface ProductQueryParams extends PageParams {
   sort_field?: 'id' | 'sales' | 'price' | 'created_time';
   sort_order?: 'asc' | 'desc';
 }
-
 export interface Product extends BaseEntity {
   id?: number;
   name: string;
@@ -40,9 +39,7 @@ export interface Product extends BaseEntity {
   category_id?: number;
   shop_id?: number;
   status: '待审核' | '通过' | '已驳回';
-  specs?: ProductSpec[]; // 聚合规格数据
 }
-
 export interface ResProductList {
   list: Product[];
   total: number;
@@ -54,16 +51,6 @@ export interface CategoryItem {
   name: string;         // 分类名称
   parent_id: number;    // 父级ID
   children?: CategoryItem[]; // 二级分类 (树形结构特有)
-}
-
-/**
- * 商品规格 (specification / product-specification)
- */
-export interface ProductSpec {
-  spec_id: number;
-  name: string; // 规格名称如：颜色、尺寸
-  scale: number; // 价格比例
-  stock: number; // 对应规格库存
 }
 
 /**
@@ -109,3 +96,64 @@ export interface Activity extends BaseEntity {
   value: number;
   min: number;
 }
+
+// SKU 规格选项
+export interface SpecOption {
+  value: string;
+  stock_count: number;
+}
+
+// SKU 规格组 (如：颜色、版本)
+export interface SpecGroup {
+  name: string;
+  options: SpecOption[];
+}
+
+// 具体的 SKU 单元
+export interface SkuItem {
+  sku_id: number;
+  price: number;
+  original_price: number;
+  stock_count: number;
+}
+
+/**
+ * 完整的商品详情接口 (SPU + SKU 聚合)
+ */
+export interface ProductDetail {
+  id: number | null;
+  name: string;
+  description: string;
+  price: number;
+  original_price?: number;
+  stock_count: number;
+  sales_count: number;
+  rate: number;
+  main_image: string;
+  sub_images: string[];
+  detail_images: string[];
+  category_name?: string;
+  // 复杂的字典类型定义
+  spec_groups: Record<string, SpecGroup>;
+  sku_list: Record<string, SkuItem>;
+  params?: Array<{ name: string; value: string }>;
+}
+
+/**
+ * 商品评论接口
+ */
+export interface CommentItem {
+  id: number;
+  score: number;
+  comment_text: string;
+  created_at: string;
+  username: string;
+  user_avatar: string;
+  images?: string[];
+  merchant_reply?: string;
+  append_comment?: string;
+  append_days?: number;
+}
+
+
+

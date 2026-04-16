@@ -7,15 +7,17 @@ export interface UserState {
 
 // 商品仓库
 import type { Product,CategoryItem,ProductQueryParams  } from '@/api/product/types';
+import type { ProductDetail, CommentItem } from '@/api/product/types';
 
 export interface ProductState {
-  categoryList: CategoryItem[];
-  categoryTree: CategoryItem[];
   productList: Product[];
   total: number;
   loading: boolean;
   finished: boolean;
   currentParams: ProductQueryParams;
+
+  currentProduct: ProductDetail,
+  currentComments: CommentItem[]
 }
 
 // 购物车仓库
@@ -31,4 +33,9 @@ import type { Coupon } from '@/api/product/types';
 export interface CouponState {
   userCoupons: Coupon[];
   selectedCouponId: number | null;
+}
+
+// 公共商品分类仓库
+export interface CategoryState {
+  categoryTree: CategoryItem[];
 }

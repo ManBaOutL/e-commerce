@@ -62,7 +62,7 @@
 import AmapSelect from '@/components/address/AmapSelector.vue'
 import { ref, reactive } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { useUserStore } from '@/stores/modules/userStore'
+import { useUserStore } from '@/stores/modules/user/userStore'
 import type { AddressItem } from '@/api/user/types'
 
 const userStore = useUserStore()

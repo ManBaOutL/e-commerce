@@ -75,3 +75,11 @@ export interface AddressItem extends BaseEntity {
   is_default: boolean;
   type?: string; 
 }
+
+// 提交商品评价
+export interface CommentSubmitData {
+  order_id: string;
+  product_id: number;
+  rating: number;
+  content: string;
+}

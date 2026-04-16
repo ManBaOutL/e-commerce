@@ -66,10 +66,10 @@ import request from '../../utils/request';
 import { showSuccessToast, showFailToast } from 'vant';
 import { send } from 'vite';
 import router from '../../router';
-import { login } from '@/api/user/user';
+import { login } from '@/api/user';
 import type { LoginData } from '@/api/user/types';
 import Title from '@/components/login/title.vue'
-import { mockLogin } from '@/api/user/user';
+import { mockLogin } from '@/api/user';
 
 const form = ref<LoginData>({
   username: '',

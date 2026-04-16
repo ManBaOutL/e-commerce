@@ -47,6 +47,10 @@
                 <div class="price">¥{{ item.price }}</div>
               </div>
               <div class="count">x{{ item.quantity }}</div>
+              
+              <div class="goods-action" style="margin-left: 20px;" v-if="order.status === '已完成'">
+                <el-button size="small" plain type="warning" @click="toComment(order.order_id, item.product_id, item.product_name)">去评价</el-button>
+              </div>
             </div>
           </div>
 
@@ -65,7 +69,6 @@
           <div class="order-actions">
             <el-button v-if="order.status === '待支付'" type="primary" @click="handlePay(order)">去支付</el-button>
             <el-button v-if="order.status === '待支付'" type="text" @click="cancelOrder(order.order_id)" class="cancel-btn">取消订单</el-button>
-            <el-button v-if="order.status === '已完成'" type="text" @click="toComment(order)">去评价</el-button>
             <el-button type="text" @click="viewDetail(order)">查看详情</el-button>
           </div>
         </div>
@@ -147,8 +150,18 @@ const resetFilter = () => { orderSearch.value = ''; dateRange.value = null; stat
 
 const handlePay = order => router.push({ path: '/user/orders/order-pay', query: { orderId: order.order_id } })
 const cancelOrder = orderId => ElMessageBox.confirm('确定取消？').then(() => { const o = orderList.value.find(x => x.order_id === orderId); if (o) o.status = '已取消'; ElMessage.success('已取消') })
-const toComment = order => router.push({ path: '/user/orders/comment', query: { orderId: order.order_id } })
 const viewDetail = order => router.push({ path: '/user/orders/detail', query: { orderId: order.order_id } })
+
+const toComment = (orderId, productId, productName) => {
+  router.push({ 
+    path: '/user/orders/comment', 
+    query: { 
+      orderId: orderId,
+      productId: productId,
+      productName: productName // 传过去为了在评价页展示名字
+    } 
+  })
+}
 </script>
 
 <style scoped>

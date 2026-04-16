@@ -277,7 +277,6 @@ my-shop-backend/
 │   ├── front/             # 👤 普通用户前端接口 (前缀: /api/front/)
 │   │   ├── user.js        # 登录、注册、个人信息
 │   │   ├── product.js     # 浏览商品详情
-│   │   └── order.js       # 提交订单、查看自己的订单
 │   ├── merchant/          # 🏬 商家后台接口 (前缀: /api/merchant/)
 │   │   ├── shop.js        # 店铺设置
 │   │   ├── product.js     # 上架/编辑商品
@@ -289,8 +288,8 @@ my-shop-backend/
 │
 ├── controllers/           # 🧠 控制器层 (业务逻辑核心，与路由层一一对应)
 │   ├── front/             # 处理普通用户的具体逻辑
-│   │   ├── userCtrl.js
-│   │   └── orderCtrl.js
+│   │   ├── login.js
+│   │   └── product.js
 │   ├── merchant/          # 处理商家的具体逻辑
 │   │   ├── productCtrl.js
 │   │   └── orderCtrl.js

@@ -1,7 +1,7 @@
 const express = require('express')
 const router = express.Router()
 
-const loginController = require('@/controllers/front/login')
+const loginController = require('@/controllers/front/loginCtrl')
 
 // 挂载登录路由
 router.post('/login', loginController.login)

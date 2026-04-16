@@ -24,7 +24,7 @@
 
 <script setup>
 import { onMounted, onUnmounted } from 'vue'
-import { useProductStore } from '@/stores/modules/productStore'
+import { useProductStore } from '@/stores/modules/user/productStore'
 
 const productStore = useProductStore()
 

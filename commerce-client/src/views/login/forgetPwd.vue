@@ -64,7 +64,7 @@
 import { ref, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { showSuccessToast, showFailToast, showToast } from 'vant';
-import { sendCode, resetPassword } from '@/api/user/user';
+import { sendCode, resetPassword } from '@/api/user';
 import type { ForgetCodeData } from '@/api/user/types';
 import Title from '@/components/login/title.vue'
 

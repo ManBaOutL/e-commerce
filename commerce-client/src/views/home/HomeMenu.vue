@@ -1,30 +1,37 @@
 <template>
-  <div class="home-menu-container">
+  <div class="home-menu-container" @mouseleave="activeIndex = -1">
+    
     <div class="my-menu">
       <div 
-        v-for="mainItem in categoryTree.slice(0, 10)" 
+        v-for="(mainItem, index) in categoryTree.slice(0, 8)" 
         :key="mainItem.id" 
         class="menu-row"
-        @click="handleJump(mainItem.id, mainItem.name)" 
+        :class="{ 'is-active': activeIndex === index }"
+        @mouseenter="activeIndex = index" 
+        @click="handleJump(mainItem.id)" 
       >
-        <el-icon class="main-icon">
-          <component :is="mainItem.icon || 'Menu'" />
-        </el-icon>
-        
-        <!-- 分类展示 -->
-        <div class="content-wrapper">
+        <div class="row-left">
+          <el-icon class="main-icon">
+            <component :is="getIcon(mainItem.name, index)" />
+          </el-icon>
           <span class="main-name">{{ mainItem.name }}</span>
-
-          <div class="sub-links" v-if="mainItem.children && mainItem.children.length">
-            <template v-for="(sub, index) in mainItem.children.slice(0, 4)" :key="sub.id">
-              <span class="separator">/</span>
-              <span class="sub-name" @click.stop="handleJump(sub.id, sub.name)">
-                {{ sub.name }}
-              </span>
-            </template>
-          </div>
-
         </div>
+        <el-icon class="row-arrow" v-if="mainItem.children?.length"><ArrowRight /></el-icon>
+      </div>
+    </div>
+
+    <div 
+      class="mega-menu-panel" 
+      v-show="activeIndex !== -1 && activeCategory?.children?.length"
+    >
+      <div class="mega-content-wrapper" v-if="activeCategory">
+        
+        <MegaMenuNode 
+          v-for="child in activeCategory.children" 
+          :key="child.id" 
+          :node="child" 
+          :level="2" 
+        />
 
       </div>
     </div>
@@ -32,102 +39,138 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { useProductStore } from '@/stores/modules/productStore';
+import { useCategoryStore } from '@/stores/modules/common/categoryStore';
+import { Iphone, Monitor, Watch, Headset, House, Present, Goods, Collection, ArrowRight } from '@element-plus/icons-vue';
+import MegaMenuNode from './MegaMenuNode.vue'; 
 
-const productStore = useProductStore();
+const categoryStore = useCategoryStore();
 const router = useRouter();
+const activeIndex = ref(-1);
 
+const categoryTree = computed(() => categoryStore.categoryTree);
+const activeCategory = computed(() => activeIndex.value !== -1 ? categoryTree.value[activeIndex.value] : null);
 
-// 跳转到商品列表页
-const handleJump = (id: number, name: string) => {
-  router.push({
-    path: '/product',
-    query: { category_id: id, keyword: name }
-  });
+const getIcon = (name: string, index: number) => {
+  if (name.includes('手机')) return Iphone;
+  if (name.includes('电脑')) return Monitor;
+  if (name.includes('穿戴')) return Watch;
+  if (name.includes('耳机')) return Headset;
+  if (name.includes('家电')) return House;
+  return [Goods, Present, Collection][index % 3];
 };
-// 使用计算属性，自动追踪 store 的变化
-const categoryTree = computed(() => productStore.categoryTree);
-const fetchCategories = () => {
-    // 获取分类数据(已化为树状结构)
-    productStore.getCategoryList();
-};
-onMounted(fetchCategories);
+
+const handleJump = (id: number) => router.push({ path: '/product', query: { category_id: id } });
+
+onMounted(() => categoryStore.getCategoryList());
 </script>
 
 <style scoped>
+/* 外层容器 */
 .home-menu-container {
-  height: 380px; 
-  background: #fff;
+  position: relative;
+  height: 380px;
+  background: rgba(255, 255, 255, 0.98);
   border-radius: 8px;
-  /* 移除 overflow: hidden 否则如果内容多一点会被切断 */
-  box-sizing: border-box;
-  padding: 8px 0; /* 增加上下内边距，让首尾不贴边 */
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.03);
 }
 
 .my-menu {
+  width: 220px;
   height: 100%;
   display: flex;
   flex-direction: column;
+  padding: 12px 0;
+  box-sizing: border-box;
 }
 
 .menu-row {
-  /* 核心：固定高度，380px 除去 padding 16px，10行每行约 36px */
-  height: 36px; 
-  line-height: 36px;
+  height: 44px;
   display: flex;
   align-items: center;
-  padding: 0 16px;
+  justify-content: space-between;
+  padding: 0 18px 0 24px;
   cursor: pointer;
-  transition: all 0.2s;
-  font-size: 14px; /* 稍微加大一点点字号更清晰 */
+  transition: all 0.2s ease;
+  position: relative;
 }
 
-.menu-row:hover {
-  background: linear-gradient(90deg, #fff1eb 0%, #fff 100%); /* 渐变背景更高级 */
-  color: #ff5000;
+.row-left {
+  display: flex;
+  align-items: center;
 }
 
 .main-icon {
-  font-size: 16px;
+  font-size: 18px;
   margin-right: 12px;
-  color: #666; /* 初始图标颜色淡一点 */
-}
-
-.menu-row:hover .main-icon {
-  color: #ff5000;
-}
-
-.content-wrapper {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  white-space: nowrap;
-  overflow: hidden;
-}
-
-.main-name {
-  font-weight: 500;
-  margin-right: 4px;
-}
-
-.sub-links {
-  color: #999; /* 子类链接颜色调淡，突出主类 */
-  font-size: 12px;
-}
-
-.separator {
-  margin: 0 2px;
-  color: #e0e0e0;
-}
-
-.sub-name {
   color: #666;
 }
 
-/* 确保 hover 时子分类也变橙色 */
-.menu-row:hover .sub-name {
+.main-name {
+  font-size: 14px;
+  color: #333;
+  transition: all 0.2s;
+}
+
+.row-arrow {
+  font-size: 12px;
+  color: transparent; 
+  transition: all 0.2s;
+  transform: translateX(-4px);
+}
+
+.menu-row.is-active {
+  background-color: #fff;
+  z-index: 101;
+  width: calc(100% + 2px);
+}
+
+.menu-row.is-active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  width: 4px;
+  background: #ff5000;
+  border-radius: 0 4px 4px 0;
+}
+
+.menu-row.is-active .main-icon,
+.menu-row.is-active .main-name {
   color: #ff5000;
+  font-weight: 500;
+}
+
+.menu-row.is-active .row-arrow {
+  color: #ff5000;
+  transform: translateX(0);
+}
+
+/* 🌟 极简悬浮面板 */
+.mega-menu-panel {
+  position: absolute;
+  left: 220px;
+  top: 0;
+  height: 380px;
+  background: #fff;
+  z-index: 100;
+  box-shadow: 4px 0 16px rgba(0, 0, 0, 0.06); 
+  border-radius: 0 8px 8px 0;
+  padding: 24px 30px; 
+  width: max-content; 
+  min-width: 300px;
+  max-width: 750px;
+  overflow: hidden;
+}
+
+/* 瀑布流自适应分列 */
+.mega-content-wrapper {
+  display: flex;
+  flex-flow: column wrap; 
+  height: 332px; /* 控制自动换列的最大高度 */
+  gap: 0 50px; /* 列与列之间保持 50px 的清爽留白 */
+  align-content: flex-start;
 }
 </style>

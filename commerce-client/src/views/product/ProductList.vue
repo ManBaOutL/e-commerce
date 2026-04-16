@@ -5,7 +5,7 @@
     <div class="container">
       <div class="filter-card">
         <div class="filter-header">
-          <FilterTreeItem :categoryTree="productStore.categoryTree" />
+          <FilterTreeItem :categoryTree="categoryStore.categoryTree" />
           <el-button class="tb-trigger-btn" type="primary" plain @click="drawerVisible = true">
             综合筛选 <el-icon class="el-icon--right"><Filter /></el-icon>
           </el-button>
@@ -61,7 +61,7 @@
         <div class="block-title">全部分类</div>
         <el-cascader
           v-model="tempParams.category_id"
-          :options="productStore.categoryTree"
+          :options="categoryStore.categoryTree"
           :props="{ label: 'name', value: 'id', checkStrictly: true, emitPath: false }"
           placeholder="请选择分类"
           clearable
@@ -98,17 +98,20 @@
 <script setup lang="ts">
 import FilterTreeItem from './FilterTreeItem.vue'
 import { ref, onMounted, reactive, watch } from 'vue'
-import { useProductStore } from '@/stores/modules/productStore'
+import { useProductStore } from '@/stores/modules/user/productStore'
+import { useCategoryStore } from '@/stores/modules/common/categoryStore'
 import { useRoute } from 'vue-router'
 import type { ProductQueryParams } from '@/api/product/types'
+import { ElMessage } from 'element-plus'
 
 const route = useRoute()
 const productStore = useProductStore()
+const categoryStore = useCategoryStore()
 
 const drawerVisible = ref(false)
 const dateRange = ref<[string, string] | null>(null)
 
-// 🌟 临时筛选参数（用于抽屉内修改，不直接触发请求）
+//  临时筛选参数（用于抽屉内修改，不直接触发请求）
 const tempParams = reactive({
   minPrice: undefined,
   maxPrice: undefined,
@@ -141,6 +144,13 @@ const handleReset = () => {
 
 // 确定筛选：将临时参数同步到全局 queryParams
 const handleConfirm = () => {
+  // 判断最大最小价格是否合法
+  if (tempParams.minPrice !== undefined && tempParams.maxPrice !== undefined && tempParams.minPrice > tempParams.maxPrice) {
+    tempParams.minPrice = undefined
+    tempParams.maxPrice = undefined
+    ElMessage.error('最低价不能高于最高价, 请重新输入')
+    return
+  }
   Object.assign(queryParams, tempParams)
   queryParams.page = 1
   productStore.init({ ...queryParams })
@@ -217,7 +227,7 @@ watch(
 )
 
 onMounted(() => {
-  productStore.getCategoryList()
+  categoryStore.getCategoryList()
   // 初始化时，主动将 URL 里的参数合入 queryParams 并请求
   queryParams.category_id = route.query.category_id ? Number(route.query.category_id) : undefined;
   queryParams.keyword = (route.query.keyword as string) || '';

@@ -1,6 +1,7 @@
 // 用户模块接口
 import request from '@/utils/request';
-import type { LoginData, CodeData, RegisterData } from './types';
+import type { LoginData, CodeData, RegisterData, CommentSubmitData } from './types';
+import type { ApiResponse } from '@/api/types';
 import type { ForgetCodeData } from './types';
 
 // 登录接口
@@ -50,4 +51,18 @@ export const register = (data: RegisterData) => {
         method: 'post',
         data
     })
+}
+
+enum API {
+  LOGIN = '/login',
+  CODE = '/code',
+  FORGET = '/forget',
+  REGISTER = '/register',
+  USERS = '/users',
+  POST_ADD_COMMENT = '/api/user/product/comment/add',
+}
+// 提交商品评价
+export const reqAddComment = (data: CommentSubmitData) => {
+  // 这里的 URL 请替换为你后端实际配置的路由路径
+  return request.post<any, ApiResponse<any>>(API.POST_ADD_COMMENT, data);
 }

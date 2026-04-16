@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import type { AddressItem } from '@/api/user/types';
 import type { UserState } from '@/stores/types';
+import { reqAddComment } from '@/api/user';
 
 export const useUserStore = defineStore('user', {
   state: () : UserState => ({
@@ -73,6 +74,19 @@ export const useUserStore = defineStore('user', {
         ...item,
         is_default: item.address_id === addressId
       }))
+    },
+
+    // 商品评价
+    // 🌟 统一管理的提交商品评价 Action
+    async submitProductComment(payload: { order_id: string; product_id: number; rating: number; content: string }) {
+      try {
+        const res = await reqAddComment(payload);
+        // 将结果 return 给组件，让组件决定弹窗提示什么
+        return res; 
+      } catch (error) {
+        console.error('提交评价失败:', error);
+        return { success: false, message: '网络请求失败' };
+      }
     }
   }
 });

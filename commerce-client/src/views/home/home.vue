@@ -12,9 +12,11 @@
         </el-col>
         <!-- 右侧轮播图 -->
         <el-col :md="14" :sm="24" :xs="24">
-          <el-carousel height="380px" class="home-carousel">
-            <el-carousel-item v-for="i in 3" :key="i">
-              <div class="banner-content">活动大促海报 {{ i }}</div>
+          <el-carousel height="380px" class="home-carousel" trigger="click">
+            <el-carousel-item v-for="item in bannerList" :key="item.id">
+              <div class="banner-wrapper" @click="handleBannerClick(item.link)">
+                <img :src="item.image" :alt="item.title" class="banner-img" />
+              </div>
             </el-carousel-item>
           </el-carousel>
         </el-col>
@@ -43,7 +45,26 @@
 import {useRouter} from 'vue-router'
 import HomeMenu from './HomeMenu.vue'
 
+// 🌟 核心：在 Vite/Vue3 中静态图片必须显式 import 进来
+import banner1 from '@/assets/images/banners/1.png'
+import banner2 from '@/assets/images/banners/2.png'
+import banner3 from '@/assets/images/banners/3.png'
+
 const router = useRouter()
+
+// 定义轮播图数据数组
+const bannerList = [
+  { id: 1, image: banner1, title: '双十一大促', link: '/product?category_id=1' },
+  { id: 2, image: banner2, title: '数码家电上新', link: '/product?category_id=2' },
+  { id: 3, image: banner3, title: '秋冬服装焕新', link: '/product' }
+]
+
+// 点击轮播图跳转
+const handleBannerClick = (link) => {
+  if (link) {
+    router.push(link)
+  }
+}
 
 const handleToLogin = () => {
   router.push('/login')
@@ -91,16 +112,38 @@ const handleToRegister = () => {
 .home-carousel {
   border-radius: 8px;
   overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); /* 加点阴影更高级 */
 }
 
-.banner-content {
+/* 🌟 轮播图图片专属样式 */
+.banner-wrapper {
+  width: 100%;
   height: 100%;
-  background: linear-gradient(135deg, #ff9000, #ff5000);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  color: #fff;
-  font-size: 24px;
+  cursor: pointer;
+}
+
+.banner-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* 保证图片铺满且不被拉伸变形 */
+  transition: transform 0.3s ease;
+}
+
+.banner-wrapper:hover .banner-img {
+  transform: scale(1.02); /* 鼠标放上去微微放大，提升点击欲 */
+}
+
+/* 覆盖 Element Plus 默认的指示器(小圆点)样式，模仿淘宝 */
+:deep(.el-carousel__indicator.is-active button) {
+  background-color: var(--primary-orange);
+  width: 20px;
+  border-radius: 10px;
+}
+:deep(.el-carousel__button) {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.8);
 }
 
 .user-panel {
