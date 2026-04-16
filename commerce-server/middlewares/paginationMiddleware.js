@@ -2,7 +2,7 @@
  * 分页中间件：解析分页参数 & 挂载分页计算方法
  */
 const paginationMiddleware = (req, res, next) => {
-    console.log("pagination请求参数:", req.query)
+    console.log("中间件pagination请求参数:", req.query)
     // 1. 解析分页参数（默认值：第1页，每页10条）
     const currentPage = parseInt(req.query.currentPage) || 1;
     const pageSize = parseInt(req.query.pageSize) || 10;

@@ -173,7 +173,7 @@ const batchToggleVip = () => {
   if (hasNonVipSelected.value) {
     // 批量设为VIP
     const validIds = selectedRows.value
-      .filter(item => item.type !== 'VIP用户')
+      .filter(item => item.type !== 'VIP用户' && item.type !== '管理员' && item.type !== '商家')
       .map(item => item.user_id)
     
     if (validIds.length === 0) {
@@ -192,7 +192,7 @@ const batchToggleVip = () => {
   } else {
     // 批量设为普通用户
     const validIds = selectedRows.value
-      .filter(item => item.type === 'VIP用户')
+      .filter(item => item.type === 'VIP用户' && item.type !== '管理员' && item.type !== '商家')
       .map(item => item.user_id)
     
     if (validIds.length === 0) {
@@ -225,7 +225,7 @@ const toggleVip = (row) => {
         ElMessage.success('单个设置普通用户参数已输出')
       }
     })
-  } else {
+  } else if (row.type === '普通用户') {
     // 设为VIP
     console.log('单个设置VIP参数：', ids)
     adminStore.updateUserList({
@@ -236,6 +236,12 @@ const toggleVip = (row) => {
         ElMessage.success('单个设置VIP参数已输出')
       }
     })
+  } else if (row.type === '管理员') {
+    ElMessage.warning('不可操作管理员')
+    return
+  } else if (row.type === '商家') {
+    ElMessage.warning('商家无vip权限')
+    return
   }
 }
 
