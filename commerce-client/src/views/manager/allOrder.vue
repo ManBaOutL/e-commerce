@@ -3,38 +3,20 @@
     <h3>管理员 - 全平台订单管理</h3>
 
     <!-- 筛选栏 -->
-    <div style="display: flex; gap: 10px; margin-bottom: 10px; align-items: center; flex-wrap: wrap;">
+    <div style="display: flex; gap: 10px; margin-bottom: 15px; align-items: center; flex-wrap: wrap;">
       <el-input v-model="filterForm.orderId" placeholder="订单号" style="width:160px" clearable />
       <el-input v-model="filterForm.userId" placeholder="用户ID" style="width:120px" clearable />
 
-      <!-- 年 -->
       <el-select v-model="filterForm.year" placeholder="年" style="width:100px">
-        <el-option 
-          v-for="y in yearList" 
-          :key="y" 
-          :label="`${y}年`" 
-          :value="y" 
-        />
+        <el-option v-for="y in yearList" :key="y" :label="`${y}年`" :value="y" />
       </el-select>
 
-      <!-- 月 -->
       <el-select v-model="filterForm.month" placeholder="月" style="width:100px">
-        <el-option 
-          v-for="m in monthList" 
-          :key="m" 
-          :label="`${m}月`" 
-          :value="m" 
-        />
+        <el-option v-for="m in monthList" :key="m" :label="`${m}月`" :value="m" />
       </el-select>
 
-      <!-- 日 -->
       <el-select v-model="filterForm.day" placeholder="日" style="width:100px">
-        <el-option 
-          v-for="d in dayList" 
-          :key="d" 
-          :label="`${d}日`" 
-          :value="d" 
-        />
+        <el-option v-for="d in dayList" :key="d" :label="`${d}日`" :value="d" />
       </el-select>
 
       <el-select v-model="filterForm.status" placeholder="订单状态" style="width:160px">
@@ -55,10 +37,11 @@
       <el-button type="danger" @click="batchReject">一键驳回待审核</el-button>
     </div>
 
+    <!-- 订单表格 -->
     <el-table :data="filterList" border>
       <el-table-column label="订单号" prop="orderId" />
       <el-table-column label="用户ID" prop="userId" />
-      <el-table-column label="商品" prop="goodsName" />
+      <el-table-column label="商品" prop="showGoodsName" />
       <el-table-column label="金额" prop="money" />
       <el-table-column label="创建时间" prop="createTime" />
       <el-table-column label="状态">
@@ -81,33 +64,83 @@
       </el-table-column>
     </el-table>
 
-    <el-dialog v-model="detailVisible" title="订单详情" width="500px">
-      <div v-if="currentOrder">
-        <p>订单号：{{ currentOrder.orderId }}</p>
-        <p>用户ID：{{ currentOrder.userId }}</p>
-        <p>商品：{{ currentOrder.goodsName }}</p>
-        <p>金额：{{ currentOrder.money }}</p>
-        <p>创建时间：{{ currentOrder.createTime }}</p>
-        <p>状态：{{ currentOrder.status }}</p>
+    <!-- 订单详情弹窗 -->
+    <el-dialog v-model="detailVisible" title="订单详情" width="780px" destroy-on-close>
+      <div v-if="currentOrder" class="detail-content">
+        
+        <el-descriptions border :column="2" size="small" style="margin-bottom:15px;">
+          <el-descriptions-item label="订单号">{{ currentOrder.orderId }}</el-descriptions-item>
+          <el-descriptions-item label="用户ID">{{ currentOrder.userId }}</el-descriptions-item>
+          <el-descriptions-item label="订单状态">
+            <el-tag :type="
+              currentOrder.status === '已退款' ? 'success' :
+              currentOrder.status === '退款驳回' ? 'danger' :
+              currentOrder.status === '待审核' ? 'warning' : 'info'
+            ">
+              {{ currentOrder.status }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="创建时间">{{ currentOrder.createTime }}</el-descriptions-item>
+          <el-descriptions-item label="订单总价" :span="2">
+            <span style="color:#f56c6c; font-weight:bold">¥{{ currentOrder.money }}</span>
+          </el-descriptions-item>
+        </el-descriptions>
 
-        <div v-if="currentOrder.status === '申请退款'" style="margin-top:10px;">
-          <p>退款理由：{{ currentOrder.userRefundReason }}</p>
-          <p style="color:#1989fa">请等待买卖双方协商</p>
+        <div>
+          <h4>商品明细</h4>
+          <el-table :data="currentOrder.goodList" border size="small">
+            <el-table-column label="商品名称" prop="name" />
+            <el-table-column label="商家" prop="merchant" />
+            <el-table-column label="规格" prop="size" />
+            <el-table-column label="数量" prop="num" />
+            <el-table-column label="商品总价" prop="price">
+              <template #default="scope">
+                <span style="color:#f56c6c">¥{{ scope.row.price }}</span>
+              </template>
+            </el-table-column>
+          </el-table>
         </div>
-        <div v-if="currentOrder.status === '待审核'" style="margin-top:10px;">
-          <p>用户退款理由：{{ currentOrder.userRefundReason }}</p>
-          <p>商家驳回理由：{{ currentOrder.merchantReason }}</p>
+
+        <div style="margin-top:15px;" v-if="currentOrder.userRefundReason || currentOrder.merchantReason">
+          <h4>退款信息</h4>
+          <el-descriptions border :column="1" size="small">
+            <el-descriptions-item label="用户退款理由" v-if="currentOrder.userRefundReason">
+              {{ currentOrder.userRefundReason }}
+            </el-descriptions-item>
+            <el-descriptions-item label="商家处理理由" v-if="currentOrder.merchantReason">
+              {{ currentOrder.merchantReason }}
+            </el-descriptions-item>
+          </el-descriptions>
         </div>
       </div>
+
+      <template #footer>
+        <el-button @click="detailVisible = false">关闭</el-button>
+      </template>
     </el-dialog>
+
+    <!-- 分页 -->
+    <el-pagination
+      v-model:current-page="pagination.currentPage"
+      v-model:page-size="pagination.pageSize"
+      :total="pagination.total"
+      layout="total, sizes, prev, pager, next, jumper"
+      style="margin-top:15px; text-align:right;"
+      @change="getPageData"  
+    />
   </div>
 </template>
 
 <script setup>
 import { ref, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useOrderStore } from '@/stores/modules/orderStore'
+import { storeToRefs } from 'pinia'
+import { onMounted } from 'vue'
 
-// 筛选条件
+const orderStore = useOrderStore()
+const { orderList, pagination } = storeToRefs(orderStore)
+
 const filterForm = ref({
   orderId: '',
   userId: '',
@@ -117,47 +150,33 @@ const filterForm = ref({
   status: ''
 })
 
-// 年月日数组（自动生成）
 const yearList = ref(['2026'])
 const monthList = ref(Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0')))
 const dayList = ref(Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, '0')))
 
-// 弹窗
 const detailVisible = ref(false)
 const currentOrder = ref(null)
 
-// 订单数据
-const orderList = ref([
-  { orderId: '2026001', userId: '1001', goodsName: '苹果手机', money: '5999', status: '待发货', createTime: '2026-04-01', userRefundReason:'', merchantReason:'' },
-  { orderId: '2026002', userId: '1002', goodsName: '华为平板', money: '3499', status: '已发货', createTime: '2026-04-02', userRefundReason:'', merchantReason:'' },
-  { orderId: '2026003', userId: '1003', goodsName: '无线耳机', money: '899', status: '已完成', createTime: '2026-04-03', userRefundReason:'', merchantReason:'' },
-  { orderId: '2026004', userId: '1004', goodsName: '机械键盘', money: '499', status: '申请退款', createTime: '2026-04-04', userRefundReason:'买错型号', merchantReason:'' },
-  { orderId: '2026005', userId: '1005', goodsName: '电竞鼠标', money: '299', status: '待审核', createTime: '2026-04-05', userRefundReason:'产品失灵', merchantReason:'已拆封' },
-  { orderId: '2026006', userId: '1006', goodsName: '智能手表', money: '1599', status: '已退款', createTime: '2026-04-06', userRefundReason:'', merchantReason:'' },
-  { orderId: '2026007', userId: '1007', goodsName: '充电宝', money: '129', status: '退款驳回', createTime: '2026-04-07', userRefundReason:'', merchantReason:'' },
-])
-
-// 筛选逻辑
 const filterList = computed(() => {
-  return orderList.value.filter(item => {
-    const matchOrderId = item.orderId.includes(filterForm.value.orderId)
-    const matchUserId = item.userId.includes(filterForm.value.userId)
-    const matchStatus = !filterForm.value.status || item.status === filterForm.value.status
-
-    // 日期匹配
-    const [y, m, d] = item.createTime.split('-')
-    const matchYear = !filterForm.value.year || y === filterForm.value.year
-    const matchMonth = !filterForm.value.month || m === filterForm.value.month
-    const matchDay = !filterForm.value.day || d === filterForm.value.day
-
-    return matchOrderId && matchUserId && matchStatus && matchYear && matchMonth && matchDay
+  return orderList.value.map(item => {
+    let showGoodsName = '无商品'
+    if (item.goodList && item.goodList.length > 0) {
+      showGoodsName = item.goodList[0].name
+      if (item.goodList.length > 1) showGoodsName += '...'
+    }
+    return { ...item, showGoodsName }
   })
 })
 
-const handleFilter = () => ElMessage.success('筛选成功')
+const handleFilter = () => {
+  getPageData(pagination.currentPage, pagination.pageSize)
+  ElMessage.success('筛选成功')
+}
+
 const resetFilter = () => {
   filterForm.value = { orderId: '', userId: '', year: '', month: '', day: '', status: '' }
-  ElMessage.success('已清空')
+  getPageData(1, 10)
+  ElMessage.success('已清空筛选')
 }
 
 const openDetail = (row) => {
@@ -166,26 +185,86 @@ const openDetail = (row) => {
 }
 
 const agreeRefund = async (row) => {
-  await ElMessageBox.confirm('确定同意？')
-  row.status = '已退款'
-  ElMessage.success('成功')
+  await ElMessageBox.confirm('确定同意该订单退款？').catch(() => {})
+  // 构造并输出符合接口格式的数据
+  const operationData = {
+    order_id: [Number(row.orderId)], // 确保是number数组
+    operation: 'enable' // 操作类型：同意退款
+  }
+  console.log('处理待审核订单-同意退款：', operationData) // 输出目标格式
+  // 业务逻辑（状态修改）
+  orderStore.postOrder(operationData)
+  ElMessage.success('操作成功')
 }
 
 const rejectRefund = async (row) => {
-  await ElMessageBox.confirm('确定驳回？')
-  row.status = '退款驳回'
-  ElMessage.success('成功')
+  await ElMessageBox.confirm('确定驳回该订单退款？').catch(() => {})
+  // 构造并输出符合接口格式的数据
+  const operationData = {
+    order_id: [Number(row.orderId)], // 确保是number数组
+    operation: 'disable' // 操作类型：拒绝退款
+  }
+  console.log('处理待审核订单-拒绝退款：', operationData) // 输出目标格式
+  // 业务逻辑（状态修改）
+  orderStore.postOrder(operationData)
+  ElMessage.success('操作成功')
 }
 
 const batchAgree = async () => {
-  await ElMessageBox.confirm('确定一键同意所有待审核订单？')
-  orderList.value.forEach(i => i.status === '待审核' && (i.status = '已退款'))
-  ElMessage.success('批量完成')
+  await ElMessageBox.confirm('确定批量同意所有待审核退款？').catch(() => {})
+  // 收集所有待审核订单ID（转为number类型）
+  const pendingOrderIds = orderList.value
+    .filter(i => i.status === '待审核')
+    .map(i => Number(i.orderId))
+  // 构造并输出符合接口格式的数据
+  const operationData = {
+    order_id: pendingOrderIds,
+    operation: 'enable' // 批量同意退款
+  }
+  console.log('批量处理待审核订单-同意退款：', operationData) // 输出目标格式
+  // 业务逻辑（状态修改）
+  orderStore.postOrder(operationData)
+  ElMessage.success('批量操作成功')
 }
 
 const batchReject = async () => {
-  await ElMessageBox.confirm('确定一键驳回所有待审核订单？')
-  orderList.value.forEach(i => i.status === '待审核' && (i.status = '退款驳回'))
-  ElMessage.success('批量完成')
+  await ElMessageBox.confirm('确定批量驳回所有待审核退款？').catch(() => {})
+  // 收集所有待审核订单ID（转为number类型）
+  const pendingOrderIds = orderList.value
+    .filter(i => i.status === '待审核')
+    .map(i => Number(i.orderId))
+  // 构造并输出符合接口格式的数据
+  const operationData = {
+    order_id: pendingOrderIds,
+    operation: 'disable' // 批量驳回退款
+  }
+  console.log('批量处理待审核订单-驳回退款：', operationData) // 输出目标格式
+  // 业务逻辑（状态修改）
+  orderStore.postOrder(operationData)
+  ElMessage.success('批量操作成功')
 }
+
+const getPageData = async (currentPage, pageSize) => {
+  //console.log("筛选条件:", filterForm.value)
+  //console.log("当前页:", currentPage, "每页数量:", pageSize)
+  await orderStore.getOrderListByPage(filterForm.value, currentPage, pageSize)
+  //console.log("当前页2:", currentPage, "每页数量2:", pageSize)
+}
+
+onMounted(() => {
+  getPageData(1, 10)
+})
 </script>
+
+<style scoped>
+.detail-content {
+  padding: 5px;
+}
+
+h4 {
+  font-size: 14px;
+  margin: 0 0 8px 0;
+  color: #333;
+  font-weight: 600;
+}
+</style>

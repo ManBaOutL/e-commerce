@@ -3,7 +3,7 @@ require('module-alias/register')
 //定义返回数据格式为
 //{
 //    success: true,
-//    message: '操作成功。。。',
+//    message: 'xxxxx',
 //    status: 200,
 //    data: {}
 //}

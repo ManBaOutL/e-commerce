@@ -4,6 +4,13 @@
 //     type: string
 // }
 
+export interface pagination {
+    currentPage: number
+    pageSize: number
+    total: number
+    totalPages: number
+}
+
 export interface showCondition {
     day?: number // 最近几天的数据，默认为7天
 }
@@ -46,7 +53,9 @@ export interface userList {
     age?: number
     gender?: string
     create_time: string
+    update_time: string
     status: string
+    avatar?: string
 }
 
 //管理员商品管理参数,筛选条件
@@ -64,11 +73,13 @@ export interface productList {
     name: string
     price: number
     stock: number
+    rate: number
     auditStatus: string
     seller_id: number
     seller_name: string
     category_id: number
     category_name: string
+    description: string
 }
 
 //管理员订单管理参数,筛选条件
@@ -89,10 +100,16 @@ export interface orderOperation {
 export interface orderList {
     orderId: number
     userId: number
-    goodsName: string
     money: number
     status: string
     createTime: string
+    goodList: {
+        name: string
+        merchant: string
+        price: number
+        size: string // 商品规格
+        num: number // 商品数量
+    }[]
     userRefundReason?: string
     merchantReason?: string
 }
@@ -117,10 +134,15 @@ export interface category {
 }
 
 //优惠券管理
-//无筛选规则,直接返回所有管理员的优惠券
+export interface couponCondition {
+    name?: string //优惠券名称
+    coupon_status?: string
+    coupon_type?: string
+}
 //优惠券操作
 export interface couponOperation {
     coupon_id?: number[]
+    user_id?: number[] //指定用户ID数组
     newCoupon?: couponList
     operation: string //包括删除、发放、新增操作
 }
@@ -128,9 +150,16 @@ export interface couponOperation {
 export interface couponList {
     coupon_id?: number
     name: string
-    type: string
+    coupon_type: string
     value: number
-    min: number
+    min_order_amount: number
+    start_time?: string
+    end_time?: string
+    coupon_status: string
+    create_time: string
+    valid_days?: number   // 有效期天数
+    user_id?: number
+    user_name?: string
 }
 
 //操作日志管理

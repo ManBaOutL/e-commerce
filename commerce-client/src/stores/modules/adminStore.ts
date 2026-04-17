@@ -2,6 +2,17 @@
 import { defineStore } from 'pinia';
 import type { managerShowData } from '@/api/manager/type'
 import { getManagerShowData } from '@/api/manager/showData'
+import type {
+  pagination,
+  userList, userCondition, userOperation,
+  productList, productCondition, productOperation,
+  category, categoryOperation,
+  couponList, couponOperation, couponCondition
+} from '@/api/manager/type'
+import { getManagerUserList, updateManagerUserList } from '@/api/manager/user'
+import { getManagerProductList, updateManagerProductList } from '@/api/manager/product'
+import { getManagerCategoryList, updateManagerCategoryList } from '@/api/manager/category'
+import { getManagerCouponList, updateManagerCouponList } from '@/api/manager/coupon'
 
 export const useAdminStore = defineStore('admin', {
   state: () => ({
@@ -10,9 +21,13 @@ export const useAdminStore = defineStore('admin', {
     logList: [] as any[],
     shopList: [] as any[],
     actList: [] as any[],
-    userList: [] as any[],
-    categoryList: [] as any[],
+    userList: [] as userList[],
+    productList: [] as productList[],
+    categoryList: [] as category[],
+    templateCouponList: [] as couponList[],
+    userCouponList: [] as couponList[],
     showData: {} as managerShowData,
+    pagination: {} as pagination,
   }),
   actions: {
     // 初始化管理员数据
@@ -25,14 +40,9 @@ export const useAdminStore = defineStore('admin', {
     },
     initAdminStore() {
       console.log('初始化管理员数据...')
-      //初始化：默认为每个数据请求x条数据
-      this.initLogList()
-      this.initShopList()
-      this.initActList()
       this.initUserList()
       console.log('管理员数据初始化完成')
     },
-
     initLogList() {
       this.logList = [
         { logId: 1001, username: 'user01', role: '普通用户', content: '修改登录密码', type: '修改密码', time: '2026-04-07 18:20:11', result: '成功' },
@@ -87,22 +97,110 @@ export const useAdminStore = defineStore('admin', {
         }
       ]
     },
-    initActList() {
-      this.actList = [
-        { actId: 1, actName: '满300减50', actType: '满减', goodsName: '无线耳机', rule: '满300减50', startTime: '2026-04-01', endTime: '2026-04-07', status: '进行中' },
-        { actId: 2, actName: '耳机限时秒杀', actType: '秒杀', goodsName: '无线耳机', rule: '秒杀价 ¥199', startTime: '2026-04-08', endTime: '2026-04-09', status: '进行中' },
-        { actId: 3, actName: '新用户优惠券', actType: '优惠券', goodsName: '机械键盘', rule: '¥50 无门槛', startTime: '2026-04-05', endTime: '2026-04-15', status: '未开始' },
-      ]
+    async initProductList() {
+      const res = await getManagerProductList()
+      this.productList = res.data.productList
+      this.pagination = res.data.pagination
+      console.log("商品列表:", this.productList)
     },
-    initUserList() {
-      this.userList = [
-        { user_id: 1, username: 'admin', type: '管理员', phone: '13800138001', status: '正常' },
-        { user_id: 2, username: 'seller1', type: '商家', phone: '13800138002', status: '正常' },
-        { user_id: 3, username: 'user1', type: '普通用户', phone: '13800138003', status: '正常' },
-        { user_id: 4, username: 'vip1', type: 'VIP用户', phone: '13800138004', status: '正常' },
-        { user_id: 5, username: 'baduser', type: '普通用户', phone: '13800138005', status: '禁用' }, // 违规禁用示例
-      ]
+    async initUserList() {
+      const res = await getManagerUserList()
+      console.log("用户列表res:", res)
+      this.userList = res.data.userList
+      console.log("用户列表:", this.userList)
+      this.pagination = res.data.pagination
     },
+    async initCategoryList() {
+      const res = await getManagerCategoryList()
+      this.categoryList = res.data
+      console.log("分类列表:", this.categoryList)
+    },
+    async initTemplateCouponList() {
+      console.log("初始化优惠券模板列表...")
+      const res = await getManagerCouponList({}, 1, 10, true)
+      this.templateCouponList = res.data.list
+      this.pagination = res.data.pagination
+      console.log("优惠券列表:", this.templateCouponList)
+    },
+    async initUserCouponList() {
+      console.log("初始化用户优惠券列表...")
+      const res = await getManagerCouponList({}, 1, 10, false)
+      this.userCouponList = res.data.list
+      this.pagination = res.data.pagination
+      console.log("用户优惠券列表:", this.userCouponList)
+    },
+
+
+    async getUserListbyPage(params: userCondition, page: number, pageSize: number) {
+      console.log("传如参数:", params, page, pageSize)
+      const res = await getManagerUserList(params, page, pageSize)
+      this.userList = res.data.userList
+      this.pagination = res.data.pagination
+    },
+    async getProductListbyPage(params: productCondition, page: number, pageSize: number) {
+      console.log("获取商品传如参数:", params, page, pageSize)
+      const res = await getManagerProductList(params, page, pageSize)
+      this.productList = res.data.productList
+      this.pagination = res.data.pagination
+      // console.log("商品列表:", this.productList)
+      // console.log("分页信息:", this.pagination)
+    },
+    async getTemplateCouponList(params: couponCondition, page: number, pageSize: number) {
+      console.log("获取优惠券模板列表传如参数:", params, page, pageSize)
+      const res = await getManagerCouponList(params, page, pageSize, true)
+      this.templateCouponList = res.data.list
+      this.pagination = res.data.pagination
+      console.log("优惠券列表:", this.templateCouponList)
+      console.log("分页信息:", this.pagination)
+    },
+    async getUserCouponList(params: couponCondition, page: number, pageSize: number) {
+      console.log("获取用户优惠券列表传如参数:", params, page, pageSize)
+      const res = await getManagerCouponList(params, page, pageSize, false)
+      this.userCouponList = res.data.list
+      this.pagination = res.data.pagination
+      console.log("用户优惠券列表:", this.userCouponList)
+      console.log("分页信息:", this.pagination)
+    },
+
+
+    async updateUserList(params: userOperation, condition: userCondition) {
+      const res = await updateManagerUserList(params)
+      this.getUserListbyPage(condition, this.pagination.currentPage, this.pagination.pageSize);
+      return res
+    },
+
+    async updateProductList(params: productOperation) {
+      const res = await updateManagerProductList(params)
+      return res
+    },
+    async updateCategoryList(params: categoryOperation) {
+      console.log("==========================================================s")
+      const res = await updateManagerCategoryList(params)
+      console.log("更新分类列表res:", res)
+      if (res.data) {
+        console.log("更新分类列表:", res.data)
+        await this.initCategoryList()
+      }
+      return res
+    },
+    async updateTemplateCouponList(params: couponOperation) {
+      // 更新优惠券模板列表只有插入和删除
+      const res = await updateManagerCouponList(params)
+      if (res.data) {
+        console.log("更新优惠券模板列表:", res.data)
+        await this.initTemplateCouponList()
+      }
+      return res
+    },
+    async updateUserCouponList(params: couponOperation) {
+      // 更新用户优惠券列表只有分配和删除
+      const res = await updateManagerCouponList(params, false)
+      if (res.data) {
+        console.log("更新用户优惠券列表:", res.data)
+        await this.initUserCouponList()
+      }
+      return res
+    }
   },
   getters: {
     // 统计用户数量
