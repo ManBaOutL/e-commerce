@@ -1,5 +1,5 @@
 // 🌟 修改点 2：编写路径拼接工具函数
-const getFullUrl = (imgPath : string) => {
+const getFullUrl = (imgPath?: string) => {
   if (!imgPath) return ''; // 如果没有图片，返回空触发 error 插槽
   
   // 如果数据库里存的已经是 http 开头的网络图片（比如你以后接了OSS），直接返回
@@ -7,13 +7,14 @@ const getFullUrl = (imgPath : string) => {
     return imgPath;
   }
   
-  // 你的 Node.js 后端基础地址
-  const baseURL = import.meta.env.VITE_APP_BASE_API;
+  // 确保 baseURL 总是以 '/' 结尾
+  const baseURL = import.meta.env.VITE_APP_BASE_API as string || '';
+  const safeBaseURL = baseURL.endsWith('/') ? baseURL : baseURL + '/';
   
-  // 处理路径斜杠问题，防止出现 http://.../8888//img/xxx 的情况
+  // 去除 imgPath 开头的 '/'
   const cleanPath = imgPath.startsWith('/') ? imgPath.slice(1) : imgPath;
   
-  return baseURL + cleanPath;
+  return safeBaseURL + cleanPath;
 }
 
 export default getFullUrl;

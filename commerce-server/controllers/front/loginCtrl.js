@@ -45,7 +45,7 @@ exports.login = async (req, res) => {
       const token = jwt.sign(
           {
               user_id: user.user_id,       // 只存 id！
-              user_type: user.user_type    // 存类型，也可以
+              type: user.type    // 存类型，也可以
           },
           'abcdef123456', // 密钥，随便写，别泄露
           { expiresIn: '7d' } // 7天过期
@@ -199,7 +199,7 @@ exports.register = async (req, res) => {
       const salt = bcrypt.genSaltSync(10); // 10 是加密强度，默认即可
       const hashedPassword = bcrypt.hashSync(password, salt);
       // 注册用户
-      const [rows] = await db.execute('INSERT INTO user (username, password,email,phone,user_type) VALUES (?, ?, ?, ?, ?)', 
+      const [rows] = await db.execute('INSERT INTO user (username, password,email,phone,type) VALUES (?, ?, ?, ?, ?)', 
         [username, hashedPassword, email, phone, type])
       console.log("注册接口执行：", rows)
       if (rows.affectedRows === 0) {

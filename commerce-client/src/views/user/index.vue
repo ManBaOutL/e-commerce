@@ -25,7 +25,7 @@
             <el-menu :default-active="$route.path" class="user-menu" router>
               <el-menu-item index="/user/house">
                 <el-icon><House /></el-icon>
-                <span>我的KK</span>
+                <span>我的MALL</span>
               </el-menu-item>
 
               <el-menu-item index="/user/profile">
@@ -53,10 +53,10 @@
                 <span>收货地址</span>
               </el-menu-item>
 
-              <el-menu-item index="/user/security">
+              <!-- <el-menu-item index="/user/security">
                 <el-icon><Setting /></el-icon>
                 <span>账号安全</span>
-              </el-menu-item>
+              </el-menu-item> -->
             </el-menu>
           </el-card>
         </div>

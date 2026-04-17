@@ -1,11 +1,11 @@
 <template>
   <div>
     <TheHeader />
-    <div class="favorites-container">
+    <div class="favorite-container">
       <div class="fav-header">
         <div class="left">
           <h3 class="title">我的收藏</h3>
-          <span class="count">共 {{ favoriteProducts.length }} 个商品</span>
+          <span class="count">共 {{ userStore.favoriteList.length }} 个商品</span>
         </div>
         <div class="right-actions">
           <el-input
@@ -53,7 +53,7 @@
 
           <div class="product-card">
             <div class="img-wrapper">
-              <el-image :src="item.image" fit="cover" class="p-img">
+              <el-image :src="getFullUrl(item.image)" fit="cover" class="p-img">
                 <template #error>
                   <div class="image-slot">
                     <el-icon :size="40" color="#ddd"><PictureFilled /></el-icon>
@@ -75,7 +75,7 @@
             <div class="info-wrapper">
               <p class="name" @click="goDetail(item.id)">{{ item.name }}</p>
               <div class="price-row">
-                <span class="price">¥{{ item.price.toFixed(2) }}</span>
+                <span class="price">¥{{ Number(item.price).toFixed(2) }}</span>
                 <span v-if="item.oldPrice" class="old-price">¥{{ item.oldPrice.toFixed(2) }}</span>
               </div>
               <div class="tag-row">
@@ -111,35 +111,82 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search, PictureFilled, ShoppingCart, Delete, Warning, CircleClose } from '@element-plus/icons-vue'
+import { useUserStore } from '@/stores/modules/user/userStore'
+import { useCartStore } from '@/stores/modules/user/cartStore' 
+import getFullUrl from '@/utils/getFullUrl' // 引入图片拼接工具
+
+const router = useRouter()
+const userStore = useUserStore()
+const cartStore = useCartStore()
 
 const searchQuery = ref('')
 const isBatchMode = ref(false)
 const selectedIds = ref([])
 
-// 模拟数据 (使用更真实的图片占位，增强美化感)
-const favoriteProducts = ref([
-  { id: 1, name: '2026新款 降噪无线蓝牙耳机 经典黑', image: '', price: 299.0, oldPrice: 399.0, tag: '降价100元', stock: 10, status: 1 },
-  { id: 2, name: '机械键盘 104键 RGB版 青轴', image: '', price: 499.0, tag: null, stock: 0, status: 1 },
-  { id: 3, name: '超高性能 4K 曲面显示器 27英寸', image: '', price: 1800.0, tag: null, stock: 5, status: 0 },
-])
-
-const filteredProducts = computed(() => {
-  return favoriteProducts.value.filter(p => p.name.includes(searchQuery.value))
+// 🌟 1. 页面挂载时拉取真实收藏数据
+onMounted(() => {
+  userStore.fetchFavoriteList()
 })
 
+// 🌟 2. 动态过滤
+const filteredProducts = computed(() => {
+  if(!userStore.favoriteList) return [];
+  return userStore.favoriteList.filter(p => p.name.includes(searchQuery.value))
+})
+
+// 批量全选逻辑
 const allSelected = ref(false)
-const isIndeterminate = computed(() => selectedIds.value.length > 0 && selectedIds.value.length < favoriteProducts.value.length)
-const handleSelectAll = (val) => { selectedIds.value = val ? favoriteProducts.value.map(i => i.id) : [] }
-const handleRemove = (id) => { favoriteProducts.value = favoriteProducts.value.filter(p => p.id !== id); ElMessage.success('已移除') }
-const handleBatchDelete = () => { /* 批量逻辑保持不变 */ }
-const addToCart = (item) => { ElMessage.success(`${item.name} 已加购物车`) }
+const isIndeterminate = computed(() => selectedIds.value.length > 0 && selectedIds.value.length < userStore.favoriteList.length)
+const handleSelectAll = (val) => { selectedIds.value = val ? userStore.favoriteList.map(i => i.id) : [] }
+
+// 🌟 3. 单条删除
+const handleRemove = (id) => { 
+  ElMessageBox.confirm('确定取消收藏该商品吗？', '提示', { type: 'warning' }).then(async () => {
+    const success = await userStore.removeFavorite([id]);
+    if (success) {
+      ElMessage.success('已取消收藏');
+      selectedIds.value = selectedIds.value.filter(selId => selId !== id);
+    }
+  }).catch(() => {})
+}
+
+// 🌟 4. 批量删除
+const handleBatchDelete = () => { 
+  if (selectedIds.value.length === 0) return ElMessage.warning('请先选择要取消收藏的商品')
+  ElMessageBox.confirm(`确定要取消收藏这 ${selectedIds.value.length} 件商品吗？`, '批量操作', { type: 'warning' }).then(async () => {
+    const success = await userStore.removeFavorite(selectedIds.value);
+    if (success) {
+      ElMessage.success('批量取消成功');
+      selectedIds.value = [];
+      allSelected.value = false;
+      isBatchMode.value = false;
+    }
+  }).catch(() => {})
+}
+
+// 🌟 5. 一键加入购物车 (利用收藏的 sku_id)
+const addToCart = async (item) => { 
+  // 调用你已有的加入购物车逻辑
+  const payload = { product_id: item.product_id, sku_id: item.id, quantity: 1 };
+  const res = await cartStore.addCart(payload); 
+  if (res.success) {
+    ElMessage.success('已加购物车');
+  } else {
+    ElMessage.error(res.message || '加入失败');
+  }
+}
+
+// 🌟 6. 跳转详情页
+const goDetail = (item) => {
+  router.push(`/goods/${item.product_id}`)
+}
 </script>
 
 <style scoped>
-.favorites-container {
+.favorite-container {
   width: 1200px;
   margin: 24px auto;
   padding: 24px;

@@ -22,7 +22,7 @@ import getFullUrl from '@/utils/getFullUrl'
 const router = useRouter()
 
 const props = defineProps(['id','name', 'price', 'image', 'sales'])
-console.log(props)
+// console.log(props)
 // 计算属性
 const salesText = computed(() => {
   const { sales } = props

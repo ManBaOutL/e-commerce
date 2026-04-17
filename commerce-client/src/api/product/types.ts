@@ -38,7 +38,7 @@ export interface Product extends BaseEntity {
   user_id?: number;
   category_id?: number;
   shop_id?: number;
-  status: '待审核' | '通过' | '已驳回';
+  status: '待审核' | '通过' | '已驳回' | '下架';
 }
 export interface ResProductList {
   list: Product[];
@@ -53,35 +53,6 @@ export interface CategoryItem {
   children?: CategoryItem[]; // 二级分类 (树形结构特有)
 }
 
-/**
- * 购物车项 (cart 表)
- */
-export interface CartItem extends BaseEntity {
-  cart_id: number;
-  product_id: number;
-  user_id: number;
-  quantity: number;
-  price: number;
-  // 扩展展示字段
-  product_name?: string;
-  scale?: number;
-  spec_name?: string;
-}
-
-/**
- * 优惠券 (coupon 表)
- */
-export interface Coupon {
-  coupon_id: number;
-  user_id: number;
-  type: '满减' | '折扣'; //
-  discount_value?: number;
-  min_order_amount?: number;
-  status: '正常' | '已使用' | '已过期'; // 后续添加
-  create_time: string;
-  start_time: string;
-  end_time: string;
-}
 
 /**
  * 活动 (activity 表)

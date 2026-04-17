@@ -93,17 +93,28 @@
                 <el-button 
                   type="danger" 
                   size="large" 
+                  icon="Goods" 
+                  @click="handleBuyNow"
+                  :disabled="!isAllSpecSelected"
+                >立即购买</el-button>
+                <el-button 
+                  type="danger" 
+                  size="large" 
                   icon="ShoppingCart" 
                   @click="handleAddToCart"
                   :disabled="!isAllSpecSelected"
                 >加入购物车</el-button>
                 <el-button 
-                  type="danger" 
+                  :type="isFavorite ? 'warning' : 'danger'" 
+                  :plain="isFavorite"
                   size="large" 
-                  icon="StarFilled" 
+                  :icon="isFavorite ? 'StarFilled' : 'Star'" 
                   @click="handleAddToFav"
                   :disabled="!isAllSpecSelected"
-                >加入收藏夹</el-button>
+                  >
+                  {{ isFavorite ? '已收藏' : '加入收藏夹' }}
+                </el-button>
+
               </div>
             </div>
           </div>
@@ -220,10 +231,15 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { storeToRefs } from 'pinia'
 import { useProductStore } from '@/stores/modules/user/productStore'
+import { useUserStore } from '@/stores/modules/user/userStore'
+import { useCartStore} from '@/stores/modules/user/cartStore'
+import getFullUrl from '@/utils/getFullUrl'
 
-const route = useRoute()
-const router = useRouter()
 const productStore = useProductStore()
+const userStore = useUserStore()
+const cartStore = useCartStore()
+const router = useRouter()
+const route = useRoute()
 
 // 使用 Pinia 提取数据
 const { currentProduct: product, currentComments: comments } = storeToRefs(productStore)
@@ -233,6 +249,7 @@ const currentMainImage = ref('')
 const selectedSpecs = ref<Record<string, string>>({}) 
 const buyCount = ref(1)
 const activeTab = ref('desc') // 默认选中图文介绍
+
 
 // 🌟 评价筛选逻辑
 const commentFilter = ref('all')
@@ -252,16 +269,6 @@ const filteredComments = computed(() => {
   }
 })
 
-// 图片路径拼接
-const getFullUrl = (imgPath: string) => {
-  if (!imgPath) return ''; 
-  if (imgPath.startsWith('http') || imgPath.startsWith('data:')) return imgPath;
-  const baseURL = import.meta.env.VITE_APP_BASE_API || 'http://127.0.0.1:8888/';
-  const safeBaseURL = baseURL.endsWith('/') ? baseURL : baseURL + '/';
-  const cleanPath = imgPath.startsWith('/') ? imgPath.slice(1) : imgPath;
-  return safeBaseURL + cleanPath;
-}
-
 const allImages = computed(() => {
   if (!product.value.main_image) return []
   return [product.value.main_image, ...(product.value.sub_images || [])]
@@ -280,6 +287,15 @@ const getSelectedSkuKey = computed(() => {
 const selectedSku = computed(() => {
   if (!getSelectedSkuKey.value) return undefined;
   return product.value.sku_list[getSelectedSkuKey.value];
+})
+// 判断当前选中的 SKU 是否已经被收藏
+const isFavorite = computed(() => {
+  const targetSkuId = selectedSku.value?.sku_id;
+  // 如果没有选中完整规格，或者收藏列表为空，默认未收藏
+  if (!targetSkuId || !userStore.favoriteList) return false;
+  
+  // 在全局收藏列表中查找，有没有 id（即 sku_id）等于当前选中的 sku_id
+  return userStore.favoriteList.some(item => item.id === targetSkuId);
 })
 
 const selectSpec = (groupKey: string, specValue: string) => {
@@ -305,7 +321,8 @@ const loadProductData = async () => {
 
   await Promise.all([
     productStore.fetchProductDetail(productId),
-    productStore.fetchProductComments(productId)
+    productStore.fetchProductComments(productId),
+    userStore.fetchFavoriteList()
   ]);
 
   if (!product.value.params || product.value.params.length === 0) {
@@ -329,30 +346,53 @@ const loadProductData = async () => {
     selectedSpecs.value = defaultSpecs;
   }
 }
-
-const handleAddToCart = () => {
+// 🌟 立即购买逻辑
+const handleBuyNow = () => {
   if (!isAllSpecSelected.value) return ElMessage.warning('请选择完整的商品规格')
   const targetSkuId = selectedSku.value?.sku_id;
-  // console.log('加购', targetSkuId, buyCount.value);
-  ElMessage.success('成功加入购物车！');
-}
-const handleAddToFav = () => {
-  if (!isAllSpecSelected.value) return ElMessage.warning('请选择完整的商品规格')
-  const targetSkuId = selectedSku.value?.sku_id;
-  // console.log('加购', targetSkuId, buyCount.value);
-  ElMessage.success('成功加入收藏夹！');
-}
+  if (!targetSkuId) return;
 
-const handleGoToComment = () => {
-  if (!product.value.id) return;
-  
-  // 根据路由表，跳转到 /user/orders/comment
-  // 通过 query 传参把当前商品的 ID 带过去，方便评价页面知道是在评价哪个商品
+  // 跳转到结算页，通过 query 参数标明是 direct (直接购买)，并带上必要参数
   router.push({
-    path: '/user/orders/comment',
-    query: { product_id: product.value.id }
+    path: '/user/orders/order-pay',
+    query: {
+      buy_type: 'direct',
+      product_id: product.value.id,
+      sku_id: targetSkuId,
+      quantity: buyCount.value,
+      price: selectedSku.value?.price || product.value.price
+    }
   });
 }
+const handleAddToCart = async () => {
+  if (!isAllSpecSelected.value) return ElMessage.warning('请选择完整的商品规格')
+  
+  const targetSkuId = selectedSku.value?.sku_id;
+  if (!targetSkuId) return;
+
+  // 调用封装好的真实 API
+  await cartStore.addToCart({
+    sku_id: targetSkuId,
+    quantity: buyCount.value
+  });
+}
+// 点击加入/取消收藏夹逻辑
+const handleAddToFav = async () => {
+  if (!isAllSpecSelected.value) return ElMessage.warning('请选择完整的商品规格')
+  
+  const targetSkuId = selectedSku.value?.sku_id;
+  if (!targetSkuId) return;
+
+  // 调用 store 里的 toggle 方法
+  const res = await userStore.toggleFavorite(targetSkuId);
+  // console.log('fav', res)
+  if (res.success) {
+    ElMessage.success(res.is_favorite ? '收藏成功，可在我的收藏查看' : '已取消收藏');
+  } else {
+    ElMessage.error(res.message || '操作失败');
+  }
+}
+
 onMounted(() => loadProductData())
 onUnmounted(() => productStore.clearCurrentProduct())
 </script>

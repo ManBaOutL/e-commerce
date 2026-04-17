@@ -7,10 +7,21 @@
 
     <el-row :gutter="20">
       <el-col :span="12" v-for="item in userStore.addressList" :key="item.address_id">
+        <!-- 地址卡片 -->
         <el-card shadow="hover" class="address-card" :class="{ 'is-default': item.is_default }">
           <div class="card-header">
             <span class="name">{{ item.recipient_name }}</span>
             <span class="phone">{{ item.phone }}</span>
+            
+            <el-tag 
+              v-if="item.type && item.type !== '其他'" 
+              size="small" 
+              effect="plain"
+              :type="item.type === '家' ? 'success' : (item.type === '公司' ? 'primary' : 'warning')"
+            >
+              {{ item.type }}
+            </el-tag>
+            
             <el-tag v-if="item.is_default" type="danger" size="small" effect="dark">默认</el-tag>
           </div>
           <div class="address-detail">
@@ -18,7 +29,7 @@
           </div>
           <div class="card-footer">
             <el-button link type="primary" @click="openAddressDialog(item)">编辑</el-button>
-            <el-button link type="danger" @click="handleDelete(item.address_id)">删除</el-button>
+            <el-button link type="danger" @click="handleDelete(item.address_id as number)">删除</el-button>
             <el-button 
               v-if="item.is_default" 
               link 
@@ -44,7 +55,21 @@
         </el-form-item>
         <!-- 地图选择器 -->
         <el-form-item label="选择地址" prop="address" style="width: 100%;">
-          <AmapSelect v-model="formData.address" />
+          <AmapSelector 
+            v-model="formData.address" 
+            @locationSelected="handleLocationSelected"
+          />
+        </el-form-item>
+        <el-form-item label="详细门牌" prop="streetNumber" style="width: 100%;">
+          <el-input v-model="formData.streetNumber" placeholder="例如：3栋2单元501室" />
+        </el-form-item>
+        <el-form-item label="地址标签" prop="type">
+          <el-radio-group v-model="formData.type">
+            <el-radio-button value="家">家</el-radio-button>
+            <el-radio-button value="公司">公司</el-radio-button>
+            <el-radio-button value="学校">学校</el-radio-button>
+            <el-radio-button value="其他">其他</el-radio-button>
+          </el-radio-group>
         </el-form-item>
         <el-form-item>
           <el-checkbox v-model="formData.is_default">设为默认收货地址</el-checkbox>
@@ -59,15 +84,12 @@
 </template>
 
 <script setup lang="ts">
-import AmapSelect from '@/components/address/AmapSelector.vue'
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/stores/modules/user/userStore'
 import type { AddressItem } from '@/api/user/types'
 
 const userStore = useUserStore()
-userStore.init()
-
 const dialogVisible = ref(false)
 const formRef = ref(null)
 // formData字段匹配接口
@@ -85,7 +107,7 @@ const formData = reactive<AddressItem>({
   street: '',
   streetNumber: '',
   is_default: false,
-  type: 'delivery'
+  type: '家' // 默认选中 '家'
 })
 
 const rules = {
@@ -119,7 +141,7 @@ const resetForm = () => {
   formData.street = ''
   formData.streetNumber = ''
   formData.is_default = false
-  formData.type = 'delivery'
+  formData.type = '家' // 重置时恢复为 '家'
 }
 
 // 提交表单
@@ -143,7 +165,7 @@ const submitForm = async () => {
 }
 
 // 设置默认地址（调用store方法）
-const handleSetDefault = (addressId : number) => {
+const handleSetDefault = (addressId? : number) => {
   userStore.setDefaultAddress(addressId)
   ElMessage.success('默认地址设置成功')
 }
@@ -155,6 +177,27 @@ const handleDelete = (addressId : number) => {
     ElMessage.success('删除成功')
   })
 }
+
+// 🌟 接收地图组件传来的结构化定位数据
+const handleLocationSelected = (locationData: any) => {
+  formData.lng = locationData.lng;
+  formData.lat = locationData.lat;
+  formData.province = locationData.province;
+  formData.city = locationData.city;
+  formData.district = locationData.district;
+  formData.street = locationData.street;
+  // 注意：formData.address 已经被 v-model 自动更新了，不需要这里再赋一次值
+  
+  // 自动清除该字段的校验报错提示
+  if (formRef.value) {
+    (formRef.value as any).clearValidate('address');
+  }
+}
+
+// 🌟 页面挂载时拉取真实地址数据
+onMounted(() => {
+  userStore.fetchAddressList()
+})
 </script>
 
 <style scoped>

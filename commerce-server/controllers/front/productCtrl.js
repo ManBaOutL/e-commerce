@@ -16,33 +16,25 @@ exports.getList = async (req, res) => {
         const offset = (Number(page) - 1) * Number(pageSize);
         let queryParams = [];
 
-        // 🌟 重点 1：使用 AS 起别名，直接适配前端 ProductCard 的 id 和 image 属性
-        let sql = `SELECT product_id AS id, name, price, img AS image, sales, stock 
+        // 🌟 重点修改 1：把需要的字段抽成变量，并新增 create_time
+        const selectFields = "product_id AS id, name, price, img AS image, sales, stock, create_time";
+        let sql = `SELECT ${selectFields} 
                    FROM products 
-                   WHERE status = '通过'`;
+                   WHERE product_status = '通过'`;
 
-        // 🌟 重点修改：支持无限极递归的分类筛选
+        // 支持无限极递归的分类筛选
         if (category_id) {
-            // 1. 先把分类表全查出来（分类表数据量通常很小，放内存处理极快）
             const [allCategories] = await db.execute('SELECT category_id, parent_id FROM category');
-
-            // 2. 准备一个递归函数：传入当前 ID，返回它和它所有子孙后代的 ID 数组
             const getDescendantIds = (targetId, categories) => {
-                let ids = [Number(targetId)]; // 先把自己的 ID 放进去
-                // 找出直属的孩子们
+                let ids = [Number(targetId)]; 
                 const children = categories.filter(c => c.parent_id === Number(targetId));
-                // 遍历孩子们，让他们继续往下找孙子
                 for (const child of children) {
                     ids = ids.concat(getDescendantIds(child.category_id, categories));
                 }
                 return ids;
             };
 
-            // 3. 获取目标分类及其所有子分类的 ID 集合
             const allTargetIds = getDescendantIds(category_id, allCategories);
-
-            // 4. 动态生成 SQL 的 IN (?, ?, ?) 占位符
-            // 如果 allTargetIds 是 [1, 2, 5]，placeholders 就会变成 "?, ?, ?"
             const placeholders = allTargetIds.map(() => '?').join(',');
             
             sql += ` AND category_id IN (${placeholders})`;
@@ -60,18 +52,17 @@ exports.getList = async (req, res) => {
             sql += ` AND price <= ?`;
             queryParams.push(maxPrice);
         }
-        // 在 getList 逻辑中加入：
         if (start_time && end_time) {
             sql += ` AND create_time BETWEEN ? AND ?`;
-            // 给日期加上具体时分秒，确保覆盖全天
             queryParams.push(`${start_time} 00:00:00`, `${end_time} 23:59:59`);
         }
 
         // 查总数 (分页用)
-        const countSql = sql.replace('product_id AS id, name, price, img AS image, sales, stock', 'COUNT(*) as total');
+        // 🌟 重点修改 2：使用上面定义的 selectFields 进行精准替换，防止报错
+        const countSql = sql.replace(selectFields, 'COUNT(*) as total');
         const [[{ total }]] = await db.execute(countSql, queryParams);
 
-        // 🌟 重点 2：安全处理前端传来的排序字段映射
+        // 安全处理前端传来的排序字段映射
         const sortMap = {
             'id': 'product_id',
             'sales': 'sales',
@@ -85,6 +76,22 @@ exports.getList = async (req, res) => {
         queryParams.push(Number(pageSize).toString(), offset.toString());
 
         const [rows] = await db.execute(sql, queryParams);
+
+        // 🌟 重点修改 3：遍历 rows，从本地文件夹读取以 `1.` 开头的文件作为 image
+        for (let row of rows) {
+            const folderPath = `/upload/products/img/${row.id}/`;
+            const absDirPath = path.join(process.cwd(), 'public', folderPath);
+
+            // 如果文件夹存在，进去找 1.jpg / 1.png 等
+            if (fs.existsSync(absDirPath)) {
+                const files = fs.readdirSync(absDirPath);
+                const mainFile = files.find(f => f.startsWith('1.'));
+                if (mainFile) {
+                    // 找到了物理文件，覆盖掉原来数据库查出来的 image 字段
+                    row.image = folderPath + mainFile;
+                }
+            }
+        }
 
         res.json({ status: 200, success: true, data: { list: rows, total: Number(total) }, message: '获取成功' });
     } catch (err) {
@@ -157,7 +164,7 @@ exports.getDetail = async (req, res) => {
                     c.name as category_name
              FROM products p 
              LEFT JOIN category c ON p.category_id = c.category_id
-             WHERE p.product_id = ? AND p.status = '通过'`,
+             WHERE p.product_id = ? AND p.product_status = '通过'`,
             [productId]
         );
 

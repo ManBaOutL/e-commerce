@@ -1,3 +1,5 @@
+
+const db = require('@/config/database');
 // 添加商品评价
 exports.addComment = async (req, res) => {
     // 从前端请求体中拿到必要参数

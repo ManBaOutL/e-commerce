@@ -1,50 +1,47 @@
-import { defineStore } from 'pinia'
-import { useCouponStore } from './couponStore'
-import type { CartState } from '../../types';
+import { defineStore } from 'pinia';
+import { ElMessage } from 'element-plus';
+import { reqGetCartList, reqAddToCart, reqUpdateCartCount, reqRemoveCartItems } from '@/api/user';
+import type { CartState } from '@/stores/types';
 
 export const useCartStore = defineStore('cart', {
-  state: () : CartState => ({
-    // 购物车商品列表（包含 product 表和 product-specification 表的 scale）
-    cartList: []
+  state: (): CartState => ({
+    cartList: [],
   }),
-
-  getters: {
-    // 1. 基础原始总价：∑(商品单价 * 规格比例 * 数量)
-    rawTotalPrice: (state) : number => {
-      return state.cartList.reduce((sum, item) => {
-        const price = item.price * (item.scale || 1)
-        return sum + price * item.quantity
-      }, 0)
-    },
-
-    // 2. 最终应付金额：原始价 - 优惠券减免
-    finalPayAmount(): number {
-      const couponStore = useCouponStore()
-      
-      // 现在这里可以通过 this 访问到上面的 rawTotalPrice 了
-      let total = this.rawTotalPrice
-
-      if (couponStore.selectedCoupon) {
-        const { type, discount_value = 0 } = couponStore.selectedCoupon
-        if (type === '满减') {
-          total -= discount_value
-        } else if (type === '折扣') {
-          total = total * (discount_value / 10)
-        }
-      }
-      return total > 0 ? total : 0
-    }
-  },
-
   actions: {
-    // 同步后端购物车数据
-    setCartList(list: any[]) {
-      this.cartList = list
+    // 1. 拉取购物车数据
+    async fetchCartList() {
+      const res = await reqGetCartList();
+      if (res.success) {
+        this.cartList = res.data;
+      }
     },
-    // 添加/修改数量
-    updateQuantity(productId: number, num: number) {
-      const item = this.cartList.find(i => i.product_id === productId)
-      if (item) item.quantity += num
+    
+    // 2. 加入购物车 (供 detail.vue 调用)
+    async addToCart(payload: { sku_id: number; quantity: number }) {
+      const res = await reqAddToCart(payload);
+      if (res.success) {
+        ElMessage.success('成功加入购物车！');
+        this.fetchCartList(); // 重新拉取最新数据
+      }
+      return res.success;
+    },
+
+    // 3. 改变数量
+    async updateCount(cart_id: number, quantity: number) {
+      const res = await reqUpdateCartCount({cart_id, quantity });
+      // 此处不需要重新 fetch，前端已双向绑定更新
+      if (res.success){
+        ElMessage.success('数量修改成功！');
+      }
+    },
+
+    // 4. 删除商品
+    async removeItems(cart_ids: number[]) {
+      const res = await reqRemoveCartItems({ cart_ids });
+      if (res.success) {
+        ElMessage.success('删除成功');
+        this.fetchCartList(); 
+      }
     }
   }
-})
+});

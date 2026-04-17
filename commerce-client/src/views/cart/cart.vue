@@ -4,6 +4,7 @@
 
     <div class="cart-page">
       <div class="page-container">
+        <!-- 购物车中有商品已下架或库存不足，建议及时清理 -->
         <el-alert
           v-if="hasInvalidItems"
           title="您的购物车中有商品已下架或库存不足，建议及时清理。"
@@ -37,18 +38,19 @@
           </el-row>
         </div>
 
+        <!-- 购物车列表 -->
         <div class="cart-list">
           <div 
             v-for="item in cartList" 
             :key="item.id" 
             class="cart-item"
-            :class="{ 'item-invalid': item.status === 0 || item.stock === 0 }"
+            :class="{ 'item-invalid': item.status !== '通过' || item.stock === 0 }"
           >
             <el-row align="middle">
               <el-col :span="2">
                 <el-checkbox 
                   v-model="item.selected" 
-                  :disabled="item.status === 0 || item.stock === 0" 
+                  :disabled="item.status !== '通过' || item.stock === 0"
                 />
               </el-col>
               <el-col :span="9">
@@ -56,7 +58,15 @@
                   <div class="img-box">
                     <el-tag v-if="item.status === 0" type="info" size="small" class="status-tag">已下架</el-tag>
                     <el-tag v-else-if="item.stock === 0" type="danger" size="small" class="status-tag">无货</el-tag>
-                    图片
+                    <el-image 
+                      style="width: 100%; height: 100%; border-radius: 4px;"
+                      :src="getFullUrl(item.main_image)" 
+                      fit="cover"
+                      >
+                      <template #error>
+                        <div class="image-fallback">无图</div>
+                      </template>
+                    </el-image>
                   </div>
                   <div class="text-content">
                     <p class="p-name">{{ item.name }}</p>
@@ -65,7 +75,7 @@
                 </div>
               </el-col>
               <el-col :span="3">
-                <span class="unit-price">¥{{ item.price.toFixed(2) }}</span>
+                <span class="unit-price">¥{{ Number(item.price).toFixed(2) }}</span>
               </el-col>
               <el-col :span="4">
                 <el-input-number 
@@ -74,10 +84,11 @@
                   :max="item.stock || 0"
                   size="small" 
                   :disabled="item.status === 0 || item.stock === 0"
+                  @change="(val) => handleCountChange(item.id, val)"
                 />
               </el-col>
               <el-col :span="3">
-                <span class="total-price">¥{{ (item.price * item.count).toFixed(2) }}</span>
+                <span class="total-price">¥{{ (Number(item.price) * item.count).toFixed(2) }}</span>  
               </el-col>
               <el-col :span="3">
                 <el-button type="danger" link @click="removeItem(item.id)">删除</el-button>
@@ -91,7 +102,6 @@
             <div class="operations-left">
               <el-checkbox v-model="allSelected" :indeterminate="isIndeterminate">全选</el-checkbox>
               <span class="action-link" @click="removeSelected">删除选中商品</span>
-              <span class="action-link">移入收藏夹</span>
               <span class="selected-info">已选 <em class="orange-text">{{ selectedCount }}</em> 件商品</span>
             </div>
 
@@ -99,7 +109,7 @@
               <div class="coupon-trigger" @click="couponDialogVisible = true">
                 <span class="label">优惠券</span>
                 <span class="coupon-name">
-                  {{ selectedCouponId ? myAvailableCoupons.find(c => c.id === selectedCouponId).title : (usableCoupons.length > 0 ? usableCoupons.length + '张可用' : '无可用') }}
+                  {{ selectedCouponId ? userStore.myCoupons.find(c => c.coupon_id === selectedCouponId)?.name : (usableCoupons.length > 0 ? usableCoupons.length + '张可用' : '无可用') }}
                 </span>
                 <el-icon><ArrowRight /></el-icon>
               </div>
@@ -127,33 +137,40 @@
                 type="primary" 
                 class="checkout-btn" 
                 :disabled="selectedCount === 0"
+                @click="handleCheckout"
               >
                 结 算
               </el-button>
             </div>
+
+            <!-- 优惠卷选择对话框 -->
             <el-dialog v-model="couponDialogVisible" title="选择优惠券" width="400px">
               <div class="coupon-select-list">
                 <div 
-                  v-for="coupon in myAvailableCoupons" 
-                  :key="coupon.id"
+                  v-for="coupon in userStore.myCoupons.filter(c => c.status === '未使用')" 
+                  :key="coupon.coupon_id"
                   class="coupon-select-item"
                   :class="{ 
-                    'is-disabled': totalPrice < coupon.threshold,
-                    'is-active': selectedCouponId === coupon.id 
+                    'is-disabled': totalPrice < Number(coupon.min_order_amount),
+                    'is-active': selectedCouponId === coupon.coupon_id 
                   }"
-                  @click="totalPrice >= coupon.threshold && selectCoupon(coupon.id)"
+                  @click="totalPrice >= Number(coupon.min_order_amount) && selectCoupon(coupon.coupon_id)"
                 >
                   <div class="c-left">
-                    <span class="unit">¥</span>
-                    <span class="val">{{ coupon.value }}</span>
+                    <span class="unit" v-if="coupon.type !== '折扣'">¥</span>
+                    <span class="val">{{ coupon.discount_value }}</span>
+                    <span class="unit" v-if="coupon.type === '折扣'" style="font-size: 14px;">折</span>
                   </div>
                   <div class="c-right">
-                    <div class="c-title">{{ coupon.title }}</div>
-                    <div class="c-desc">{{ coupon.desc }}</div>
-                    <div class="c-status" v-if="totalPrice < coupon.threshold">未满 ¥{{ coupon.threshold }} 可用</div>
+                    <div class="c-title">{{ coupon.name }}</div>
+                    <div class="c-desc">{{ coupon.type }}券 · 满{{ coupon.min_order_amount }}可用</div>
+                    <div class="c-status" v-if="totalPrice < Number(coupon.min_order_amount)">
+                      未满 ¥{{ coupon.min_order_amount }} 可用
+                    </div>
                   </div>
-                  <el-icon v-if="selectedCouponId === coupon.id" class="check-icon"><Check /></el-icon>
+                  <el-icon v-if="selectedCouponId === coupon.coupon_id" class="check-icon"><Check /></el-icon>
                 </div>
+                <el-empty v-if="userStore.myCoupons.filter(c => c.status === '未使用').length === 0" description="暂无优惠券" />
               </div>
             </el-dialog>
           </div>
@@ -164,113 +181,118 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessageBox, ElMessage } from 'element-plus'
+import { storeToRefs } from 'pinia'
+import { useUserStore } from '@/stores/modules/user/userStore'
+import { useCartStore } from '@/stores/modules/user/cartStore'
+import getFullUrl from '@/utils/getFullUrl'
 
 const router = useRouter()
+const userStore = useUserStore()
+const cartStore = useCartStore()
 
-// 模拟数据：增加库存 stock 和 状态 status
-const cartList = ref([
-  { id: 1, name: '2026新款 降噪无线蓝牙耳机', spec: '经典黑', price: 299.00, count: 1, selected: true, stock: 10, status: 1 },
-  { id: 2, name: '机械键盘 104键 RGB版', spec: '青轴', price: 499.00, count: 1, selected: false, stock: 0, status: 1 },
-  { id: 3, name: '超高性能 4K 显示器', spec: '27英寸', price: 1800.00, count: 1, selected: true, stock: 5, status: 0 },
-])
+// 1. 响应式接管购物车数据
+const { cartList } = storeToRefs(cartStore)
 
-// --- 核心逻辑 ---
-
-// 计算属性：是否有失效商品
-const hasInvalidItems = computed(() => {
-  return cartList.value.some(item => item.status === 0 || item.stock === 0)
+// 初始化：同时拉取购物车和优惠券
+onMounted(() => {
+  cartStore.fetchCartList()
+  userStore.fetchMyCoupons()
 })
 
-// 计算属性：全选双向绑定
+// === 购物车基础逻辑 ===
+const hasInvalidItems = computed(() => cartList.value.some(item => item.status === '待审核' || item.status === '已驳回' || item.stock === 0))
+
 const allSelected = computed({
   get: () => {
-    const validItems = cartList.value.filter(item => item.status === 1 && item.stock > 0)
+    const validItems = cartList.value.filter(item => item.status === '通过' && item.stock > 0)
     return validItems.length > 0 && validItems.every(item => item.selected)
   },
   set: (val) => {
     cartList.value.forEach(item => {
-      if (item.status === 1 && item.stock > 0) {
-        item.selected = val
-      }
+      if (item.status === '通过' && item.stock > 0) item.selected = val
     })
   }
 })
 
-// 计算属性：半选状态
 const isIndeterminate = computed(() => {
-  const validItems = cartList.value.filter(item => item.status === 1 && item.stock > 0)
+  const validItems = cartList.value.filter(item => item.status === '通过' && item.stock > 0)
   const selectedCount = validItems.filter(item => item.selected).length
   return selectedCount > 0 && selectedCount < validItems.length
 })
 
-// 确保选中件数包含有效性判断
-const selectedCount = computed(() => {
-  return cartList.value.filter(i => i.selected && i.status !== 0 && i.stock > 0).length
-});
-
-// 总价（仅计算勾选且有效的商品）
-const totalPrice = computed(() => {
-  return cartList.value
-    .filter(i => i.selected && i.status !== 0 && i.stock > 0)
-    .reduce((sum, item) => sum + item.price * item.count, 0)
-});
-
-// 模拟费用
+const selectedCount = computed(() => cartList.value.filter(i => i.selected && i.status === '通过' && i.stock > 0).length);
+const totalPrice = computed(() => cartList.value.filter(i => i.selected && i.status === '通过' && i.stock > 0).reduce((sum, item) => sum + Number(item.price) * item.count, 0));
 const shippingFee = computed(() => (totalPrice.value >= 99 || totalPrice.value === 0 ? 0 : 10));
 
-// --- 方法 ---
+// 🌟 2. 数量改变时，同步更新到数据库
+const handleCountChange = (cart_id, count) => {
+  cartStore.updateCount(cart_id, count);
+}
 
+// 🌟 3. 删除逻辑对接后端
 const removeItem = (id) => {
   ElMessageBox.confirm('确定删除该商品吗？', '提示').then(() => {
-    cartList.value = cartList.value.filter(i => i.id !== id)
+    cartStore.removeItems([id]);
   })
 }
 
 const removeSelected = () => {
   if (selectedCount.value === 0) return ElMessage.warning('请先选择商品')
   ElMessageBox.confirm('确定删除选中商品吗？', '提示').then(() => {
-    cartList.value = cartList.value.filter(i => !i.selected)
+    const ids = cartList.value.filter(i => i.selected).map(i => i.id);
+    cartStore.removeItems(ids);
   })
 }
 
 const clearInvalidItems = () => {
-  cartList.value = cartList.value.filter(item => item.status === 1 && item.stock > 0)
-  ElMessage.success('清理完成')
+  const ids = cartList.value.filter(i => i.status !== '通过' || i.stock === 0).map(i => i.id);
+  if (ids.length > 0) cartStore.removeItems(ids);
 }
 
-
-// --- 优惠券相关逻辑 ---
+// === 优惠券逻辑 (保持之前写的完美逻辑不变) ===
 const couponDialogVisible = ref(false)
 const selectedCouponId = ref(null)
 
-// 模拟已领取的可用优惠券数据（对应之前领券中心领到的券）
-const myAvailableCoupons = ref([
-  { id: 101, title: '新人大礼包', type: 'reduction', value: 50, threshold: 500, desc: '满500减50' },
-  { id: 104, title: '数码专项券', type: 'reduction', value: 100, threshold: 2000, desc: '满2000减100' },
-  { id: 105, title: '全场通用', type: 'reduction', value: 10, threshold: 100, desc: '满100减10' }
-])
+const usableCoupons = computed(() => userStore.myCoupons.filter(c => c.status === '未使用' && totalPrice.value >= Number(c.min_order_amount)))
 
-// 计算当前满足金额条件的优惠券
-const usableCoupons = computed(() => {
-  return myAvailableCoupons.value.filter(coupon => totalPrice.value >= coupon.threshold)
-})
-
-// 计算选中的优惠券减免金额
 const discountTotal = computed(() => {
-  const coupon = myAvailableCoupons.value.find(c => c.id === selectedCouponId.value)
-  // 只有当商品总价满足门槛时才计算减免
-  if (coupon && totalPrice.value >= coupon.threshold) {
-    return coupon.value
+  const coupon = userStore.myCoupons.find(c => c.coupon_id === selectedCouponId.value)
+  if (!coupon || totalPrice.value < Number(coupon.min_order_amount)) return 0;
+  
+  const val = Number(coupon.discount_value);
+  if (coupon.type === '满减' || coupon.type === '无门槛') {
+    return val > totalPrice.value ? totalPrice.value : val;
+  } else if (coupon.type === '折扣') {
+    return totalPrice.value * (1 - (val / 100));
   }
-  return 0
+  return 0;
 })
 
 const selectCoupon = (id) => {
-  selectedCouponId.value = id === selectedCouponId.value ? null : id // 再次点击可取消选择
+  selectedCouponId.value = id === selectedCouponId.value ? null : id 
   couponDialogVisible.value = false
+}
+
+// 🌟 4. 终极一跃：结算跳转！
+const handleCheckout = () => {
+  // 找出所有被勾选的有效商品的 cart_id
+  const selectedCartIds = cartList.value
+    .filter(i => i.selected && i.status === '通过' && i.stock > 0)
+    .map(i => i.id);
+    
+  if (selectedCartIds.length === 0) return ElMessage.warning('请选择要结算的商品');
+
+  // 将选中的商品 ID 和 选中的优惠券 ID 通过 Query 传给结算确认页
+  router.push({
+    path: '/user/orders/order-pay',
+    query: {
+      cart_ids: selectedCartIds.join(','),  // 例如: "1,4,5"
+      coupon_id: selectedCouponId.value || '' // 例如: "601"
+    }
+  });
 }
 </script>
 
@@ -438,10 +460,10 @@ const selectCoupon = (id) => {
 }
 .c-left {
   color: #ff5000;
-  width: 60px;
+  /* width: 60px; */
   font-weight: bold;
 }
-.c-left .val { font-size: 24px; }
+.c-left .val { font-size: 22px; margin-right: 15px; }
 .c-right .c-title { font-size: 14px; font-weight: bold; }
 .c-right .c-desc { font-size: 12px; color: #999; }
 .c-status { font-size: 11px; color: #ff5000; margin-top: 4px; }
@@ -450,5 +472,11 @@ const selectCoupon = (id) => {
   right: 15px;
   color: #ff5000;
   font-size: 20px;
+}
+.image-fallback {
+  width: 100%; height: 100%;
+  background: #f5f7fa; color: #a8abb2;
+  display: flex; justify-content: center; align-items: center;
+  font-size: 12px;
 }
 </style>
