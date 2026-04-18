@@ -1,5 +1,5 @@
 (window as any)._AMapSecurityConfig = {
-  securityJsCode: process.env.VITE_APP_AMAP_JS_CODE,
+  securityJsCode: import.meta.env.VITE_APP_AMAP_JS_CODE,
 };
 
 import { createApp } from 'vue'

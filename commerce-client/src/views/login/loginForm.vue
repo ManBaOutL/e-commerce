@@ -132,6 +132,7 @@ const handleSubmit = async (e: Event) => {
       router.push('/merchant');
     }
     else if(resData.data.user.user_type === '管理员'){
+      console.log("管理员登录成功");
       router.push('/manager');
     }
     else {
