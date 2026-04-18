@@ -25,7 +25,7 @@ exports.checkLogin = (req, res, next) => {
 // 验证是否是管理员
 exports.checkAdmin = (req, res, next) => {
     this.checkLogin(req, res, () => {
-        if (req.user.user_type !== '管理员') {
+        if (req.user.type !== '管理员') {
             return res.json({ message: '无管理员权限', status: 403, success: false })
         }
         next()
@@ -35,8 +35,17 @@ exports.checkAdmin = (req, res, next) => {
 // 验证是否是商家
 exports.checkMerchant = (req, res, next) => {
     this.checkLogin(req, res, () => {
-        if (req.user.user_type !== '商家') {
+        if (req.user.type !== '商家') {
             return res.json({ message: '无商家权限', status: 403, success: false })
+        }
+        next()
+    })
+}
+// 验证是否是用户
+exports.checkUser = (req, res, next) => {
+    this.checkLogin(req, res, () => {
+        if (req.user.type !== '普通用户') {
+            return res.json({ message: '无用户权限', status: 403, success: false })
         }
         next()
     })

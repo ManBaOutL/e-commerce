@@ -26,7 +26,7 @@ exports.addComment = async (req, res) => {
 
         // 2. 查重校验：确认该订单下的这个商品是否已经评价过了 (防重复提交)
         const [existComments] = await db.execute(
-            `SELECT review_id FROM comment WHERE order_id = ? AND product_id = ?`,
+            `SELECT review_id FROM \`comment\` WHERE order_id = ? AND product_id = ?`,
             [order_id, product_id]
         );
         if (existComments.length > 0) {
@@ -35,7 +35,7 @@ exports.addComment = async (req, res) => {
 
         // 3. 执行插入操作，初始状态设为 '正常'
         await db.execute(
-            `INSERT INTO comment (product_id, user_id, order_id, rating, comment, comment_status) 
+            `INSERT INTO \`comment\` (product_id, user_id, order_id, rating, comment, comment_status) 
              VALUES (?, ?, ?, ?, ?, '正常')`,
             [product_id, user_id, order_id, rating, content]
         );

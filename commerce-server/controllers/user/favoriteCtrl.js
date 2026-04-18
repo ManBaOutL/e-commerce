@@ -36,7 +36,7 @@ exports.getList = async (req, res) => {
                     f.create_time
              FROM favorites f
              JOIN sku_product sp ON f.sku_id = sp.sku_id
-             JOIN products p ON sp.product_id = p.product_id
+             JOIN product p ON sp.product_id = p.product_id
              WHERE f.user_id = ?
              ORDER BY f.create_time DESC`,
             [user_id]
@@ -44,7 +44,7 @@ exports.getList = async (req, res) => {
 
         // 🌟 重点复用：通过 product_id 遍历读取本地真实主图 (1.jpg / 1.png)
         for (let row of rows) {
-            const folderPath = `/upload/products/img/${row.product_id}/`;
+            const folderPath = `/upload/product/img/${row.product_id}/`;
             const absDirPath = path.join(process.cwd(), 'public', folderPath);
             if (fs.existsSync(absDirPath)) {
                 const files = fs.readdirSync(absDirPath);

@@ -68,7 +68,7 @@ exports.getOrderList = async (req, res) => {
             FROM \`order\` o
             LEFT JOIN order_details od ON o.order_id = od.order_id
             LEFT JOIN sku_product s ON od.sku_id = s.sku_id
-            LEFT JOIN products p ON s.product_id = p.product_id
+            LEFT JOIN product p ON s.product_id = p.product_id
             LEFT JOIN coupon c ON o.coupon_id = c.coupon_id
             WHERE o.user_id = ?
             ORDER BY o.create_time DESC
@@ -89,7 +89,7 @@ exports.getOrderList = async (req, res) => {
             if (row.product_name) {
                 // 🌟 核心：根据 product_id 动态读取真实的商品主图
                 let main_image = '';
-                const folderPath = `/upload/products/img/${row.product_id}/`;
+                const folderPath = `/upload/product/img/${row.product_id}/`;
                 const absDirPath = path.join(process.cwd(), 'public', folderPath);
                 
                 if (fs.existsSync(absDirPath)) {
