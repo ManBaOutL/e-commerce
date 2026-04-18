@@ -200,11 +200,15 @@ export interface activityList {
     actId?: number
     actName: string
     actType: string
-    goodsName: string
+    categoryID?: number
+    categoryName?: string
     rule: string
+    discountRate: number
+    minOrderAmount: number
     startTime: string
     endTime: string
     status: string
+    img?: string //活动图片
 }
 
 //评论管理
@@ -217,18 +221,18 @@ export interface commentCondition {
 //评论操作
 export interface commentOperation {
     comment_id?: number[]
-    newComment?: commentList
     operation: string
 }
 //评论列表项类型定义
 export interface commentList {
-    comment_id?: number
+    comment_id: number
     username: string
     goodsName: string
     content: string
     score: number
     createTime: string
-    status: string
+    updateTime: string
+    status: string // 评论状态:正常、待审核、屏蔽
 }
 
 

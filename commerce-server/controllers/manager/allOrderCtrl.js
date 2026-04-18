@@ -22,7 +22,7 @@ exports.getAllOrder = [paginationMiddleware, async (req, res) => {
             params.push(userId);
         }
         if (status) {
-            conditions.push('o.order_status = ?');
+            conditions.push('o.status = ?');
             params.push(status);
         }
         if (year) {
@@ -50,10 +50,10 @@ exports.getAllOrder = [paginationMiddleware, async (req, res) => {
                 o.order_id AS orderId,
                 o.user_id AS userId,
                 o.total_amount AS money,
-                o.order_status AS status,
+                o.status AS status,
                 o.create_time AS createTime,
-                o.refund_reason AS userRefundReason,
-                o.reject_reason AS merchantReason
+                o.RefundReason AS userRefundReason,
+                o.RejectReason AS merchantReason
             FROM orders o
             ${where}
             ORDER BY o.create_time DESC
@@ -146,8 +146,8 @@ exports.postOrder = async (req, res) => {
     const { order_id, operation } = req.body;
     console.log(order_id, operation)
     const operationMap = {
-        disable: { field: 'order_status', value: '退款驳回' },   // 驳回退款
-        enable: { field: 'order_status', value: '已退款' },   // 运行退款
+        disable: { field: 'status', value: '退款驳回' },   // 驳回退款
+        enable: { field: 'status', value: '已退款' },   // 运行退款
     };
     const operations = operationMap[operation];
     if (!operations) {

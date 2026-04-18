@@ -1,0 +1,175 @@
+const db = require('@/config/database');
+const paginationMiddleware = require('@/middlewares/paginationMiddleware');
+const formatIsoDate = require('@/utils/date').formatIsoDate;
+
+exports.getAllActivity = [paginationMiddleware, async (req, res) => {
+    const { name, category_name, type, status } = req.query;
+    const { currentPage, pageSize, offset, formatResult } = req.pagination;
+
+    console.log("筛选条件:", req.query)
+    console.log("当前页:", currentPage, "每页数量:", pageSize)
+
+    try {
+        const conditions = [];
+        const params = [];
+
+        if (name) {
+            conditions.push('a.name LIKE ?');
+            params.push(`%${name}%`);
+        }
+        if (category_name) {
+            if (category_name === '所有商品' || category_name === '所有') {
+                conditions.push('a.goods_type_id = 0');
+            } else {
+                conditions.push('c.name = ?');
+                params.push(category_name);
+            }
+        }
+        if (status) {
+            conditions.push('a.act_status = ?');
+            params.push(status);
+        }
+        if (type) {
+            conditions.push('a.act_type = ?');
+            params.push(type);
+        }
+
+        const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+
+        // 统计总数
+        const [countResult] = await db.query(`
+            SELECT COUNT(*) AS total FROM activity a
+            LEFT JOIN category c ON a.goods_type_id = c.category_id
+            ${where}
+        `, params);
+        const total = countResult[0].total;
+
+        // 查询列表
+        const [rows] = await db.query(`
+            SELECT 
+                a.act_id AS actId,
+                a.name AS actName,
+                a.act_status AS status,
+                a.act_type AS actType,
+                a.start_time AS startTime,
+                a.end_time AS endTime,
+                a.goods_type_id AS categoryID,
+                c.name AS categoryName,
+                a.max_discount_value AS discountRate,
+                a.min_amount AS minOrderAmount,
+                a.rule AS rule,
+                a.img AS img
+            FROM activity a
+            LEFT JOIN category c ON a.goods_type_id = c.category_id
+            ${where}
+            ORDER BY a.start_time DESC
+            LIMIT ? OFFSET ?
+        `, [...params, pageSize, offset]);
+
+        // 处理数据：goods_type_id=0 → 显示所有商品
+        const actList = rows.map(a => ({
+            actId: a.actId,
+            actName: a.actName,
+            categoryID: a.categoryID,
+            categoryName: a.categoryName || '所有商品',
+            discountRate: a.discountRate,
+            minOrderAmount: a.minOrderAmount,
+            status: a.status,
+            actType: a.actType,
+            startTime: formatIsoDate(a.startTime),
+            endTime: formatIsoDate(a.endTime),
+            rule: a.rule,
+            img: a.img,
+        }));
+
+        return res.json({
+            status: 200,
+            success: true,
+            message: '获取活动成功',
+            data: {
+                actList,
+                pagination: formatResult(total)
+            }
+        });
+
+    } catch (err) {
+        console.error("活动列表错误：", err);
+        return res.status(500).json({
+            status: 500,
+            success: false,
+            message: '服务器错误',
+            data: {
+                actList: [],
+                pagination: { currentPage, pageSize, total: 0, totalPages: 0 }
+            }
+        });
+    }
+}];
+
+exports.updateActivityStatus = async (req, res) => {
+    const { activity_id, newActivity, operation } = req.body;
+    console.log("更新活动状态传如参数:", activity_id, newActivity, operation)
+    if (!operation) {
+        return res.status(400).json({
+            status: 400,
+            success: false,
+            message: '操作类型不能为空',
+            data: {}
+        });
+    }
+    if (operation === 'create') {
+        // 创建活动
+        const { actName, actType, categoryID, rule, discountRate, minOrderAmount, startTime, endTime, status, img } = newActivity;
+        if (
+            !actName ||
+            !actType ||
+            categoryID === undefined || categoryID === null ||
+            !rule ||
+            discountRate === undefined ||
+            minOrderAmount === undefined ||
+            !startTime ||
+            !endTime ||
+            !status
+        ) {
+            return res.status(400).json({
+                status: 400,
+                success: false,
+                message: '新活动信息不能为空',
+                data: {}
+            });
+        }
+        // 插入数据库
+        await db.query(`
+            INSERT INTO activity (name, act_type, goods_type_id, rule, max_discount_value, min_amount, start_time, end_time, act_status, img)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `, [actName, actType, categoryID, rule, discountRate, minOrderAmount, startTime, endTime, status, null]);
+        return res.json({
+            status: 200,
+            success: true,
+            message: '活动创建成功',
+            data: true
+        });
+
+    } else if (operation === 'delete') {
+        // 删除活动
+        if (!activity_id || activity_id.length === 0) {
+            return res.status(400).json({
+                status: 400,
+                success: false,
+                message: '活动ID不能为空',
+                data: {}
+            });
+        }
+        // 删除数据库
+        await db.query(`
+            DELETE FROM activity WHERE act_id IN (${activity_id.map(id => `'${id}'`).join(',')})
+        `, []);
+        return res.json({
+            status: 200,
+            success: true,
+            message: '活动删除成功',
+            data: true
+        });
+    }
+
+}

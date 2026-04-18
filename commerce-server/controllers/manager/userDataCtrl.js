@@ -52,8 +52,8 @@ exports.userData = async (req, res) => {
 
         // 类型筛选（同时作用于总数和列表查询）
         if (userType) {
-            countSql += ` AND user_type = ?`;
-            listSql += ` AND user_type = ?`;
+            countSql += ` AND type = ?`;
+            listSql += ` AND type = ?`;
             params.push(userType);
         }
 
@@ -66,8 +66,8 @@ exports.userData = async (req, res) => {
 
         // 状态筛选（同时作用于总数和列表查询）
         if (status) {
-            countSql += ` AND user_status LIKE ?`;
-            listSql += ` AND user_status LIKE ?`;
+            countSql += ` AND status LIKE ?`;
+            listSql += ` AND status LIKE ?`;
             params.push(statusQuery);
         }
 
@@ -91,14 +91,14 @@ exports.userData = async (req, res) => {
         const userList = listResult[0].map(item => ({
             user_id: item.user_id,
             username: item.username,
-            type: item.user_type == "普通用户" ? item.is_vip == 0 ? "普通用户" : "VIP用户" : item.user_type,
+            type: item.type == "普通用户" ? item.is_vip == 0 ? "普通用户" : "VIP用户" : item.type,
             phone: item.phone || '',
             email: item.email || '',
             is_vip: item.is_vip ? true : false,
             age: item.age || null,
             gender: item.gender || '',
             create_time: formatIsoDate(item.create_time),
-            status: item.user_status,
+            status: item.status,
             avatar: item.img || '',
             update_time: formatIsoDate(item.update_time)
         }));
@@ -156,8 +156,8 @@ exports.updateManagerUserList = async (req, res) => {
 
         // 2. 定义操作映射（你前端传 operation 字段）
         const operationMap = {
-            disable: { field: 'user_status', value: '禁用' },   // 禁用
-            enable: { field: 'user_status', value: '正常' },   // 启用
+            disable: { field: 'status', value: '禁用' },   // 禁用
+            enable: { field: 'status', value: '正常' },   // 启用
             setVip: { field: 'is_vip', value: 1 },        // 设置VIP
             cancelVip: { field: 'is_vip', value: 0 },     // 取消VIP
             delete: { field: 'is_delete', value: 1 },     // 删除
