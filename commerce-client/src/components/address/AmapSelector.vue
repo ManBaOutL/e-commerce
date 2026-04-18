@@ -48,7 +48,11 @@ import AMapLoader from '@amap/amap-jsapi-loader'
 const props = defineProps({
   modelValue: String
 })
-const emit = defineEmits(['update:modelValue'])
+
+const emit = defineEmits(['update:modelValue', 'locationSelected']) // 🌟 增加抛出完整数据的事件
+
+// 🌟 新增：临时存储完整的定位结构化数据
+const currentLocationData = ref(null)
 
 const displayAddress = ref(props.modelValue || '')
 const mapVisible = ref(false)
@@ -84,7 +88,7 @@ const closeMap = () => {
 
 // 提取一个通用的更新 Marker 和信息窗的方法
 const updateMarkerAndWindow = (lnglat, address) => {
-  console.log('更新 Marker 和信息窗，坐标:', lnglat, '地址:', address)
+  // console.log('更新 Marker 和信息窗，坐标:', lnglat, '地址:', address)
   if (!map) return;
 
   const pos = [lnglat.lng, lnglat.lat];
@@ -160,15 +164,25 @@ const initMap = async () => {
 
   // 修改点击事件
   map.on('click', (e) => {
-    // console.log('地图点击坐标:', e.lnglat);
     geocoder.getAddress(e.lnglat, (status, result) => {
-      console.log('地理编码状态:', status);
       if (status === 'complete' && result.regeocode) {
-        console.log('地理编码结果:', result.regeocode);
         const addr = result.regeocode.formattedAddress;
+        const comp = result.regeocode.addressComponent; // 🌟 提取地址组成元素
+        
         displayAddress.value = addr;
         searchKey.value = addr;
-        // 调用提取的方法
+        
+        // 🌟 组装结构化数据
+        currentLocationData.value = {
+          address: addr,
+          lng: e.lnglat.lng,
+          lat: e.lnglat.lat,
+          province: comp.province,
+          city: comp.city || comp.province, // 直辖市可能没有city
+          district: comp.district,
+          street: comp.township || comp.street
+        }
+        
         updateMarkerAndWindow(e.lnglat, addr);
       }
     });
@@ -204,7 +218,20 @@ const doSearch = () => {
     if (status === 'complete' && result.geocodes.length) {
       const obj = result.geocodes[0]
       const pos = [obj.location.lng, obj.location.lat]
+      const comp = obj.addressComponent; // 🌟 提取地址组成元素
+      
       displayAddress.value = obj.formattedAddress
+
+      // 🌟 组装结构化数据
+      currentLocationData.value = {
+        address: obj.formattedAddress,
+        lng: pos[0],
+        lat: pos[1],
+        province: comp.province,
+        city: comp.city || comp.province,
+        district: comp.district,
+        street: comp.township || comp.street
+      }
 
       if (marker) marker.setPosition(pos)
       else marker = new AMap.Marker({ position: pos, map, draggable: true })
@@ -229,6 +256,10 @@ const doSearch = () => {
 const confirmSelect = () => {
   if (!displayAddress.value) return ElMessage.warning('请选择地址')
   emit('update:modelValue', displayAddress.value)
+  // 🌟 将结构化数据抛给父组件
+  if (currentLocationData.value) {
+    emit('locationSelected', currentLocationData.value)
+  }
   closeMap()
 }
 
