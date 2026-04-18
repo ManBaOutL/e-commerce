@@ -50,17 +50,6 @@ exports.login = async (req, res) => {
           'abcdef123456', // 密钥，随便写，别泄露
           { expiresIn: '7d' } // 7天过期
       )
-      // 写入系统日志表
-      try {
-          const logContent = `${user.username} 使用 ${loginType} 登录成功`;
-          await db.execute(
-              'INSERT INTO operation_log (username, role, content, log_type, result) VALUES (?, ?, ?, ?, ?)',
-              [user.username, user.type, logContent, 'login', '成功']
-          );
-      } catch (logErr) {
-          // 日志写入失败不应该影响用户登录，所以只在控制台打印
-          console.error('登录日志记录失败:', logErr.message); 
-      }
       // 返回登录成功响应
       res.json({ message: '登录成功', data: { token, user }, status: 200, success: true })
   } catch (err) {

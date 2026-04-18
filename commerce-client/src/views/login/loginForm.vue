@@ -125,13 +125,13 @@ const handleSubmit = async (e: Event) => {
     //模拟登录成功后，存储token
     //localStorage.setItem('token', JSON.stringify(resData[0]));
 
-    if(resData.data.user.user_type === '普通用户'){
+    if(resData.data.user.type === '普通用户'){
       router.push('/');
     }
-    else if(resData.data.user.user_type === '商家'){
+    else if(resData.data.user.type === '商家'){
       router.push('/merchant');
     }
-    else if(resData.data.user.user_type === '管理员'){
+    else if(resData.data.user.type === '管理员'){
       console.log("管理员登录成功");
       router.push('/manager');
     }

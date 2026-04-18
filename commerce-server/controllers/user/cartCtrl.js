@@ -51,21 +51,21 @@ exports.addToCart = async (req, res) => {
 exports.getCartList = async (req, res) => {
     const user_id = req.user.user_id || req.user.id;
     try {
-        // 核心联表：把 cart, sku_product, products 三张表连起来查
+        // 核心联表：把 cart, sku_product, product 三张表连起来查
         const [rows] = await db.execute(`
             SELECT c.cart_id as id, c.quantity as count, c.sku_id,
                    s.name as spec, s.act_price as price, s.stock,
                    p.name, p.product_status, p.product_id
             FROM cart c
             JOIN sku_product s ON c.sku_id = s.sku_id
-            JOIN products p ON s.product_id = p.product_id
+            JOIN product p ON s.product_id = p.product_id
             WHERE c.user_id = ?
             ORDER BY c.create_time DESC
         `, [user_id]);
 
         // 动态读取主图
         rows.forEach(item => {
-            const folderPath = `/upload/products/img/${item.product_id}/`;
+            const folderPath = `/upload/product/img/${item.product_id}/`;
             const absDirPath = path.join(process.cwd(), 'public', folderPath);
             item.main_image = '';
             if (fs.existsSync(absDirPath)) {

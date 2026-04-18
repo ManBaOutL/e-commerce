@@ -44,7 +44,7 @@ export interface RegisterData {
 export interface UserInfo extends BaseEntity {
   user_id: number;
   username: string;
-  type: 'admin' | 'user' | 'merchant'; // 根据业务扩展
+  type: 'admin' | 'user' | 'merchant'  | '管理员' | '普通用户' | '商家'; // 根据业务扩展
   email?: string;
   phone?: string;
   age?: number;

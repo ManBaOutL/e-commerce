@@ -19,7 +19,7 @@ exports.getList = async (req, res) => {
         // 🌟 重点修改 1：把需要的字段抽成变量，并新增 create_time
         const selectFields = "product_id AS id, name, price, img AS image, sales, stock, create_time";
         let sql = `SELECT ${selectFields} 
-                   FROM products 
+                   FROM product
                    WHERE product_status = '通过'`;
 
         // 支持无限极递归的分类筛选
@@ -79,7 +79,7 @@ exports.getList = async (req, res) => {
 
         // 🌟 重点修改 3：遍历 rows，从本地文件夹读取以 `1.` 开头的文件作为 image
         for (let row of rows) {
-            const folderPath = `/upload/products/img/${row.id}/`;
+            const folderPath = `/upload/product/img/${row.id}/`;
             const absDirPath = path.join(process.cwd(), 'public', folderPath);
 
             // 如果文件夹存在，进去找 1.jpg / 1.png 等
@@ -162,7 +162,7 @@ exports.getDetail = async (req, res) => {
                     p.stock as stock_count, p.sales as sales_count, 
                     p.img, p.rate, 
                     c.name as category_name
-             FROM products p 
+             FROM product p 
              LEFT JOIN category c ON p.category_id = c.category_id
              WHERE p.product_id = ? AND p.product_status = '通过'`,
             [productId]
@@ -174,7 +174,7 @@ exports.getDetail = async (req, res) => {
         let productInfo = products[0];
 
         // 1. 规定该商品的专属物理目录和网络相对路径
-        const folderPath = `/upload/products/img/${productId}/`;
+        const folderPath = `/upload/product/img/${productId}/`;
         const absDirPath = path.join(process.cwd(), 'public', folderPath);
 
         let main_image = '';
@@ -259,7 +259,7 @@ exports.getComments = async (req, res) => {
             `SELECT c.review_id as id, c.rating as score, c.comment as comment_text, 
                     DATE_FORMAT(c.create_time, '%Y-%m-%d %H:%i') as created_at,
                     u.username, u.img as user_avatar, c.parent_id
-             FROM comment c
+             FROM \`comment\` c
              JOIN user u ON c.user_id = u.user_id
              WHERE c.product_id = ? AND c.comment_status = '正常' AND c.parent_id IS NULL
              ORDER BY c.create_time DESC`,
@@ -270,7 +270,7 @@ exports.getComments = async (req, res) => {
         // 实际企业开发中会用更复杂的联表或分组查询
         for (let i = 0; i < comments.length; i++) {
             const [replies] = await db.execute(
-                `SELECT comment FROM comment WHERE parent_id = ? LIMIT 1`, 
+                `SELECT comment FROM \`comment\` WHERE parent_id = ? LIMIT 1`, 
                 [comments[i].id]
             );
             comments[i].images = []; // 模拟没图
