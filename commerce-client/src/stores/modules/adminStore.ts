@@ -7,12 +7,17 @@ import type {
   userList, userCondition, userOperation,
   productList, productCondition, productOperation,
   category, categoryOperation,
-  couponList, couponOperation, couponCondition
+  couponList, couponOperation, couponCondition,
+  activityList, activityOperation, activityCondition,
+  commentList, commentOperation, commentCondition,
 } from '@/api/manager/type'
 import { getManagerUserList, updateManagerUserList } from '@/api/manager/user'
 import { getManagerProductList, updateManagerProductList } from '@/api/manager/product'
 import { getManagerCategoryList, updateManagerCategoryList } from '@/api/manager/category'
 import { getManagerCouponList, updateManagerCouponList } from '@/api/manager/coupon'
+import { getActList, updateActList } from '@/api/manager/activity'
+import { getManagerCommentList, updateManagerCommentList } from '@/api/manager/comment'
+
 
 export const useAdminStore = defineStore('admin', {
   state: () => ({
@@ -28,6 +33,7 @@ export const useAdminStore = defineStore('admin', {
     userCouponList: [] as couponList[],
     showData: {} as managerShowData,
     pagination: {} as pagination,
+    commentList: [] as commentList[],
   }),
   actions: {
     // 初始化管理员数据
@@ -38,9 +44,9 @@ export const useAdminStore = defineStore('admin', {
       this.showData = res.data
       console.log("展示数据:", this.showData)
     },
-    initAdminStore() {
+    async initAdminStore() {
       console.log('初始化管理员数据...')
-      this.initUserList()
+      await this.initUserList()
       console.log('管理员数据初始化完成')
     },
     initLogList() {
@@ -129,7 +135,18 @@ export const useAdminStore = defineStore('admin', {
       this.pagination = res.data.pagination
       console.log("用户优惠券列表:", this.userCouponList)
     },
-
+    async initActList() {
+      const res = await getActList()
+      this.actList = res.data.actList
+      this.pagination = res.data.pagination
+      console.log("活动列表:", this.actList)
+    },
+    async initCommentList() {
+      const res = await getManagerCommentList()
+      this.commentList = res.data.commentList
+      this.pagination = res.data.pagination
+      console.log("评价列表:", this.commentList)
+    },
 
     async getUserListbyPage(params: userCondition, page: number, pageSize: number) {
       console.log("传如参数:", params, page, pageSize)
@@ -159,6 +176,22 @@ export const useAdminStore = defineStore('admin', {
       this.userCouponList = res.data.list
       this.pagination = res.data.pagination
       console.log("用户优惠券列表:", this.userCouponList)
+      console.log("分页信息:", this.pagination)
+    },
+    async getActList(params: activityCondition, page: number, pageSize: number) {
+      console.log("获取活动列表传如参数:", params, page, pageSize)
+      const res = await getActList(params, page, pageSize)
+      this.actList = res.data.actList
+      this.pagination = res.data.pagination
+      // console.log("活动列表:", this.actList)
+      // console.log("分页信息:", this.pagination)
+    },
+    async getCommentList(params: commentCondition, page: number, pageSize: number) {
+      console.log("获取评价列表传如参数:", params, page, pageSize)
+      const res = await getManagerCommentList(params, page, pageSize)
+      this.commentList = res.data.commentList
+      this.pagination = res.data.pagination
+      console.log("评价列表:", this.commentList)
       console.log("分页信息:", this.pagination)
     },
 
@@ -198,6 +231,26 @@ export const useAdminStore = defineStore('admin', {
       if (res.data) {
         console.log("更新用户优惠券列表:", res.data)
         await this.initUserCouponList()
+      }
+      return res
+    },
+    async updateActivityList(params: activityOperation, condition: activityCondition) {
+      console.log("更新活动列表传如参数:", params, condition)
+      const res = await updateActList(params)
+      console.log("更新活动列表res:", res)
+      if (res.data) {
+        console.log("更新活动列表:", res.data)
+        // 刷新活动列表
+        await this.getActList(condition, 1, 10);
+      }
+      return res
+    },
+    async updateCommentList(params: commentOperation, condition: commentCondition) {
+      const res = await updateManagerCommentList(params)
+      if (res.data) {
+        console.log("更新评论列表:", res.data)
+        // 刷新评论列表
+        await this.getCommentList(condition, 1, 10);
       }
       return res
     }
