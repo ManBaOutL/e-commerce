@@ -2,17 +2,21 @@ const db = require('@/config/database');
 const fs = require('fs');
 const path = require('path');
 
-// 1. 创建并支付订单 (兼容购物车和直接购买)
+// 1. 创建并支付订单 (加入完整事务机制)
 exports.createOrder = async (req, res) => {
     const user_id = req.user.user_id || req.user.id;
-    // 🌟 新增解析 direct_buy 参数
     const { cart_ids, direct_buy, address_id, coupon_id, total_amount } = req.body;
     
-    const order_id = Date.now().toString().slice(0, -3) + Math.floor(Math.random() * 1000);
+    // 订单号生成
+    const order_id = Date.now().toString().slice(0, -3) + Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+
+    // 🌟 开启事务
+    const connection = await db.getConnection();
+    await connection.beginTransaction();
 
     try {
         // 1. 插入订单主表
-        await db.execute(
+        await connection.execute(
             `INSERT INTO \`order\` (order_id, total_amount, status, user_id, address_id, coupon_id, create_time) 
              VALUES (?, ?, '待支付', ?, ?, ?, NOW())`,
             [order_id, total_amount, user_id, address_id, coupon_id || null]
@@ -20,42 +24,53 @@ exports.createOrder = async (req, res) => {
 
         // 2. 判断是购物车结算还是直接购买
         if (cart_ids && cart_ids.length > 0) {
-            // --- 走购物车链路 ---
             const placeholders = cart_ids.map(() => '?').join(',');
-            const [cartItems] = await db.execute(`
-                SELECT c.sku_id, c.quantity, s.act_price 
+            const [cartItems] = await connection.execute(`
+                SELECT c.sku_id, c.quantity, s.act_price, s.product_id 
                 FROM cart c JOIN sku_product s ON c.sku_id = s.sku_id 
                 WHERE c.cart_id IN (${placeholders}) AND c.user_id = ?
             `, [...cart_ids, user_id]);
 
             for (let item of cartItems) {
-                await db.execute(`INSERT INTO order_details (order_id, sku_id, quantity, price) VALUES (?, ?, ?, ?)`, [order_id, item.sku_id, item.quantity, item.act_price]);
-                await db.execute(`UPDATE sku_product SET stock = stock - ? WHERE sku_id = ?`, [item.quantity, item.sku_id]);
+                // 写明细
+                await connection.execute(`INSERT INTO order_details (order_id, sku_id, quantity, price) VALUES (?, ?, ?, ?)`, [order_id, item.sku_id, item.quantity, item.act_price]);
+                
+                // 扣双表库存 (表名修正为 product)
+                await connection.execute(`UPDATE sku_product SET stock = stock - ? WHERE sku_id = ?`, [item.quantity, item.sku_id]);
+                await connection.execute(`UPDATE product SET stock = stock - ? WHERE product_id = ?`, [item.quantity, item.product_id]);
             }
             // 清空购物车
-            await db.execute(`DELETE FROM cart WHERE cart_id IN (${placeholders}) AND user_id = ?`, [...cart_ids, user_id]);
+            await connection.execute(`DELETE FROM cart WHERE cart_id IN (${placeholders}) AND user_id = ?`, [...cart_ids, user_id]);
 
         } else if (direct_buy && direct_buy.sku_id) {
-            // --- 走直接购买链路 ---
-            // 直接将单件商品写入订单明细，并扣库存（无需操作购物车表）
-            await db.execute(`INSERT INTO order_details (order_id, sku_id, quantity, price) VALUES (?, ?, ?, ?)`, 
+            // 写明细
+            await connection.execute(`INSERT INTO order_details (order_id, sku_id, quantity, price) VALUES (?, ?, ?, ?)`, 
                 [order_id, direct_buy.sku_id, direct_buy.quantity, direct_buy.price]);
-            await db.execute(`UPDATE sku_product SET stock = stock - ? WHERE sku_id = ?`, 
-                [direct_buy.quantity, direct_buy.sku_id]);
+                
+            // 扣双表库存 (表名修正为 product)
+            await connection.execute(`UPDATE sku_product SET stock = stock - ? WHERE sku_id = ?`, [direct_buy.quantity, direct_buy.sku_id]);
+            await connection.execute(`UPDATE product SET stock = stock - ? WHERE product_id = ?`, [direct_buy.quantity, direct_buy.product_id]);
         }
 
         // 3. 核销优惠券
         if (coupon_id) {
-            await db.execute(`UPDATE coupon SET status = '已使用' WHERE coupon_id = ?`, [coupon_id]);
+            await connection.execute(`UPDATE coupon SET status = '已使用' WHERE coupon_id = ?`, [coupon_id]);
         }
 
-        res.json({ success: true, message: '支付成功，订单已生成', status: 200, data: { order_id } });
+        // 🌟 事务提交（全部成功，正式写入数据库）
+        await connection.commit();
+        res.json({ success: true, message: '下单成功，订单已生成', status: 200, data: { order_id } });
+
     } catch (err) {
+        // 🌟 事务回滚（任何一步报错，全部撤销）
+        await connection.rollback();
         console.error('创建订单异常:', err);
         res.status(500).json({ success: false, message: '下单失败', status: 500, data: null });
+    } finally {
+        // 释放连接
+        connection.release();
     }
 };
-
 // 2. 获取我的订单列表 (包含订单明细、优惠券信息和商品主图)
 exports.getOrderList = async (req, res) => {
     const user_id = req.user.user_id || req.user.id;
@@ -87,8 +102,8 @@ exports.getOrderList = async (req, res) => {
                 };
             }
             if (row.product_name) {
-                // 🌟 核心：根据 product_id 动态读取真实的商品主图
                 let main_image = '';
+                // 文件夹路径改为 product，保持与前面上传路径一致
                 const folderPath = `/upload/product/img/${row.product_id}/`;
                 const absDirPath = path.join(process.cwd(), 'public', folderPath);
                 
@@ -103,7 +118,7 @@ exports.getOrderList = async (req, res) => {
                     product_name: row.product_name,
                     price: row.price,
                     quantity: row.quantity,
-                    main_image: main_image // 👈 把扫出来的图片路径挂载给前端
+                    main_image: main_image 
                 });
             }
         });
@@ -168,54 +183,62 @@ exports.applyRefund = async (req, res) => {
     }
 };
 
-// 5. 取消订单 (并回滚库存与优惠券)
+// 5. 取消订单 (并回滚库存与优惠券，加入事务)
 exports.cancelOrder = async (req, res) => {
     const user_id = req.user.user_id || req.user.id;
     const { order_id } = req.body;
 
+    // 🌟 开启事务
+    const connection = await db.getConnection();
+    await connection.beginTransaction();
+
     try {
-        // 1. 先验证订单存不存在，并且是不是“待支付”状态，顺便把 coupon_id 查出来
-        const [orders] = await db.execute(
+        const [orders] = await connection.execute(
             `SELECT coupon_id FROM \`order\` WHERE order_id = ? AND user_id = ? AND status = '待支付'`,
             [order_id, user_id]
         );
 
         if (orders.length === 0) {
+            await connection.rollback(); // 提前结束必须回滚
+            connection.release();
             return res.status(400).json({ success: false, message: '订单无法取消或不存在', status: 400, data: null });
         }
 
         const coupon_id = orders[0].coupon_id;
 
-        // 2. 将订单状态改为“已取消”
-        await db.execute(
-            `UPDATE \`order\` SET status = '已取消' WHERE order_id = ?`,
-            [order_id]
-        );
+        // 改状态
+        await connection.execute(`UPDATE \`order\` SET status = '已取消' WHERE order_id = ?`, [order_id]);
 
-        // 3. 归还使用的优惠券
+        // 还优惠券
         if (coupon_id) {
-            await db.execute(
-                `UPDATE coupon SET status = '未使用' WHERE coupon_id = ?`,
-                [coupon_id]
-            );
+            await connection.execute(`UPDATE coupon SET status = '未使用' WHERE coupon_id = ?`, [coupon_id]);
         }
 
-        // 4. 查出订单明细，把扣除的库存加回去
-        const [details] = await db.execute(
-            `SELECT sku_id, quantity FROM order_details WHERE order_id = ?`,
+        // 查明细
+        const [details] = await connection.execute(
+            `SELECT od.sku_id, od.quantity, s.product_id 
+             FROM order_details od 
+             JOIN sku_product s ON od.sku_id = s.sku_id 
+             WHERE od.order_id = ?`,
             [order_id]
         );
 
+        // 加双表库存 (表名修正为 product)
         for (let item of details) {
-            await db.execute(
-                `UPDATE sku_product SET stock = stock + ? WHERE sku_id = ?`,
-                [item.quantity, item.sku_id]
-            );
+            await connection.execute(`UPDATE sku_product SET stock = stock + ? WHERE sku_id = ?`, [item.quantity, item.sku_id]);
+            await connection.execute(`UPDATE product SET stock = stock + ? WHERE product_id = ?`, [item.quantity, item.product_id]);
         }
 
+        // 🌟 事务提交
+        await connection.commit();
         res.json({ success: true, message: '订单已取消，资产已原路退回', status: 200, data: null });
+
     } catch (err) {
+        // 🌟 事务回滚
+        await connection.rollback();
         console.error('取消订单异常:', err);
         res.status(500).json({ success: false, message: '系统异常，取消失败', status: 500, data: null });
+    } finally {
+        connection.release();
     }
 };

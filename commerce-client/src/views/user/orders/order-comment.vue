@@ -43,16 +43,27 @@
       <div class="card">
         <div class="title">图片/视频（可选）</div>
         <el-upload
+          v-model:file-list="fileList"
           class="uploader"
+          action="/api/user/media/upload" 
+          :headers="uploadHeaders"
           :limit="3"
-          list-type="picture"
-          accept="image/*"
+          list-type="picture-card"
+          accept="image/*,video/mp4"
+          :on-preview="handlePreview"
+          :on-success="handleUploadSuccess"
+          :before-upload="beforeMediaUpload"
         >
-          <el-button type="primary" size="small">上传图片</el-button>
-          <template #tip>
-            <div class="el-upload__tip">最多上传3张</div>
-          </template>
+          <el-icon><Plus /></el-icon>
         </el-upload>
+        <div class="upload-tip" style="font-size: 12px; color: #999; margin-top: 8px;">
+          最多上传 3 张图片或视频，单张大小不超过 5MB
+        </div>
+
+        <el-dialog v-model="dialogVisible" title="媒体预览">
+          <img w-full :src="dialogImageUrl" alt="Preview Image" style="width: 100%;" v-if="!dialogImageUrl.endsWith('.mp4')" />
+          <video :src="dialogImageUrl" controls style="width: 100%;" v-else></video>
+        </el-dialog>
       </div>
 
       <div class="action-bar">
@@ -70,6 +81,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/modules/user/userStore' 
+import getFullUrl from '@/utils/getFullUrl'
 
 const router = useRouter()
 const route = useRoute()
@@ -99,7 +111,48 @@ onMounted(() => {
   }
 })
 
-// 🌟 核心：通过 userStore 提交评价
+// 🌟 媒体上传相关状态
+const fileList = ref<any[]>([])
+const dialogVisible = ref(false)
+const dialogImageUrl = ref('')
+
+// 🌟 核心修复：提取并清理 Token，去除首尾烦人的双引号
+const rawToken = localStorage.getItem('token') || ''
+const cleanToken = rawToken.replace(/(^"|"$)/g, '') 
+
+// 🌟 组装专属的上传请求头
+const uploadHeaders = ref({
+  Authorization: `Bearer ${cleanToken}`,
+  token: cleanToken // 加上这个以防你的后端 auth 中间件取的是小写的 token
+})
+
+// 上传前校验格式和大小
+const beforeMediaUpload = (file: any) => {
+  const isLt5M = file.size / 1024 / 1024 < 5;
+  if (!isLt5M) {
+    ElMessage.error('上传媒体大小不能超过 5MB!');
+    return false;
+  }
+  return true;
+}
+
+// 上传成功时的钩子
+const handleUploadSuccess = (response: any, uploadFile: any) => {
+  if (response.success) {
+    // 🌟 核心修复：给 UI 预览用的 url 拼上完整的后端域名前缀 (http://127.0.0.1:8888/...)
+    uploadFile.url = getFullUrl(response.data.url); 
+  } else {
+    ElMessage.error('图片上传失败');
+  }
+}
+
+// 点击缩略图预览
+const handlePreview = (uploadFile: any) => {
+  dialogImageUrl.value = uploadFile.url!
+  dialogVisible.value = true
+}
+
+// 🌟 核心：重写 submitComment，提取图片/视频路径
 const submitComment = async () => {
   if (!score.value) return ElMessage.warning('请为商品打个分数吧')
   if (!content.value || content.value.trim().length < 5) return ElMessage.warning('评价内容不能少于5个字哦')
@@ -107,20 +160,35 @@ const submitComment = async () => {
   try {
     loading.value = true;
     
-    // 组装数据
+    // 1. 从 fileList 中提取真正的图片和视频路径
+    const uploadedImages: string[] = [];
+    let uploadedVideo = '';
+
+    fileList.value.forEach(file => {
+      // 这里的 file.url 应该是上传成功后得到的相对路径
+      const path = file.response?.data?.url || file.url; 
+      if (path && path.endsWith('.mp4')) {
+        uploadedVideo = path;
+      } else if (path) {
+        uploadedImages.push(path);
+      }
+    });
+    
+    // 2. 组装数据
     const payload = {
       order_id: targetOrderId.value,
       product_id: targetProductId.value as number,
       rating: score.value,
-      content: content.value
+      content: content.value,
+      images: uploadedImages.length > 0 ? uploadedImages.join(',') : undefined,
+      video: uploadedVideo || undefined
     };
 
-    // 🌟 调用 Store 的 action
+    // 3. 调用 Store 的 action
     const res = await userStore.submitProductComment(payload);
 
     if (res.success) {
       ElMessage.success('评价成功！感谢您的反馈');
-      // 成功后跳回我的订单列表
       setTimeout(() => {
         router.push('/user/orders');
       }, 1000);

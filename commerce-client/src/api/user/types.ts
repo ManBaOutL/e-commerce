@@ -94,6 +94,8 @@ export interface CommentSubmitData {
   product_id: number;
   rating: number;
   content: string;
+  images?: string; // 逗号分隔的图片路径
+  video?: string;  // 视频路径
 }
 
 /**
@@ -116,7 +118,7 @@ export interface CartItem {
   
   // --- 核心校验字段 (决定商品是否失效) ---
   stock: number;        // 该规格的实时库存
-  status: '待审核' | '通过' | '已驳回' | '下架'; // 商品当前的状态
+  product_status: '待审核' | '通过' | '已驳回' | '下架'; // 商品当前的状态
   
   // --- 前端专属交互字段 (后端不存，前端自动挂载) ---
   selected?: boolean;   // 是否被勾选 (用于结算和删除)
