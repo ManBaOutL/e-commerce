@@ -26,19 +26,19 @@ exports.getAllCoupon = [paginationMiddleware, async (req, res) => {
                 SELECT 
                 coupon_id,
                 name,
-                coupon_type,
+                type,
                 discount_value,
                 min_order_amount,
                 start_time,
                 end_time,
-                coupon_status,
+                status,
                 create_time
                 FROM coupon
-                WHERE coupon_status = '已创建'
+                WHERE status = '已创建'
             `;
             countSql = `
         SELECT COUNT(*) AS total FROM coupon
-        WHERE coupon_status = '已创建'
+        WHERE status = '已创建'
       `;
         }
 
@@ -50,23 +50,23 @@ exports.getAllCoupon = [paginationMiddleware, async (req, res) => {
         SELECT 
         coupon.coupon_id AS id,
         coupon.name,
-        coupon.coupon_type,
+        coupon.type,
         coupon.discount_value,
         coupon.min_order_amount,
         coupon.start_time,
         coupon.end_time,
-        coupon.coupon_status,
+        coupon.status,
         coupon.create_time, 
         user.user_id,
         user.username
         FROM coupon
         JOIN user ON coupon.user_id = user.user_id
-        WHERE coupon.coupon_status != '已创建'
+        WHERE coupon.status != '已创建'
       `;
             countSql = `
         SELECT COUNT(*) AS total FROM coupon
         JOIN user ON coupon.user_id = user.user_id
-        WHERE coupon.coupon_status != '已创建'
+        WHERE coupon.status != '已创建'
       `;
         }
 
@@ -78,11 +78,11 @@ exports.getAllCoupon = [paginationMiddleware, async (req, res) => {
             queryParams.push(`%${name}%`);
         }
         if (coupon_type) {
-            whereConditions.push("coupon_type = ?");
+            whereConditions.push("type = ?");
             queryParams.push(coupon_type);
         }
         if (coupon_status) {
-            whereConditions.push("coupon_status = ?");
+            whereConditions.push("status = ?");
             queryParams.push(coupon_status);
         }
 
@@ -121,10 +121,10 @@ exports.getAllCoupon = [paginationMiddleware, async (req, res) => {
                 return {
                     coupon_id: item.coupon_id,
                     name: item.name,
-                    type: item.coupon_type, // 映射为type
+                    type: item.type, // 映射为type
                     value: item.discount_value, // 映射为value
                     min: item.min_order_amount, // 映射为min
-                    status: item.coupon_status, // 映射为status
+                    status: item.status, // 映射为status
                     create_time: dateUtils.formatIsoDate(item.create_time, false), // 模板创建时间格式化为YYYY-MM-DD HH:mm:ss格式
                     valid_days: validDays // 有效期天数
                 };
@@ -133,10 +133,10 @@ exports.getAllCoupon = [paginationMiddleware, async (req, res) => {
                 return {
                     coupon_id: item.id, // 用户优惠券id
                     name: item.name,
-                    type: item.coupon_type,
+                    type: item.type,
                     value: item.discount_value,
                     min: item.min_order_amount,
-                    status: item.coupon_status,
+                    status: item.status,
                     create_time: dateUtils.formatIsoDate(item.create_time, false), // 领取时间对应create_time格式化为YYYY-MM-DD HH:mm:ss格式
                     valid_days: validDays,
                     user_id: item.user_id,
@@ -243,8 +243,8 @@ exports.updateCouponStatus = async (req, res) => {
 
                 const insertSql = `
                     INSERT INTO coupon (
-                    name, coupon_type, discount_value, min_order_amount,
-                    start_time, end_time, create_time, coupon_status, user_id
+                    name, type, discount_value, min_order_amount,
+                    start_time, end_time, create_time, status, user_id
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 `;
 
@@ -304,7 +304,7 @@ exports.updateCouponStatus = async (req, res) => {
             // ------------------------------
             if (operation === 'toAll') {
                 const [userList] = await db.query(
-                    "SELECT user_id FROM user WHERE user_type = '普通用户'"
+                    "SELECT user_id FROM user WHERE type = '普通用户'"
                 );
                 if (!userList.length) {
                     return res.status(400).json({
@@ -329,8 +329,8 @@ exports.updateCouponStatus = async (req, res) => {
 
                 await db.query(`
                     INSERT INTO coupon (
-                        coupon_type, discount_value, min_order_amount,
-                        start_time, end_time, coupon_status, name, user_id
+                        type, discount_value, min_order_amount,
+                        start_time, end_time, status, name, user_id
                     ) VALUES ?
                     `, [values]);
 
@@ -347,7 +347,7 @@ exports.updateCouponStatus = async (req, res) => {
             // ------------------------------
             if (operation === 'toVip') {
                 const [vipList] = await db.query(
-                    "SELECT user_id FROM user WHERE user_type = '普通用户' AND is_vip = 1"
+                    "SELECT user_id FROM user WHERE type = '普通用户' AND is_vip = 1"
                 );
                 if (!vipList.length) {
                     return res.status(400).json({
@@ -359,7 +359,7 @@ exports.updateCouponStatus = async (req, res) => {
                 }
 
                 const values = vipList.map(u => [
-                    coupon.coupon_type,
+                    coupon.type,
                     coupon.discount_value,
                     coupon.min_order_amount,
                     newStartTime,
@@ -371,8 +371,8 @@ exports.updateCouponStatus = async (req, res) => {
 
                 await db.query(`
                     INSERT INTO coupon (
-                        coupon_type, discount_value, min_order_amount,
-                        start_time, end_time, coupon_status, name, user_id
+                        type, discount_value, min_order_amount,
+                        start_time, end_time, status, name, user_id
                     ) VALUES ?
                     `, [values]);
 
@@ -398,7 +398,7 @@ exports.updateCouponStatus = async (req, res) => {
                 }
 
                 const values = user_id.map(uid => [
-                    coupon.coupon_type,
+                    coupon.type,
                     coupon.discount_value,
                     coupon.min_order_amount,
                     newStartTime,
@@ -410,8 +410,8 @@ exports.updateCouponStatus = async (req, res) => {
 
                 await db.query(`
                     INSERT INTO coupon (
-                        coupon_type, discount_value, min_order_amount,
-                        start_time, end_time, coupon_status, name, user_id
+                        type, discount_value, min_order_amount,
+                        start_time, end_time, status, name, user_id
                     ) VALUES ?
                     `, [values]);
 

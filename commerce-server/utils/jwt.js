@@ -8,7 +8,8 @@ exports.createToken = (user) => {
     return jwt.sign(
         {
             user_id: user.user_id,
-            user_type: user.user_type
+            username: user.username,
+            type: user.type
         },
         secret,
         { expiresIn: '7d' }

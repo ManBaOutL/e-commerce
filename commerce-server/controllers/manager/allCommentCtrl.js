@@ -31,7 +31,7 @@ exports.getAllComment = [paginationMiddleware, async (req, res) => {
 
         // 统计总数
         const [countResult] = await db.query(`
-            SELECT COUNT(*) AS total FROM comments c
+            SELECT COUNT(*) AS total FROM \`comment\` c
             LEFT JOIN product p ON p.product_id = c.product_id
             LEFT JOIN user us ON us.user_id = c.user_id
             ${where}
@@ -49,7 +49,7 @@ exports.getAllComment = [paginationMiddleware, async (req, res) => {
                 c.rating AS score,
                 c.create_time AS createTime,
                 c.update_time AS updateTime
-            FROM comments c
+            FROM \`comment\` c
             LEFT JOIN product p ON p.product_id = c.product_id
             LEFT JOIN user us ON us.user_id = c.user_id
             ${where}
@@ -119,11 +119,11 @@ exports.updateCommentStatus = async (req, res) => {
         if (operation === 'delete') {
             // 删除已屏蔽的评论
             await db.query(`
-                DELETE FROM comments
+                DELETE FROM \`comment\`
                 WHERE comment_status='屏蔽'`)
         } else {
             await db.query(`
-                UPDATE comments
+                UPDATE \`comment\`
                 SET comment_status = ?
                 WHERE review_id IN (${comment_id.map(() => '?').join(',')})
             `, [value, ...comment_id]);

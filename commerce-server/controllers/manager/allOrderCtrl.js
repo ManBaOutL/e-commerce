@@ -41,7 +41,7 @@ exports.getAllOrder = [paginationMiddleware, async (req, res) => {
         const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
         const [countResult] = await db.query(`
-            SELECT COUNT(*) AS total FROM orders o ${where}
+            SELECT COUNT(*) AS total FROM \`order\` o ${where}
         `, params);
         const total = countResult[0].total;
 
@@ -54,7 +54,7 @@ exports.getAllOrder = [paginationMiddleware, async (req, res) => {
                 o.create_time AS createTime,
                 o.RefundReason AS userRefundReason,
                 o.RejectReason AS merchantReason
-            FROM orders o
+            FROM \`order\` o
             ${where}
             ORDER BY o.create_time DESC
             LIMIT ? OFFSET ?
@@ -78,7 +78,7 @@ exports.getAllOrder = [paginationMiddleware, async (req, res) => {
                 sku.name AS size,
                 od.quantity AS num
             FROM order_details od
-            JOIN skuproduct sku ON od.sku_id = sku.sku_id
+            JOIN sku_product sku ON od.sku_id = sku.sku_id
             JOIN product p ON sku.product_id = p.product_id
             JOIN shop s ON p.shop_id = s.shop_id
             WHERE od.order_id IN (${orderIds.map(() => '?').join(',')})
@@ -159,7 +159,7 @@ exports.postOrder = async (req, res) => {
         });
     }
     console.log("operation", operations)
-    const updateSql = `UPDATE orders SET ${operations.field} = ? WHERE order_id in (${order_id.map(() => '?').join(',')})`;
+    const updateSql = `UPDATE order SET ${operations.field} = ? WHERE order_id in (${order_id.map(() => '?').join(',')})`;
     console.log(updateSql, [operations.value, ...order_id])
     await db.query(updateSql, [operations.value, ...order_id]);
     return res.json({

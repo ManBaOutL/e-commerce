@@ -66,10 +66,10 @@ import request from '../../utils/request';
 import { showSuccessToast, showFailToast } from 'vant';
 import { send } from 'vite';
 import router from '../../router';
-import { login } from '@/api/user/user';
+import { login } from '@/api/user';
 import type { LoginData } from '@/api/user/types';
 import Title from '@/components/login/title.vue'
-import { mockLogin } from '@/api/user/user';
+import { mockLogin } from '@/api/user';
 
 const form = ref<LoginData>({
   username: '',
@@ -125,13 +125,14 @@ const handleSubmit = async (e: Event) => {
     //模拟登录成功后，存储token
     //localStorage.setItem('token', JSON.stringify(resData[0]));
 
-    if(resData.data.user.user_type === '普通用户'){
+    if(resData.data.user.type === '普通用户'){
       router.push('/');
     }
-    else if(resData.data.user.user_type === '商家'){
+    else if(resData.data.user.type === '商家'){
       router.push('/merchant');
     }
-    else if(resData.data.user.user_type === '管理员'){
+    else if(resData.data.user.type === '管理员'){
+      console.log("管理员登录成功");
       router.push('/manager');
     }
     else {

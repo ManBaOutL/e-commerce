@@ -122,7 +122,7 @@ import { showToast, showSuccessToast, showFailToast } from 'vant';
 import { useRouter } from 'vue-router'; // ✅ 用这个
 import request from '@/utils/request';
 import Title from '@/components/login/title.vue';
-import { register } from '@/api/user/user';
+import { register } from '@/api/user';
 
 const router = useRouter();
 

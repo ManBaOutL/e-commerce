@@ -1,6 +1,7 @@
 const express = require('express')
 const router = express.Router()
 const auth = require('@/middlewares/auth')
+const logger = require('@/middlewares/loggerMiddleware');
 
 
 
@@ -18,6 +19,6 @@ const auth = require('@/middlewares/auth')
 //     pieData: { categoryName: string, value: number }[]
 // }
 const showDataCtrl = require('@/controllers/manager/showDataCtrl')
-router.get('/showData', auth.checkAdmin, showDataCtrl.showData)
+router.get('/showData', auth.checkAdmin, logger.writeLogMiddleware, showDataCtrl.showData)
 
 module.exports = router

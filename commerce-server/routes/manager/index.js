@@ -9,6 +9,8 @@ router.use('/manager', require('./allcategory'))
 router.use('/manager', require('./allcoupons'))
 router.use('/manager', require('./allactivity'))
 router.use('/manager', require('./allcomment'))
+router.use('/manager', require('./alloperationlog'))
+
 
 
 

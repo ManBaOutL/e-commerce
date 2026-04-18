@@ -14,7 +14,7 @@ category(<u>category_id</u>,name,parent_id);
 
 ## 3、商品基本信息
 
-products(<u>product_id</u>,name,description,price,stock,create_time,update_time,**category_id,shop_id**,product_status,img，sales, rate);
+product(<u>product_id</u>,name,description,price,stock,create_time,update_time,**category_id,shop_id**,product_status,img，sales, rate);
 
 主要展示商品卡片
 
@@ -30,7 +30,7 @@ type: 地址标签（家、公司、学校、其他）
 
 ## 5、订单基本信息
 
-order(<u>order_id</u>,total_amount，order_status,create_time,update_time,**user_id,address_id**，**coupon_id**,refundReason,RejectReason);
+order(<u>order_id</u>,total_amount，status,create_time,update_time,**user_id,address_id**，**coupon_id**,refundReason,RejectReason);
 
 coupon_id初始为NULL
 
@@ -76,7 +76,7 @@ parent_id,父评论，用于回复评论
 
 ## 10、活动管理
 
-activity（<u>act_id</u>,name,type,goods_type_id,rule,start_time,end_time,act_status,max_discount_value,min_amount，img）
+activity（<u>act_id</u>,name,act_type,goods_type_id,rule,start_time,end_time,act_status,max_discount_value,min_amount，img）
 
 type:类型：满减/折扣/秒杀
 goodsType:适用商品，

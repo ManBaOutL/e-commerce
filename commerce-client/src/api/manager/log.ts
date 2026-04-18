@@ -1,14 +1,16 @@
 import request from '@/utils/request'
-import type { logCondition, logList } from './type'
+import type { logCondition, logList, pagination } from './type'
 
 //操作日志管理
-export const getLogList = (params: logCondition) => {
-    // 输入参数：无
-    // 输出参数：操作日志列表，包含日志ID、用户名、用户角色、操作内容、操作类型、操作时间和操作结果等信息   
-    return request<logList[]>({
-        url: '/manager/allopreationlogs',
+export const getLogList = (params: logCondition = {}, page: number = 1, pageSize: number = 10) => {
+    return request<{ log: logList[], allType: string[], pagination: pagination }>({
+        url: '/manager/alloperationlogs',
         method: 'get',
-        params
+        params: {
+            ...params,
+            currentPage: page,
+            pageSize
+        }
     })
 }
 //日志操作,暂无操作接口
