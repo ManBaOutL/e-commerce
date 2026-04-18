@@ -1,3 +1,4 @@
+
 # 电子商务系统开发需求说明文档
 
 **开发技术栈**：前端 Vue、后端 Node.js
@@ -199,54 +200,6 @@
 
 新增**商家店铺**数据实体，保留原有用户、商品分类、商品、收货地址、订单、购物车、优惠券、商品评价八大核心实体；各实体核心字段完整，字段间关联逻辑清晰，其中商家店铺实体包含店铺 ID、商家 ID、店铺名称、店铺简介、入驻时间、审核状态等核心字段。
 
-用户
-
-user(<u>user_id</u>,type,username,password,email,phone,age,gender,is_vip,create_time,update_time);
-
-商品分类
-
-category(<u>category_id</u>,name,parent_id);
-
-商品基本信息
-
-products(<u>product_id</u>,name,description,price,stock,category_id,create_time,update_time,**category_id,user_id**)
-
-地址基本信息
-
-address(<u>address_id</u>,recipient_name,phone,address_line1,address_line2,city,state,postal_code,country,is_default,create_time,**user_id**)
-
-订单基本信息
-
-order(<u>order_id</u>,total_amount，status,create_time,update_time,**user_id,address_id**);
-
-订单明细
-
-order_details(<u>product_id,order_id</u>,quantity,price);
-
-优惠卷
-
-coupon(<u>coupon_id</u>,type,discount_value,min_order_amount,start_time,end_time,status,create_time,update_time,**user_id**);
-
-购物车
-
-cart(<u>cart_id</u>,**product_id**,quantity,create_time,**user_id**)
-
-商品评论
-
-comment(<u>review_id</u>,**product_id,user_id,order_id**,rating,comment,create_time,update_time)
-
-
-
-## 一、数据库创建流程
-
-### （二）数据安全要求
-
-1. 用户、商家密码均加密存储，防止信息泄露。
-2. 做精细化数据权限控制，普通用户仅查看本人数据，商家仅查看本店数据，管理员可查看全平台数据。
-3. 配置数据库定期自动备份机制，支持数据异常时的快速恢复。
-
-
-
 
 
 ## @后端说明
@@ -277,7 +230,6 @@ my-shop-backend/
 │   ├── front/             # 👤 普通用户前端接口 (前缀: /api/front/)
 │   │   ├── user.js        # 登录、注册、个人信息
 │   │   ├── product.js     # 浏览商品详情
-│   │   └── order.js       # 提交订单、查看自己的订单
 │   ├── merchant/          # 🏬 商家后台接口 (前缀: /api/merchant/)
 │   │   ├── shop.js        # 店铺设置
 │   │   ├── product.js     # 上架/编辑商品
@@ -289,18 +241,13 @@ my-shop-backend/
 │
 ├── controllers/           # 🧠 控制器层 (业务逻辑核心，与路由层一一对应)
 │   ├── front/             # 处理普通用户的具体逻辑
-│   │   ├── userCtrl.js
-│   │   └── orderCtrl.js
+│   │   ├── login.js
+│   │   └── product.js
 │   ├── merchant/          # 处理商家的具体逻辑
 │   │   ├── productCtrl.js
 │   │   └── orderCtrl.js
 │   └── admin/             # 处理管理员的具体逻辑
 │       └── verifyCtrl.js
-│
-├── models/                # 🗄️ 数据访问层 (专门写 SQL 语句的地方)
-│   ├── userModel.js       # 包含 findUserById, createUser 等纯数据库操作
-│   ├── orderModel.js
-│   └── productModel.js
 │
 └── utils/                 # 🛠️ 公共工具箱
     ├── response.js        # 统一标准化返回给前端的 JSON 格式 (成功/失败)
