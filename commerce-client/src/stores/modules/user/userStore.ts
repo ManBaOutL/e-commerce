@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
-import type { AddressItem } from '@/api/user/types';
+import type { AddressItem, CommentAppendData, CommentSubmitData } from '@/api/user/types';
 import type { UserState } from '@/stores/types';
-import { reqAddComment, reqGetMyCoupons } from '@/api/user';
+import { reqAddComment, reqAppendComment, reqGetCommentList, reqDeleteComment, reqGetMyCoupons } from '@/api/user';
 // 🌟 引入我们刚才在 api/user/index.ts 里写好的 5 个真实接口
 import { 
   reqGetAddressList, 
@@ -19,6 +19,8 @@ export const useUserStore = defineStore('user', {
     addressList: [],
     myCoupons: [],
     favoriteList: [],
+    loading: false,
+    commentList: []
   }),
   getters: {},
   actions: {
@@ -89,14 +91,51 @@ export const useUserStore = defineStore('user', {
 
     // 商品评价
     // 🌟 统一管理的提交商品评价 Action
-    async submitProductComment(payload: { order_id: string; product_id: number; rating: number; content: string }) {
+    async submitProductComment(payload: CommentSubmitData) {
       try {
         const res = await reqAddComment(payload);
         // 将结果 return 给组件，让组件决定弹窗提示什么
         return res; 
       } catch (error) {
-        console.error('提交评价失败:', error);
+        // console.error('提交评价失败:', error);
         return { success: false, message: '网络请求失败' };
+      }
+    },
+    async appendProductComment(payload: CommentAppendData) {
+      try {
+        const res = await reqAppendComment(payload);
+        // 将结果 return 给组件，让组件决定弹窗提示什么
+        return res; 
+      } catch (error) {
+        // console.error('追加评价失败:', error);
+        return { success: false, message: '网络请求失败' };
+      }
+    },
+    // 拉取评价列表
+    async fetchMyComments() {
+      this.loading = true
+      try {
+        const res: any = await reqGetCommentList()
+        if (res.success) {
+          this.commentList = res.data
+        }
+        return res
+      } catch (error) {
+        console.error('拉取评价列表异常:', error)
+        throw error
+      } finally {
+        this.loading = false
+      }
+    },
+
+    // 删除评价
+    async deleteComment(reviewId: number) {
+      try {
+        const res: any = await reqDeleteComment({ review_id: reviewId })
+        return res
+      } catch (error) {
+        console.error('删除评价异常:', error)
+        throw error
       }
     },
 

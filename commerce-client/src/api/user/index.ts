@@ -1,6 +1,6 @@
 // 用户模块接口
 import request from '@/utils/request';
-import type { LoginData, CodeData,ForgetCodeData, RegisterData, CommentSubmitData} from './types';
+import type { LoginData, CodeData,ForgetCodeData, RegisterData, CommentSubmitData,CommentAppendData} from './types';
 import type { CartItem,AddCartPayload, UpdateCartPayload, RemoveCartPayload } from './types';
 import type { CreateOrderPayload, OrderInfo } from './types';
 import type { AddressItem } from './types';
@@ -64,6 +64,9 @@ enum API {
   USERS = '/users',
   // 用户评论
   POST_ADD_COMMENT = '/user/comment/add',
+  GET_COMMENT_LIST = '/user/comment/list',
+  POST_DELETE_COMMENT = '/user/comment/delete',
+  POST_APPEND_COMMENT = '/user/comment/append',
   // 我的优惠券列表
   GET_MY_COUPONS = '/user/coupons/list',
   // 购物车
@@ -88,10 +91,25 @@ enum API {
   GET_FAVORITES_LIST = '/user/favorite/list',
   POST_REMOVE_FAVORITES = '/user/favorite/remove',
 }
+
 // 提交商品评价
 export const reqAddComment = (data: CommentSubmitData) => {
   // 这里的 URL 请替换为你后端实际配置的路由路径
   return request.post<any, ApiResponse<any>>(API.POST_ADD_COMMENT, data);
+}
+export const reqAppendComment = (data: CommentAppendData) => {
+  // 这里的 URL 请替换为你后端实际配置的路由路径
+  return request.post<any, ApiResponse<any>>(API.POST_APPEND_COMMENT, data);
+}
+// 提交商品评价
+export const reqGetCommentList = () => {
+  // 这里的 URL 请替换为你后端实际配置的路由路径
+  return request.get<any, ApiResponse<any>>(API.GET_COMMENT_LIST);
+}
+// 提交商品评价
+export const reqDeleteComment = (data: { review_id: number }) => {
+  // 这里的 URL 请替换为你后端实际配置的路由路径
+  return request.post<any, ApiResponse<any>>(API.POST_DELETE_COMMENT, data);
 }
 
 // 获取我的优惠券列表

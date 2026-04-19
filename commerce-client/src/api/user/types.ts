@@ -97,7 +97,46 @@ export interface CommentSubmitData {
   images?: string; // 逗号分隔的图片路径
   video?: string;  // 视频路径
 }
+// 追加商品评论
+export interface CommentAppendData {
+  review_id: number,
+  content: string,
+  images?: string,
+  video?: string
+}
 
+export interface MyCommentItem {
+  /** 评价 ID (主键) */
+  review_id: number;
+  /** 订单编号 */
+  order_id: string;
+  /** 商品 ID */
+  product_id: number;
+  /** 商品名称 */
+  product_name: string;
+  /** 商品主图路径 */
+  product_image: string;
+  /** 星级评分 (1-5) */
+  rating: number;
+  /** 首评文字内容 */
+  comment: string;
+  /** 首评图片数组 (已从逗号分隔字符串转为数组) */
+  images?: string[];
+  /** 首评时间 (格式化后的字符串) */
+  create_time: string;
+  /** 商家回复 (可选，因为不一定有回复) */
+  merchant_reply?: string;
+  
+  // --- 追评相关字段 ---
+  /** 是否已追评：0为否，1为是 */
+  is_appended: 0 | 1;
+  /** 追评文字内容 (可选) */
+  append_content?: string;
+  /** 追评图片数组 (可选) */
+  append_images?: string[];
+  /** 追评时间 (可选) */
+  append_time?: string;
+}
 /**
  * 购物车单条商品项 (聚合了 SPU, SKU 和 Cart 表数据)
  */
@@ -172,6 +211,8 @@ export interface OrderDetailItem {
   quantity: number;            // 购买数量
   main_image?: string;         // 商品主图（可选，如果后端查出来了的话）
   spec?: string;               // 规格名称（如 "256G 钛金属"，如果在列表中需要展示的话）
+  is_appended?: number;         // 是否已追加 (0:未追加, 1:已追加)
+  review_id?: number;
 }
 // 订单使用的优惠券信息
 export interface OrderCouponInfo {

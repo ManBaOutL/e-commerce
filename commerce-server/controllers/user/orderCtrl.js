@@ -79,16 +79,17 @@ exports.getOrderList = async (req, res) => {
             SELECT o.order_id, o.total_amount, o.status, DATE_FORMAT(o.create_time, '%Y-%m-%d %H:%i:%s') as create_time,
                    od.quantity, od.price,
                    p.name as product_name, p.product_id,
-                   c.name as coupon_name, c.discount_value
+                   c.name as coupon_name, c.discount_value,
+                   cm.review_id, cm.is_appended -- 🌟 新增：查出该订单下对应商品的评价信息
             FROM \`order\` o
             LEFT JOIN order_details od ON o.order_id = od.order_id
             LEFT JOIN sku_product s ON od.sku_id = s.sku_id
             LEFT JOIN product p ON s.product_id = p.product_id
             LEFT JOIN coupon c ON o.coupon_id = c.coupon_id
+            LEFT JOIN \`comment\` cm ON cm.order_id = o.order_id AND cm.product_id = p.product_id -- 🌟 新增：左连接评论表
             WHERE o.user_id = ?
             ORDER BY o.create_time DESC
         `, [user_id]);
-
         const ordersMap = {};
         rows.forEach(row => {
             if (!ordersMap[row.order_id]) {
@@ -118,7 +119,9 @@ exports.getOrderList = async (req, res) => {
                     product_name: row.product_name,
                     price: row.price,
                     quantity: row.quantity,
-                    main_image: main_image 
+                    main_image: main_image,
+                    review_id: row.review_id || null, 
+                    is_appended: row.is_appended || 0 
                 });
             }
         });
