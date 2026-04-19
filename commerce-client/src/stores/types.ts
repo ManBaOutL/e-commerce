@@ -1,10 +1,12 @@
 // 这里存放仓库数据的类型
 // 用户仓库
-import type { AddressItem, CartItem, Coupon, OrderInfo, FavoriteItem } from '@/api/user/types';
+import type { AddressItem, CartItem, Coupon, OrderInfo, FavoriteItem, MyCommentItem } from '@/api/user/types';
 export interface UserState {
   addressList: AddressItem[];
   myCoupons: Coupon[];
   favoriteList: FavoriteItem[];
+  commentList: MyCommentItem[];
+  loading: boolean;
 }
 
 // 商品仓库

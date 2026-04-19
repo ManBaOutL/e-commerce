@@ -53,10 +53,10 @@
                 <span>收货地址</span>
               </el-menu-item>
 
-              <!-- <el-menu-item index="/user/security">
-                <el-icon><Setting /></el-icon>
-                <span>账号安全</span>
-              </el-menu-item> -->
+              <el-menu-item index="/user/comments">
+                <el-icon><Comment /></el-icon>
+                <span>我的评论</span>
+              </el-menu-item>
             </el-menu>
           </el-card>
         </div>

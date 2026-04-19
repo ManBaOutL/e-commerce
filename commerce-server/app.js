@@ -1,4 +1,6 @@
 require('module-alias/register')
+const { startCleanUpTask } = require('./utils/cronTask');
+
 //后端入口文件
 //定义返回数据格式为
 //{
@@ -21,6 +23,9 @@ const managerRouter = require('@/routes/manager')
 
 const cors = require('cors')
 app.use(cors())
+
+// 启动定时任务
+startCleanUpTask();
 
 // 解析 URL 中的查询参数（?key=value 形式）
 app.use(express.urlencoded({ extended: true }));

@@ -52,7 +52,30 @@
               <div class="count">x{{ item.quantity }}</div>
               <!-- 商品评论 -->
               <div class="goods-action" style="margin-left: 20px;" v-if="order.status === '已完成'">
-                <el-button size="small" plain type="warning" @click="toComment(order.order_id, item.product_id, item.product_name)">去评价</el-button>
+                <el-button 
+                  v-if="!item.review_id" 
+                  size="small" 
+                  plain 
+                  type="warning" 
+                  @click="toComment(order.order_id, item.product_id, item.product_name, item.main_image)"> 去评价
+                </el-button>
+
+                <el-button 
+                  v-else-if="item.is_appended === 0" 
+                  size="small" 
+                  plain 
+                  type="primary" 
+                  @click="toAppendComment(order.order_id, item.product_id, item.product_name, item.review_id, item.main_image)"> 追加评价
+                </el-button>
+
+                <el-button 
+                  v-else 
+                  size="small" 
+                  plain 
+                  type="info" 
+                  disabled>
+                  已完成评价
+                </el-button>              
               </div>
             </div>
           </div>
@@ -200,13 +223,28 @@ const cancelOrder = (order_id: number) => {
 
 const viewDetail = (order: any) => router.push({ path: '/user/orders/detail', query: { order_id: order.order_id } })
 
-const toComment = (orderId: number, productId: number, productName: string) => {
+// 🌟 接收 productImage 并放入 query
+const toComment = (orderId: number, productId: number, productName: string, productImage?: string) => {
   router.push({ 
     path: '/user/orders/comment', 
-    query: { orderId, productId, productName } 
+    query: { orderId, productId, productName, productImage } 
   })
 }
 
+// 🌟 接收 productImage 并放入 query
+const toAppendComment = (orderId: number, productId: number, productName: string, reviewId: number, productImage?: string) => {
+  router.push({ 
+    path: '/user/orders/comment', 
+    query: { 
+      orderId, 
+      productId, 
+      productName, 
+      mode: 'append',
+      reviewId: reviewId,
+      productImage // 传给评价页
+    } 
+  })
+}
 
 // ========== 退款相关逻辑 ==========
 const refundDialogVisible = ref(false);

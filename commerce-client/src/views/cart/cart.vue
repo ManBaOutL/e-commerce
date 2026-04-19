@@ -44,19 +44,19 @@
             v-for="item in cartList" 
             :key="item.id" 
             class="cart-item"
-            :class="{ 'item-invalid': item.status !== '通过' || item.stock === 0 }"
+            :class="{ 'item-invalid': item.product_status !== '通过' || item.stock === 0 }"
           >
             <el-row align="middle">
               <el-col :span="2">
                 <el-checkbox 
                   v-model="item.selected" 
-                  :disabled="item.status !== '通过' || item.stock === 0"
+                  :disabled="item.product_status !== '通过' || item.stock === 0"
                 />
               </el-col>
               <el-col :span="9">
                 <div class="product-info">
                   <div class="img-box">
-                    <el-tag v-if="item.status === 0" type="info" size="small" class="status-tag">已下架</el-tag>
+                    <el-tag v-if="item.product_status === '下架'" type="info" size="small" class="status-tag">已下架</el-tag>
                     <el-tag v-else-if="item.stock === 0" type="danger" size="small" class="status-tag">无货</el-tag>
                     <el-image 
                       style="width: 100%; height: 100%; border-radius: 4px;"
@@ -83,7 +83,7 @@
                   :min="item.stock > 0 ? 1 : 0" 
                   :max="item.stock || 0"
                   size="small" 
-                  :disabled="item.status === 0 || item.stock === 0"
+                  :disabled="item.product_status === 0 || item.stock === 0"
                   @change="(val) => handleCountChange(item.id, val)"
                 />
               </el-col>
@@ -203,28 +203,28 @@ onMounted(() => {
 })
 
 // === 购物车基础逻辑 ===
-const hasInvalidItems = computed(() => cartList.value.some(item => item.status === '待审核' || item.status === '已驳回' || item.stock === 0))
+const hasInvalidItems = computed(() => cartList.value.some(item => item.product_status === '待审核' || item.product_status === '已驳回' || item.stock === 0))
 
 const allSelected = computed({
   get: () => {
-    const validItems = cartList.value.filter(item => item.status === '通过' && item.stock > 0)
+    const validItems = cartList.value.filter(item => item.product_status === '通过' && item.stock > 0)
     return validItems.length > 0 && validItems.every(item => item.selected)
   },
   set: (val) => {
     cartList.value.forEach(item => {
-      if (item.status === '通过' && item.stock > 0) item.selected = val
+      if (item.product_status === '通过' && item.stock > 0) item.selected = val
     })
   }
 })
 
 const isIndeterminate = computed(() => {
-  const validItems = cartList.value.filter(item => item.status === '通过' && item.stock > 0)
+  const validItems = cartList.value.filter(item => item.product_status === '通过' && item.stock > 0)
   const selectedCount = validItems.filter(item => item.selected).length
   return selectedCount > 0 && selectedCount < validItems.length
 })
 
-const selectedCount = computed(() => cartList.value.filter(i => i.selected && i.status === '通过' && i.stock > 0).length);
-const totalPrice = computed(() => cartList.value.filter(i => i.selected && i.status === '通过' && i.stock > 0).reduce((sum, item) => sum + Number(item.price) * item.count, 0));
+const selectedCount = computed(() => cartList.value.filter(i => i.selected && i.product_status === '通过' && i.stock > 0).length);
+const totalPrice = computed(() => cartList.value.filter(i => i.selected && i.product_status === '通过' && i.stock > 0).reduce((sum, item) => sum + Number(item.price) * item.count, 0));
 const shippingFee = computed(() => (totalPrice.value >= 99 || totalPrice.value === 0 ? 0 : 10));
 
 // 🌟 2. 数量改变时，同步更新到数据库
@@ -248,7 +248,7 @@ const removeSelected = () => {
 }
 
 const clearInvalidItems = () => {
-  const ids = cartList.value.filter(i => i.status !== '通过' || i.stock === 0).map(i => i.id);
+  const ids = cartList.value.filter(i => i.product_status !== '通过' || i.stock === 0).map(i => i.id);
   if (ids.length > 0) cartStore.removeItems(ids);
 }
 
@@ -276,11 +276,11 @@ const selectCoupon = (id) => {
   couponDialogVisible.value = false
 }
 
-// 🌟 4. 终极一跃：结算跳转！
+// 4. 终极一跃：结算跳转！
 const handleCheckout = () => {
   // 找出所有被勾选的有效商品的 cart_id
   const selectedCartIds = cartList.value
-    .filter(i => i.selected && i.status === '通过' && i.stock > 0)
+    .filter(i => i.selected && i.product_status === '通过' && i.stock > 0)
     .map(i => i.id);
     
   if (selectedCartIds.length === 0) return ElMessage.warning('请选择要结算的商品');
