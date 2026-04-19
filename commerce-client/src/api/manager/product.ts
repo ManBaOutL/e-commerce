@@ -7,7 +7,7 @@ export const getManagerProductList = (params: productCondition = {}, page: numbe
     // 输出参数：商品列表，productList[]
     // 注意：商品列表中包含商品ID、商品名称、商品价格、商品库存、商品审核状态、商品卖家ID、商品卖家名称、商品分类ID、商品分类名称
     return request<{ productList: productList[], pagination: pagination }>({
-        url: '/manager/allProducts',
+        url: '/manager/allproducts',
         method: 'get',
         params: {
             ...params,
@@ -23,7 +23,7 @@ export const updateManagerProductList = (data: productOperation) => {
     // operation表示操作类型，如"approve"（审核通过）、"reject"（审核拒绝）、"delete"（删除商品）等
     // 输出参数：更新结果，boolean
     return request<boolean>({
-        url: '/manager/allProducts',
+        url: '/manager/allproducts',
         method: 'post',
         data: data
     })

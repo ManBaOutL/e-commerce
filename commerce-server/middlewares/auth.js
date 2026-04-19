@@ -2,7 +2,7 @@ const { verifyToken } = require('@/utils/jwt')
 
 // 验证用户登录
 exports.checkLogin = (req, res, next) => {
-    // console.log('前端传过来的请求头：', req.headers)      // 看这里
+    // console.log('前端传过来的请求头：', req.headers)      
     // console.log('authorization：', req.headers.authorization)
 
     let token = req.headers.authorization || ''

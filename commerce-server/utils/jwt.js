@@ -8,6 +8,7 @@ exports.createToken = (user) => {
     return jwt.sign(
         {
             user_id: user.user_id,
+            username: user.username,
             type: user.type
         },
         secret,

@@ -10,6 +10,7 @@ import type {
   couponList, couponOperation, couponCondition,
   activityList, activityOperation, activityCondition,
   commentList, commentOperation, commentCondition,
+  logList, logCondition,
 } from '@/api/manager/type'
 import { getManagerUserList, updateManagerUserList } from '@/api/manager/user'
 import { getManagerProductList, updateManagerProductList } from '@/api/manager/product'
@@ -17,6 +18,8 @@ import { getManagerCategoryList, updateManagerCategoryList } from '@/api/manager
 import { getManagerCouponList, updateManagerCouponList } from '@/api/manager/coupon'
 import { getActList, updateActList } from '@/api/manager/activity'
 import { getManagerCommentList, updateManagerCommentList } from '@/api/manager/comment'
+import { getLogList } from '@/api/manager/log'
+
 
 
 export const useAdminStore = defineStore('admin', {
@@ -24,6 +27,7 @@ export const useAdminStore = defineStore('admin', {
     token: '',
     userInfo: {},
     logList: [] as any[],
+    logTypeList: [] as string[],
     shopList: [] as any[],
     actList: [] as any[],
     userList: [] as userList[],
@@ -49,15 +53,12 @@ export const useAdminStore = defineStore('admin', {
       await this.initUserList()
       console.log('管理员数据初始化完成')
     },
-    initLogList() {
-      this.logList = [
-        { logId: 1001, username: 'user01', role: '普通用户', content: '修改登录密码', type: '修改密码', time: '2026-04-07 18:20:11', result: '成功' },
-        { logId: 1002, username: 'user02', role: 'VIP用户', content: '删除订单评价', type: '删除评价', time: '2026-04-07 17:10:22', result: '成功' },
-        { logId: 1003, username: 'admin', role: '管理员', content: '将 user03 改为 VIP用户', type: '分配角色', time: '2026-04-07 16:30:10', result: '成功' },
-        { logId: 1004, username: 'admin', role: '管理员', content: '禁用违规账号 user05', type: '禁用账号', time: '2026-04-07 15:20:33', result: '成功' },
-        { logId: 1005, username: 'admin', role: '管理员', content: '同意订单 2026005 退款', type: '退款审核', time: '2026-04-07 14:10:15', result: '成功' },
-        { logId: 1006, username: 'user01', role: '普通用户', content: '尝试修改密码（原密码错误）', type: '修改密码', time: '2026-04-07 12:11:22', result: '失败' },
-      ]
+    async initLogList() {
+      const res = await getLogList()
+      this.logList = res.data.log
+      this.logTypeList = res.data.allType
+      this.pagination = res.data.pagination
+      console.log("日志列表:", this.logList)
     },
     initShopList() {
       this.shopList = [
@@ -192,6 +193,15 @@ export const useAdminStore = defineStore('admin', {
       this.commentList = res.data.commentList
       this.pagination = res.data.pagination
       console.log("评价列表:", this.commentList)
+      console.log("分页信息:", this.pagination)
+    },
+    async getLogListbyPage(params: logCondition, page: number, pageSize: number) {
+      console.log("获取日志列表传如参数:", params, page, pageSize)
+      const res = await getLogList(params, page, pageSize)
+      this.logList = res.data.log
+      this.logTypeList = res.data.allType
+      this.pagination = res.data.pagination
+      console.log("日志列表:", this.logList)
       console.log("分页信息:", this.pagination)
     },
 
