@@ -1,4 +1,11 @@
 // 这里存放仓库数据的类型
+
+// 用户基本数据仓库（loginStore）
+import type { UserInfo } from '@/api/user/types';
+export interface LoginState {
+  token: string;
+  userInfo?: UserInfo;
+}
 // 用户仓库
 import type { AddressItem, CartItem, Coupon, OrderInfo, FavoriteItem, MyCommentItem } from '@/api/user/types';
 export interface UserState {

@@ -23,11 +23,23 @@
         <!-- 右侧用户信息 -->
         <el-col :lg="5" :md="0" :sm="0" :xs="0">
           <div class="user-panel">
-            <el-avatar :size="60" />
-            <p class="welcome-text">Hi, 欢迎回来!</p>
-            <div class="auth-btns">
+            <el-avatar 
+              :size="60" 
+              :src="isLoggedIn ? getFullUrl(userInfo?.img) : ''" 
+            />
+            
+            <p class="welcome-text">
+              Hi, {{ isLoggedIn ? userInfo?.username : '欢迎来到商城!' }}
+            </p>
+            
+            <div class="auth-btns" v-if="!isLoggedIn">
               <el-button type="primary" size="small" @click="handleToLogin">登录</el-button>
               <el-button size="small" plain @click="handleToRegister">注册</el-button>
+            </div>
+
+            <div class="auth-btns" v-else>
+              <el-button type="primary" size="small" @click="router.push('/user/house')">个人中心</el-button>
+              <el-button size="small" plain @click="handleLogout">退出</el-button>
             </div>
           </div>
         </el-col>
@@ -42,15 +54,26 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import {useRouter} from 'vue-router'
 import HomeMenu from './HomeMenu.vue'
-
+import { storeToRefs } from 'pinia'
+import { ElMessage, ElMessageBox } from 'element-plus'
 // 🌟 核心：在 Vite/Vue3 中静态图片必须显式 import 进来
 import banner1 from '@/assets/images/banners/1.png'
 import banner2 from '@/assets/images/banners/2.png'
 import banner3 from '@/assets/images/banners/3.png'
-
+// 🌟 引入状态库和工具函数
+import { useLoginStore } from '@/stores/modules/common/loginStore'
+import getFullUrl from '@/utils/getFullUrl'
 const router = useRouter()
+const loginStore = useLoginStore()
+
+// 🌟 从 store 中提取响应式的用户信息和登录状态
+const { userInfo, token } = storeToRefs(loginStore)
+
+// 判断是否已登录 (如果有 token 则认为已登录)
+const isLoggedIn = computed(() => !!token.value)
 
 // 定义轮播图数据数组
 const bannerList = [
@@ -71,6 +94,17 @@ const handleToLogin = () => {
 }
 const handleToRegister = () => {
   router.push('/login/register')
+}
+const handleLogout = () => {
+  ElMessageBox.confirm('确定要退出登录吗?', '提示', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning',
+  }).then(() => {
+    loginStore.logout() // 调用你 store 里的退出方法 (清除 token/缓存)
+    ElMessage.success('已安全退出')
+    // 可以在这里刷新一下页面或停留在首页
+  }).catch(() => {})
 }
 
 </script>

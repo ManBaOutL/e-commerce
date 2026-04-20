@@ -119,12 +119,12 @@
 <script setup lang="ts">
 import { ref, onUnmounted } from 'vue';
 import { showToast, showSuccessToast, showFailToast } from 'vant';
-import { useRouter } from 'vue-router'; // ✅ 用这个
-import request from '@/utils/request';
+import { useRouter } from 'vue-router'; 
 import Title from '@/components/login/title.vue';
-import { register } from '@/api/user';
+import { useLoginStore } from '@/stores/modules/common/loginStore';
 
 const router = useRouter();
+const loginStore = useLoginStore();
 
 // 表单数据
 const form = ref({
@@ -141,7 +141,7 @@ const form = ref({
 // 验证码相关
 const codeDisabled = ref(false);
 const codeText = ref('获取验证码');
-let timer: NodeJS.Timeout | null = null;
+let timer : any = null;
 
 // 手机号正则
 const phoneReg = /^1[3-9]\d{9}$/;
@@ -151,27 +151,19 @@ const validateRepassword = (val: string) => {
   return val === form.value.password;
 };
 
-// 获取验证码
 const getCode = async () => {
-  // 前置校验手机号
-  if (!phoneReg.test(form.value.phone)) {
-    showToast('请输入正确的11位手机号');
-    return;
-  }
-
+  if (!phoneReg.test(form.value.phone)) return showToast('请输入正确的11位手机号');
   if (codeDisabled.value) return;
 
-  try {
-    // 调用后端获取验证码接口
-    const res = await request.post('/code', {
-      phone: form.value.method === 'phone' ? form.value.phone : '',
-      email: form.value.method === 'email' ? form.value.email : '',
-      scene: 'register'
-    });
+  // 🌟 调用 Store 的发验证码方法
+  const res = await loginStore.sendCodeAction({
+    phone: form.value.method === 'phone' ? form.value.phone : '',
+    email: form.value.method === 'email' ? form.value.email : '',
+    scene: 'register'
+  });
 
+  if (res.success) {
     showSuccessToast(`验证码已发送`);
-
-    // 启动倒计时
     codeDisabled.value = true;
     let count = 60;
     codeText.value = `${count}s后重新获取`;
@@ -183,42 +175,18 @@ const getCode = async () => {
         codeDisabled.value = false;
         codeText.value = '获取验证码';
       }
-      if(count >= 20){
-        showToast({
-          message:`验证码已发送：${res.data}`,
-          position:'top'
-        });
+      if (count >= 20) {
+        showToast({ message: `验证码已发送：${res.data}`, position: 'top' });
       }
     }, 1000);
-  } catch (err: any) {
-    codeDisabled.value = false;
-    showFailToast(err?.msg || '获取验证码失败');
+  } else {
+    showFailToast(res.message);
   }
 };
 
-// 提交注册
 const handleSubmit = async () => {
-  console.log('handleSubmit', form.value);
-  // try {
-  //   // 调用后端注册接口
-  //   const res = await request.post('/register', {
-  //     phone: form.value.phone,
-  //     code: form.value.code,
-  //     password: form.value.password
-  //   });
-  //   showToast('注册成功，即将跳转到登录页');
-    
-  //   // 注册成功后跳转登录页（需引入路由）
-  //   // import { useRouter } from 'vue-router';
-  //   // const router = useRouter();
-  //   // setTimeout(() => {
-  //   //   router.push('/login');
-  //   // }, 1500);
-  // } catch (err: any) {
-  //   showToast(err.response?.data?.message || '注册失败');
-  // }
-  // 调用后端注册接口
-  const res = await register({
+  // 🌟 调用 Store 的注册方法
+  const res = await loginStore.registerAction({
     phone: form.value.method === 'phone' ? form.value.phone : '',
     code: form.value.code,
     username: form.value.username,
@@ -227,13 +195,13 @@ const handleSubmit = async () => {
     repassword: form.value.repassword,
     type: form.value.type,
   });
-  showToast('注册成功，即将跳转到登录页');
-  console.log(res)
-  
-  setTimeout(() => {
-     router.push('/login')
-  }, 1500);
 
+  if (res.success) {
+    showToast('注册成功，即将跳转到登录页');
+    setTimeout(() => router.push('/login'), 1500);
+  } else {
+    showFailToast(res.message);
+  }
 };
 
 // 登录跳转

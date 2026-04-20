@@ -24,8 +24,6 @@ import { getLogList } from '@/api/manager/log'
 
 export const useAdminStore = defineStore('admin', {
   state: () => ({
-    token: '',
-    userInfo: {},
     logList: [] as any[],
     logTypeList: [] as string[],
     shopList: [] as any[],

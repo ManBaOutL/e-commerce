@@ -1,6 +1,6 @@
 // 用户模块接口
 import request from '@/utils/request';
-import type { LoginData, CodeData,ForgetCodeData, RegisterData, CommentSubmitData,CommentAppendData} from './types';
+import type { LoginData, CodeData,ForgetCodeData, RegisterData, UserInfo, CommentSubmitData,CommentAppendData} from './types';
 import type { CartItem,AddCartPayload, UpdateCartPayload, RemoveCartPayload } from './types';
 import type { CreateOrderPayload, OrderInfo } from './types';
 import type { AddressItem } from './types';
@@ -55,6 +55,9 @@ export const register = (data: RegisterData) => {
         data
     })
 }
+export const reqUpdateUserInfo = (data: Record<string, any>) => {
+    return request.post<any, ApiResponse<any>>(API.UPDATE_USER_INFO, data);
+}
 
 enum API {
   LOGIN = '/login',
@@ -62,6 +65,7 @@ enum API {
   FORGET = '/forget',
   REGISTER = '/register',
   USERS = '/users',
+  UPDATE_USER_INFO = '/user/profile/update',
   // 用户评论
   POST_ADD_COMMENT = '/user/comment/add',
   GET_COMMENT_LIST = '/user/comment/list',

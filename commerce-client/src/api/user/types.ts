@@ -1,5 +1,4 @@
 // 用户模块接口类型定义
-
 import type { BaseEntity } from '../types';
 
 //登陆数据
@@ -44,13 +43,14 @@ export interface RegisterData {
 export interface UserInfo extends BaseEntity {
   user_id: number;
   username: string;
-  type: 'admin' | 'user' | 'merchant'  | '管理员' | '普通用户' | '商家'; // 根据业务扩展
+  type?: 'admin' | 'user' | 'merchant'  | '管理员' | '普通用户' | '商家'; // 根据业务扩展
   email?: string;
   phone?: string;
   age?: number;
   gender?: '男' | '女' | '保密'; // 0:未知, 1:男, 2:女
   is_vip: 0 | 1;
   img?: string; // 用户头像
+  user_status?: '正常' | '禁用'; // 0:正常, 1:禁用
 }
 
 /**

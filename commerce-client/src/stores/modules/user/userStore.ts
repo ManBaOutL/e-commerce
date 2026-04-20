@@ -1,7 +1,13 @@
 import { defineStore } from 'pinia';
 import type { AddressItem, CommentAppendData, CommentSubmitData } from '@/api/user/types';
 import type { UserState } from '@/stores/types';
-import { reqAddComment, reqAppendComment, reqGetCommentList, reqDeleteComment, reqGetMyCoupons } from '@/api/user';
+import { 
+  reqAddComment, 
+  reqAppendComment, 
+  reqGetCommentList, 
+  reqDeleteComment, 
+  reqGetMyCoupons 
+} from '@/api/user';
 // 🌟 引入我们刚才在 api/user/index.ts 里写好的 5 个真实接口
 import { 
   reqGetAddressList, 
@@ -24,6 +30,7 @@ export const useUserStore = defineStore('user', {
   }),
   getters: {},
   actions: {
+    
     // 🌟 1. 获取真实地址列表（替换掉了原来的 init）
     async fetchAddressList() {
       try {
