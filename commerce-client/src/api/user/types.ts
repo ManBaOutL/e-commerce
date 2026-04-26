@@ -262,3 +262,26 @@ export interface FavoriteItem {
 export interface ToggleFavoriteData {
   is_favorite: boolean;
 }
+
+
+// 用户统计数据类型定义
+export interface SummaryMetric {
+  value: string | number;
+  trend: string;
+  status: 'up' | 'down';
+}
+
+export interface ChartData {
+  summary: {
+    amount: SummaryMetric;
+    count: SummaryMetric;
+    avg: SummaryMetric;
+  };
+  trend: {
+    xAxis: string[];
+    amountData: number[];
+    countData: number[];
+  };
+  categories: Array<{ name: string; value: number }>;
+  ranking: Array<{ name: string; val: number; percent: number }>;
+}

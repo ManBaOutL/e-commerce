@@ -17,6 +17,7 @@ router.use('/user/cart', require('./cart'));
 router.use('/user/order', require('./order'));
 router.use('/user/address', require('./address'));
 router.use('/user/favorite', require('./favorite'));
+router.use('/user/statistics', require('./statistics'));
 // 文件上传
 router.use('/user/media', require('./upload'));
 
