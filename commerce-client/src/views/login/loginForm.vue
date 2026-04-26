@@ -62,15 +62,13 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import request from '../../utils/request';
 import { showSuccessToast, showFailToast } from 'vant';
-import { send } from 'vite';
 import router from '../../router';
-import { login } from '@/api/user';
 import type { LoginData } from '@/api/user/types';
 import Title from '@/components/login/title.vue'
-import { mockLogin } from '@/api/user';
+import { useLoginStore } from '@/stores/modules/common/loginStore'
 
+const loginStore = useLoginStore()
 const form = ref<LoginData>({
   username: '',
   password: '',
@@ -81,7 +79,7 @@ const loginType = ref('username')
 
 
 const handleSubmit = async (e: Event) => {
-  const sendData = {} as any
+  const sendData: any = { password: form.value.password, loginType: loginType.value };
   if(loginType.value === 'username'){
     if(!form.value.username){
       showFailToast('请输入用户名！');
@@ -107,47 +105,25 @@ const handleSubmit = async (e: Event) => {
     showFailToast('请输入密码！');
     return;
   }
-  sendData.password = form.value.password;
-  sendData.loginType = loginType.value;
-  console.log("登录数据:", sendData);
 
-  try {
-    // 发起登录请求（baseURL 已封装，只需写相对路径）
-    const resData = await login(sendData);
-    //const resData:any = await mockLogin(sendData);
-    console.log("登录模拟接口返回数据:", resData);
+  const res = await loginStore.loginAction(sendData);
 
-    // 登录成功处理
+  if (res.success) {
     showSuccessToast('登录成功！');
-    localStorage.setItem('token', JSON.stringify(resData.data.token));
-    console.log("登录成功后，token:", resData.data.token);
-
-    //模拟登录成功后，存储token
-    //localStorage.setItem('token', JSON.stringify(resData[0]));
-
-    if(resData.data.user.type === '普通用户'){
-      router.push('/');
-    }
-    else if(resData.data.user.type === '商家'){
-      router.push('/merchant');
-    }
-    else if(resData.data.user.type === '管理员'){
-      console.log("管理员登录成功");
-      router.push('/manager');
-    }
-    else {
-      router.push('/');
-    }
-  } catch (error) {
-    console.error('登录失败：', error);
-    showFailToast('登录失败！');
-  }finally{
-    // 登录完成后，清空表单数据,防止其他登录时使用
-    form.value.username = '';
-    form.value.password = '';
-    form.value.email = '';
-    form.value.phone = '';
+    // 根据 Store 返回的用户身份进行路由跳转
+    if (res.userType === '普通用户') router.push('/');
+    else if (res.userType === '商家') router.push('/merchant');
+    else if (res.userType === '管理员') router.push('/manager');
+    else router.push('/');
+  } else {
+    showFailToast(res.message);
   }
+
+  // 清空表单
+  form.value.username = '';
+  form.value.password = '';
+  form.value.email = '';
+  form.value.phone = '';
 }
 
 // 忘记密码

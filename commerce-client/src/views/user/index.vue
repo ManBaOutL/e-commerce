@@ -18,9 +18,9 @@
             <div class="user-brief">
               <el-avatar
                 :size="60"
-                src="https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png"
+                :src="getFullUrl(userInfo?.img) || 'https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png'"
               />
-              <p class="username">前端开发爱好者</p>
+              <p class="username">{{ userInfo?.username || '神秘用户' }}</p>
             </div>
             <el-menu :default-active="$route.path" class="user-menu" router>
               <el-menu-item index="/user/house">
@@ -72,9 +72,15 @@
 
 <script setup>
 import { computed, ref } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useRoute } from 'vue-router'
+import { useLoginStore } from '@/stores/modules/common/loginStore'
+import getFullUrl from '@/utils/getFullUrl'
 const $route = useRoute()
-// 计算属性：过滤出所有配置了 meta.title 的路由记录
+const loginStore = useLoginStore()
+
+const { userInfo } = storeToRefs(loginStore)
+
 const breadcrumbs = computed(() => {
   return $route.matched.filter((item) => item.meta && item.meta.title)
 })

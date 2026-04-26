@@ -1,5 +1,6 @@
 <template>
-  <div class="stats-container">
+  <div class="stats-container" id="pdf-container" v-loading="loading">
+    
     <div class="stats-toolbar">
       <div class="filter-section">
         <div class="tab-group">
@@ -22,14 +23,24 @@
           end-placeholder="结束日期"
           size="small"
           class="taobao-date-picker"
+          format="YYYY-MM-DD"
+          value-format="YYYY-MM-DD"
           @change="handleCustomDate"
         />
       </div>
       
-      <div class="action-section">
-        <el-button type="primary" plain size="small" icon="Download" @click="handleExport">
-          导出报表
-        </el-button>
+      <div class="action-section" data-html2canvas-ignore>
+        <el-dropdown @command="handleExportCommand">
+          <el-button type="primary" plain size="small">
+            导出报表 <el-icon class="el-icon--right"><ArrowDown /></el-icon>
+          </el-button>
+          <template #dropdown>
+            <el-dropdown-menu>
+              <el-dropdown-item command="csv">导出明细数据 (.csv)</el-dropdown-item>
+              <el-dropdown-item command="pdf">导出可视化图表 (.pdf)</el-dropdown-item>
+            </el-dropdown-menu>
+          </template>
+        </el-dropdown>
       </div>
     </div>
 
@@ -91,12 +102,13 @@
       <div class="analysis-box rank-list">
         <div class="box-title">最高消费排行</div>
         <div class="rank-items">
-          <div v-for="(item, index) in mockData.ranking" :key="index" class="rank-row">
+          <div v-for="(item, index) in chartData.ranking" :key="index" class="rank-row">
             <span class="rank-num" :class="'top-' + (index + 1)">{{ index + 1 }}</span>
             <span class="rank-name">{{ item.name }}</span>
-            <el-progress :percentage="item.percent" :color="index < 3 ? '#ff5000' : '#999'" />
+            <el-progress :percentage="item.percent || 0" :color="index < 3 ? '#ff5000' : '#999'" />
             <span class="rank-val">¥{{ item.val }}</span>
           </div>
+          <el-empty v-if="!chartData.ranking || chartData.ranking.length === 0" description="暂无消费数据" :image-size="60" />
         </div>
       </div>
     </div>
@@ -104,45 +116,21 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, onBeforeUnmount } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import * as echarts from 'echarts';
-import { QuestionFilled, TrendCharts, Histogram,  } from '@element-plus/icons-vue';
-import { ElMessage, ElMessageBox} from 'element-plus';
-import * as XLSX from 'xlsx';
 import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
-
-// --- 模拟测试数据（易于后续替换为接口） ---
-const mockData = ref({
-  summary: {
-    amount: { value: '3,842.00', trend: '12.5%', status: 'up' },
-    count: { value: '56', trend: '2.3%', status: 'down' },
-    avg: { value: '68.60', trend: '5.1%', status: 'up' }
-  },
-  trend: {
-    xAxis: ['04-01', '04-02', '04-03', '04-04', '04-05', '04-06', '04-07'],
-    amountData: [420, 580, 390, 820, 710, 520, 402],
-    countData: [5, 8, 4, 12, 9, 6, 12]
-  },
-  categories: [
-    { value: 1048, name: '美妆个护' },
-    { value: 735, name: '服饰鞋包' },
-    { value: 580, name: '数码家电' },
-    { value: 484, name: '食品饮料' },
-    { value: 300, name: '日用百货' }
-  ],
-  ranking: [
-    { name: 'iPhone 15 Pro', val: 7999, percent: 85 },
-    { name: 'Nike Air Max', val: 1299, percent: 60 },
-    { name: '乐事薯片大礼包', val: 99, percent: 15 }
-  ]
-});
+import { jsPDF } from 'jspdf';
+import { ElMessage } from 'element-plus';
+import { reqGetStatistics } from '@/api/user';
+import type { ChartData } from '@/api/user/types';
 
 // --- 状态变量 ---
+const loading = ref(false);
 const timeType = ref('week');
 const dateRange = ref([]);
 const currentMetric = ref('amount');
 const chartType = ref('line');
+
 const timeOptions = [
   { label: '今日', value: 'today' },
   { label: '近7日', value: 'week' },
@@ -150,48 +138,162 @@ const timeOptions = [
   { label: '自定义', value: 'custom' }
 ];
 
+// 🌟 核心：定义一个空的响应式数据源，等待后端填充
+const chartData = ref<ChartData>({
+  summary: {
+    amount: { value: '0.00', trend: '0%', status: 'up' },
+    count: { value: '0', trend: '0%', status: 'up' },
+    avg: { value: '0.00', trend: '0%', status: 'up' }
+  },
+  trend: {
+    xAxis: [],
+    amountData: [],
+    countData: []
+  },
+  categories: [],
+  ranking: []
+});
+
 const metricsConfig = computed(() => [
-  { key: 'amount', label: '总消费额', value: mockData.value.summary.amount.value, trend: mockData.value.summary.amount.trend, status: mockData.value.summary.amount.status, unit: '¥', tip: '选定周期内支付成功的订单总金额' },
-  { key: 'count', label: '订单总量', value: mockData.value.summary.count.value, trend: mockData.value.summary.count.trend, status: mockData.value.summary.count.status, unit: '单', tip: '选定周期内支付成功的订单总数' },
-  { key: 'avg', label: '客单价', value: mockData.value.summary.avg.value, trend: mockData.value.summary.avg.trend, status: mockData.value.summary.avg.status, unit: '¥', tip: '总消费额 / 订单总量' }
+  { key: 'amount', label: '总消费额', value: chartData.value.summary.amount.value, trend: chartData.value.summary.amount.trend, status: chartData.value.summary.amount.status, unit: '¥', tip: '选定周期内支付成功的订单总金额' },
+  { key: 'count', label: '订单总量', value: chartData.value.summary.count.value, trend: chartData.value.summary.count.trend, status: chartData.value.summary.count.status, unit: '单', tip: '选定周期内支付成功的订单总数' },
+  { key: 'avg', label: '客单价', value: chartData.value.summary.avg.value, trend: chartData.value.summary.avg.trend, status: chartData.value.summary.avg.status, unit: '¥', tip: '总消费额 / 订单总量' }
 ]);
 
 const currentMetricName = computed(() => metricsConfig.value.find(m => m.key === currentMetric.value)?.label);
 
-// --- 图表实例与逻辑 ---
 let trendChart: echarts.ECharts | null = null;
 let pieChart: echarts.ECharts | null = null;
 
-const initCharts = () => {
-  // 趋势图
-  trendChart = echarts.init(document.getElementById('mainTrendChart'));
-  // 饼图
-  pieChart = echarts.init(document.getElementById('categoryPieChart'));
-  renderTrend();
-  renderPie();
+// 向后端获取数据的核心方法
+const fetchStatisticsData = async () => {
+  try {
+    loading.value = true;
+    trendChart?.showLoading(); // 图表展示 loading 动画
+    pieChart?.showLoading();
+
+    // 发起请求，把当前的时间筛选条件传给后端
+    const res: any = await reqGetStatistics({
+        timeType: timeType.value,
+        startDate: dateRange.value?.[0] || '',
+        endDate: dateRange.value?.[1] || ''
+    });
+
+    if (res.success) {
+      // 用后端真实数据覆盖本地 ref
+      chartData.value = res.data;
+      console.log('后端返回的统计数据:', chartData.value);
+      // 数据更新后，重新绘制图表
+      renderTrend();
+      renderPie();
+    } else {
+      ElMessage.error(res.message || '获取报表数据失败');
+    }
+  } catch (error) {
+    console.error('报表接口异常:', error);
+    ElMessage.error('网络异常，无法加载报表');
+  } finally {
+    loading.value = false;
+    trendChart?.hideLoading();
+    pieChart?.hideLoading();
+  }
 };
 
+
+const handleExportCommand = (command: 'csv' | 'pdf') => {
+  if (command === 'csv') {
+    handleExportCSV();
+  } else if (command === 'pdf') {
+    handleExportPDF();
+  }
+};
+// 原来的 CSV 导出逻辑 (改个名字)
+const handleExportCSV = () => {
+  const { xAxis, amountData, countData } = chartData.value.trend;
+  if (!xAxis || xAxis.length === 0) return ElMessage.warning('当前暂无数据可导出');
+
+  let csvContent = '\uFEFF日期,总消费额(元),订单总量(单)\n';
+  xAxis.forEach((date, index) => {
+    csvContent += `${date},${amountData[index]},${countData[index]}\n`;
+  });
+
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  link.href = url;
+  
+  const timeLabel = timeOptions.find(t => t.value === timeType.value)?.label || '自定义时间';
+  link.setAttribute('download', `消费统计明细_${timeLabel}.csv`);
+  
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url); 
+  ElMessage.success('CSV 数据导出成功！');
+};
+
+// PDF 高清导出逻辑
+const handleExportPDF = async () => {
+  const element = document.getElementById('pdf-container');
+  if (!element) return;
+
+  try {
+    loading.value = true;
+    
+    // 1. 使用 html2canvas 将 DOM 转化为高清 Canvas
+    const canvas = await html2canvas(element, {
+      scale: 2, // 提升截图分辨率，防止 PDF 模糊
+      useCORS: true, // 允许跨域图片渲染
+      backgroundColor: '#f4f4f4', // 保持和页面背景色一致
+    });
+
+    // 2. 将 Canvas 转化为图片数据
+    const imgData = canvas.toDataURL('image/jpeg', 1.0);
+
+    // 3. 实例化 jsPDF (参数：纵向排列，单位毫米，A4纸张)
+    const pdf = new jsPDF('p', 'mm', 'a4');
+
+    // 4. 计算 A4 纸张的宽高比例，让图片完美自适应铺满宽度
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    // 按比例计算图片在 PDF 中的高度
+    const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+    // 5. 将图片贴入 PDF (距左侧0，距顶部0，宽度自适应A4，高度按比例)
+    pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+
+    // 6. 保存并下载 PDF
+    const timeLabel = timeOptions.find(t => t.value === timeType.value)?.label || '自定义时间';
+    pdf.save(`消费统计可视化报表_${timeLabel}.pdf`);
+
+    ElMessage.success('PDF 报表导出成功！');
+  } catch (error) {
+    console.error('PDF导出异常:', error);
+    ElMessage.error('PDF 导出失败，请重试');
+  } finally {
+    loading.value = false;
+  }
+};
+
+// --- ECharts 渲染逻辑 ---
 const renderTrend = () => {
+  if (!trendChart) return;
   const isAmount = currentMetric.value === 'amount';
   const color = isAmount ? '#ff5000' : '#1890ff';
   
   const option = {
-    tooltip: { trigger: 'axis', backgroundColor: '#fff', textStyle: { color: '#333' } },
+    tooltip: { trigger: 'axis', backgroundColor: '#fff' },
     grid: { top: '15%', left: '3%', right: '3%', bottom: '5%', containLabel: true },
     xAxis: {
       type: 'category',
-      data: mockData.value.trend.xAxis,
+      data: chartData.value.trend.xAxis, // 🌟 使用后端返回的 X 轴数组
       axisLine: { lineStyle: { color: '#f0f0f0' } },
       axisLabel: { color: '#999' }
     },
-    yAxis: {
-      type: 'value',
-      splitLine: { lineStyle: { type: 'dashed', color: '#f5f5f5' } }
-    },
+    yAxis: { type: 'value', splitLine: { lineStyle: { type: 'dashed', color: '#f5f5f5' } } },
     series: [{
       name: currentMetricName.value,
       type: chartType.value,
-      data: isAmount ? mockData.value.trend.amountData : mockData.value.trend.countData,
+      data: isAmount ? chartData.value.trend.amountData : chartData.value.trend.countData, // 🌟 使用后端数据
       smooth: true,
       showSymbol: false,
       itemStyle: { color: color },
@@ -203,113 +305,49 @@ const renderTrend = () => {
       } : null
     }]
   };
-  trendChart?.setOption(option, true);
+  trendChart.setOption(option, true); // true 表示不合并，完全用新数据覆盖
 };
 
 const renderPie = () => {
-  pieChart?.setOption({
+  if (!pieChart) return;
+  pieChart.setOption({
     tooltip: { trigger: 'item' },
     legend: { bottom: '0', icon: 'circle', itemWidth: 8 },
     series: [{
       type: 'pie',
       radius: ['50%', '70%'],
       center: ['50%', '45%'],
-      avoidLabelOverlap: false,
       itemStyle: { borderRadius: 6, borderColor: '#fff', borderWidth: 2 },
       label: { show: false },
-      data: mockData.value.categories
+      data: chartData.value.categories // 🌟 使用后端分类数据
     }]
   });
 };
 
-// --- 交互处理 ---
+// 切换 Tab 时重新拉数据
 const handleTimeTypeChange = (val: string) => {
   timeType.value = val;
-  // 此处模拟接口请求
-  console.log('请求接口，参数为:', val);
-  renderTrend(); 
+  dateRange.value = []; // 清空自定义日期
+  fetchStatisticsData(); // 重新拉取后端数据
+};
+
+const handleCustomDate = (val: any) => {
+  if (val) {
+    timeType.value = 'custom';
+    fetchStatisticsData();
+  }
 };
 
 watch([currentMetric, chartType], () => renderTrend());
 
-const handleCustomDate = (val: string[]) => {
-  // 处理自定义日期选择
-}
-
-// 导出文件逻辑
-const exportData = [
-  { date: '2024-04-01', category: '餐饮', name: '午餐外卖', amount: 25.5, status: '已支付' },
-  { date: '2024-04-01', category: '服饰', name: '春季衬衫', amount: 199.0, status: '已支付' },
-  { date: '2024-04-02', category: '交通', name: '打车', amount: 45.0, status: '已支付' },
-  { date: '2024-04-03', category: '日用', name: '抽纸', amount: 12.9, status: '已支付' },
-];
-// 1. 导出 Excel 逻辑
-const exportToExcel = () => {
-  // 创建工作表
-  const worksheet = XLSX.utils.json_to_sheet(exportData);
-  // 创建工作簿
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, "消费明细");
-  
-  // 设置表头名称（可选）
-  XLSX.utils.sheet_add_aoa(worksheet, [["日期", "分类", "商品名称", "金额", "状态"]], { origin: "A1" });
-
-  // 导出文件
-  XLSX.writeFile(workbook, `消费明细表_${timeType.value}.xlsx`);
-  
-  ElMessage.success('Excel 导出成功');
-};
-
-// 2. 导出 PDF 逻辑 (将整个 stats-container 区域截图导出)
-const exportToPDF = async () => {
-  const element = document.querySelector('.stats-container') as HTMLElement;
-  if (!element) return;
-
-  try {
-    const canvas = await html2canvas(element, {
-      scale: 2, // 提高清晰度
-      useCORS: true, // 允许跨域图片
-      backgroundColor: '#f4f4f4' // 保持背景色
-    });
-
-    const imgData = canvas.toDataURL('image/png');
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    
-    // 计算图片在 PDF 中的宽高
-    const imgProps = pdf.getImageProperties(imgData);
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-
-    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-    pdf.save(`消费分析报告_${new Date().getTime()}.pdf`);
-    
-    ElMessage.success('PDF 报告生成成功');
-  } catch (error) {
-    console.error('PDF 导出失败', error);
-    ElMessage.error('PDF 导出失败');
-  }
-};
-
-// 3. 统一处理导出按钮点击
-const handleExport = () => {
-  ElMessageBox.confirm(
-    '请选择导出格式',
-    '数据导出',
-    {
-      distinguishCancelAndClose: true,
-      confirmButtonText: '导出 PDF 报告',
-      cancelButtonText: '导出 Excel 明细',
-      type: 'info',
-      center: true // 居中显示更像 ActionSheet
-    }
-  )
-  .then(() => { exportToPDF();})
-  .catch((action) => {
-    if (action === 'cancel') { exportToExcel(); }
-  })
-}
 onMounted(() => {
-  initCharts();
+  // 1. 初始化空图表
+  trendChart = echarts.init(document.getElementById('mainTrendChart'));
+  pieChart = echarts.init(document.getElementById('categoryPieChart'));
+  
+  // 2. 挂载后立刻向后端请求真实数据
+  fetchStatisticsData();
+
   window.addEventListener('resize', () => {
     trendChart?.resize();
     pieChart?.resize();

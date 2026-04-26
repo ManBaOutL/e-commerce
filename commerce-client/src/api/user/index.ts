@@ -1,6 +1,6 @@
 // 用户模块接口
 import request from '@/utils/request';
-import type { LoginData, CodeData,ForgetCodeData, RegisterData, CommentSubmitData,CommentAppendData} from './types';
+import type { LoginData, CodeData,ForgetCodeData, RegisterData, UserInfo, CommentSubmitData,CommentAppendData} from './types';
 import type { CartItem,AddCartPayload, UpdateCartPayload, RemoveCartPayload } from './types';
 import type { CreateOrderPayload, OrderInfo } from './types';
 import type { AddressItem } from './types';
@@ -55,6 +55,9 @@ export const register = (data: RegisterData) => {
         data
     })
 }
+export const reqUpdateUserInfo = (data: Record<string, any>) => {
+    return request.post<any, ApiResponse<any>>(API.UPDATE_USER_INFO, data);
+}
 
 enum API {
   LOGIN = '/login',
@@ -62,6 +65,7 @@ enum API {
   FORGET = '/forget',
   REGISTER = '/register',
   USERS = '/users',
+  UPDATE_USER_INFO = '/user/profile/update',
   // 用户评论
   POST_ADD_COMMENT = '/user/comment/add',
   GET_COMMENT_LIST = '/user/comment/list',
@@ -90,6 +94,10 @@ enum API {
   POST_TOGGLE_FAVORITE = '/user/favorite/toggle',
   GET_FAVORITES_LIST = '/user/favorite/list',
   POST_REMOVE_FAVORITES = '/user/favorite/remove',
+  // 活动
+  GET_FRONT_ACTIVITY_LIST = 'front/activity/list',
+  // 统计数据
+  GET_STATISTICS = '/user/statistics/list'
 }
 
 // 提交商品评价
@@ -201,4 +209,14 @@ export const reqGetFavoriteList = () => {
 // 3. 批量删除收藏 (传数组)
 export const reqRemoveFavorite = (sku_ids: number[]) => {
   return request.post<any, ApiResponse<any>>(API.POST_REMOVE_FAVORITES, { sku_ids });
+};
+
+// 获取首页活动列表
+export const reqGetFrontActivityList = () => {
+  return request.get<any, ApiResponse<any>>(API.GET_FRONT_ACTIVITY_LIST);
+};
+
+// 获取统计数据
+export const reqGetStatistics = (params: any) => {
+  return request.get<any, ApiResponse<any>>(API.GET_STATISTICS, { params });
 };

@@ -75,12 +75,12 @@
     />
 
     <!-- 新建弹窗 -->
-    <el-dialog v-model="showAddDialog" title="创建营销活动" width="700px" draggable>
-      <el-form :model="form" label-width="100px" :rules="formRules" ref="formRef">
+    <el-dialog v-model="showAddDialog" title="创建营销活动" width="700px" draggable @close="resetForm">
+      <el-form :model="form" label-width="110px" :rules="formRules" ref="formRef" status-icon>
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="活动类型" prop="actType">
-              <el-select v-model="form.actType" placeholder="请选择活动类型" style="width: 100%">
+              <el-select v-model="form.actType" placeholder="请选择类型" style="width: 100%" @change="handleTypeChange">
                 <el-option label="满减活动" value="满减" />
                 <el-option label="秒杀活动" value="秒杀" />
                 <el-option label="折扣活动" value="折扣" />
@@ -89,7 +89,7 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="活动名称" prop="actName">
-              <el-input v-model="form.actName" placeholder="输入活动名称" style="width: 100%" />
+              <el-input v-model="form.actName" placeholder="如：双十一数码大促" style="width: 100%" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -106,80 +106,78 @@
           </el-select>
         </el-form-item>
 
-        <!-- 活动规则区域 -->
-        <el-card shadow="hover" v-if="form.actType">
+        <el-form-item label="活动时间" prop="activityTime">
+          <el-date-picker
+            v-model="form.activityTime"
+            type="datetimerange"
+            range-separator="至"
+            start-placeholder="开始时间"
+            end-placeholder="结束时间"
+            format="YYYY-MM-DD HH:mm"
+            value-format="YYYY-MM-DD HH:mm"
+            style="width: 100%"
+            :default-time="[new Date(2000, 1, 1, 0, 0, 0), new Date(2000, 1, 1, 23, 59, 59)]"
+          />
+        </el-form-item>
+
+        <el-card shadow="never" class="rule-card" v-if="form.actType">
           <template #header>
-            <span>活动规则设置</span>
+            <span style="font-weight: bold; color: #409EFF">活动规则设置</span>
           </template>
 
-          <!-- 满减：最低消费 + 优惠金额 -->
-          <el-form-item label="满减条件" v-if="form.actType === '满减'" prop="discountRate,minOrderAmount">
-            <el-input v-model.number="form.minOrderAmount" placeholder="最低消费" style="width:130px"/>
-            <span style="margin:0 10px">减</span>
-            <el-input v-model.number="form.discountRate" placeholder="优惠金额" style="width:130px"/>
+          <el-form-item label="满减条件" v-if="form.actType === '满减'" prop="discountRate">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span>消费满</span>
+              <el-input-number v-model="form.minOrderAmount" :min="0" :precision="2" :controls="false" placeholder="0.00" style="width: 120px">
+                <template #prefix>¥</template>
+              </el-input-number>
+              <span>，立减</span>
+              <el-input-number v-model="form.discountRate" :min="0" :precision="2" :controls="false" placeholder="0.00" style="width: 120px">
+                <template #prefix>¥</template>
+              </el-input-number>
+            </div>
           </el-form-item>
 
-          <!-- 秒杀：优惠金额（最低消费自动0） -->
           <el-form-item label="秒杀价格" v-if="form.actType === '秒杀'" prop="discountRate">
-            <el-input v-model.number="form.discountRate" placeholder="秒杀价" style="width:150px"/>
+            <el-input-number v-model="form.discountRate" :min="0" :precision="2" :controls="false" placeholder="0.00" style="width: 160px">
+              <template #prefix>¥</template>
+            </el-input-number>
           </el-form-item>
 
-          <!-- 折扣：折扣比例（最低消费自动0） -->
           <el-form-item label="折扣比例" v-if="form.actType === '折扣'" prop="discountRate">
-            <el-input v-model.number="form.discountRate" placeholder="如 0.85 = 85折" style="width:150px"/>
+            <el-input-number v-model="form.discountRate" :min="0.01" :max="0.99" :step="0.05" :precision="2" placeholder="如 0.85" style="width: 160px" />
+            <span class="tip-text">（请输入 0.01 ~ 0.99 之间的小数，如 0.85 即为 85折）</span>
           </el-form-item>
         </el-card>
 
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="开始时间" prop="startTime">
-              <el-date-picker
-                v-model="form.startTime"
-                type="datetime"
-                placeholder="选择开始时间"
-                style="width: 100%"
-                format="YYYY-MM-DD HH:mm"
-                value-format="YYYY-MM-DD HH:mm"
-              />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="结束时间" prop="endTime">
-              <el-date-picker
-                v-model="form.endTime"
-                type="datetime"
-                placeholder="选择结束时间"
-                style="width: 100%"
-                format="YYYY-MM-DD HH:mm"
-                value-format="YYYY-MM-DD HH:mm"
-              />
-            </el-form-item>
-          </el-col>
-        </el-row>
+        <div style="height: 20px;"></div>
 
-        <!-- 图片上传（必填） -->
-        <el-form-item label="活动图片" prop="">
+        <el-form-item label="活动海报" prop="imgUrl">
           <el-upload
             class="avatar-uploader"
-            action="#"
+            action="/api/user/media/upload"
+            :headers="uploadHeaders"
             :show-file-list="false"
             :before-upload="beforeUpload"
-            @success="handleUploadSuccess"
-            @error="handleUploadError"
+            :on-success="handleUploadSuccess"
+            :on-error="handleUploadError"
           >
-            <img v-if="form.imgUrl" :src="form.imgUrl" class="upload-preview" />
+            <div v-if="form.imgUrl" class="upload-preview-wrapper">
+              <img :src="getFullUrl(form.imgUrl)" class="upload-preview" />
+              <div class="hover-mask"><el-icon color="#fff" :size="24"><Camera /></el-icon></div>
+            </div>
             <div v-else class="upload-placeholder">
               <el-icon><Plus /></el-icon>
-              <div>点击上传活动图片</div>
+              <div>点击上传海报</div>
             </div>
           </el-upload>
-          <div class="upload-tip">支持JPG/PNG格式，大小不超过2MB（必填）</div>
+          <div class="upload-tip">建议尺寸比例 16:9，支持JPG/PNG，不超过2MB</div>
         </el-form-item>
 
       </el-form>
 
       <template #footer>
-        <el-button @click="resetForm(); showAddDialog = false">取消</el-button>
+        <el-button @click="showAddDialog = false">取消</el-button>
         <el-button type="primary" @click="createActivity">确认创建</el-button>
       </template>
     </el-dialog>
@@ -189,7 +187,7 @@
       <div style="text-align: center">
         <img 
           v-if="imageUrl" 
-          :src="imageUrl" 
+          :src="getFullUrl(imageUrl)" 
           style="max-width: 100%; max-height: 600px" 
           alt="活动图片"
         />
@@ -200,12 +198,16 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { storeToRefs } from 'pinia'
 import { useAdminStore } from '@/stores/modules/adminStore'
 import { Plus } from '@element-plus/icons-vue'
+import { useLoginStore } from '@/stores/modules/common/loginStore' // 引入 loginStore 获取 Token
+import getFullUrl from '@/utils/getFullUrl' // 引入路径拼接工具
 
+const loginStore = useLoginStore()
+const { token } = storeToRefs(loginStore)
 const adminStore = useAdminStore()
 const { actList, pagination } = storeToRefs(adminStore)
 
@@ -220,6 +222,11 @@ const showAddDialog = ref(false)
 const showImageDialog = ref(false)
 const imageUrl = ref('') 
 const imageTitle = ref('')
+
+const uploadHeaders = computed(() => {
+  const cleanToken = (token?.value || '').replace(/(^"|"$)/g, '')
+  return { Authorization: `Bearer ${cleanToken}` }
+})
 
 // 商品分类
 const categoryList = ref([
@@ -236,11 +243,9 @@ const formRules = ref({
   actType: [{ required: true, message: '请选择活动类型', trigger: 'change' }],
   actName: [{ required: true, message: '请输入活动名称', trigger: 'blur' }],
   categoryId: [{ required: true, message: '请选择适用商品种类', trigger: 'change' }],
-  discountRate: [{ required: true, message: '请填写活动优惠', trigger: 'blur' }],
-  minOrderAmount: [{ required: true, message: '请填写最低消费', trigger: 'blur' }],
-  startTime: [{ required: true, message: '请选择开始时间', trigger: 'change' }],
-  endTime: [{ required: true, message: '请选择结束时间', trigger: 'change' }],
-  imgUrl: [{ required: true, message: '请上传活动图片', trigger: 'change' }]
+  discountRate: [{ required: true, message: '请填写活动优惠数值', trigger: 'blur' }],
+  activityTime: [{ required: true, message: '请选择活动生效时间段', trigger: 'change' }],
+  imgUrl: [{ required: true, message: '请上传活动海报', trigger: 'change' }]
 })
 
 
@@ -307,10 +312,14 @@ const form = ref({
   categoryId: '',
   discountRate: 0,    // 满减=优惠金额 | 秒杀=秒杀价 | 折扣=折扣比例
   minOrderAmount: 0,  // 满减=最低消费 | 秒杀/折扣=0
-  startTime: '',
-  endTime: '',
+  activityTime: [],
   imgUrl: ''          // 活动图片（必填）
 })
+
+const handleTypeChange = () => {
+  form.value.discountRate = undefined
+  form.value.minOrderAmount = undefined
+}
 
 // 查询
 const handleSearch = () => {
@@ -348,19 +357,19 @@ const beforeUpload = (file) => {
   return true
 }
 
-// 上传成功处理
-const handleUploadSuccess = (response, file) => {
-  const reader = new FileReader()
-  reader.onload = (e) => {
-    form.value.imgUrl = e.target?.result
+// 替换为你个人信息里一样的真实上传成功逻辑
+const handleUploadSuccess = (res, file) => {
+  if (res.success || res.code === 200) {
+    // 保存后端返回的路径 (例如 /upload/temp/xxx.png)
+    form.value.imgUrl = res.data.url || res.data 
+    ElMessage.success('图片上传成功！')
+  } else {
+    ElMessage.error(res.message || '图片上传失败')
   }
-  reader.readAsDataURL(file.raw)
-  ElMessage.success('图片上传成功！')
 }
 
-// 上传失败处理
 const handleUploadError = () => {
-  ElMessage.error('图片上传失败，请重试！')
+  ElMessage.error('网络异常，图片上传失败！')
 }
 
 // 重置表单
@@ -369,10 +378,9 @@ const resetForm = () => {
     actType: '',
     actName: '',
     categoryId: '',
-    discountRate: 0,
-    minOrderAmount: 0,
-    startTime: '',
-    endTime: '',
+    discountRate: undefined,
+    minOrderAmount: undefined,
+    activityTime: [], // 清空时间
     imgUrl: ''
   }
   formRef.value?.clearValidate()
@@ -380,43 +388,40 @@ const resetForm = () => {
 
 // 创建活动（核心逻辑优化）
 const createActivity = async () => {
-  // 表单整体校验
   const validate = await formRef.value.validate()
   if (!validate) return
 
-  // 自动处理不同类型的字段逻辑
-  let categoryName = form.value.categoryId == 0 
-    ? '所有商品' 
-    : categoryList.value.find(c => c.categoryId == form.value.categoryId)?.categoryName || '未绑定'
-  
+  // 按活动类型处理规则
   let rule = ''
-  // 按活动类型处理规则和字段
   switch (form.value.actType) {
     case '满减':
+      if(!form.value.minOrderAmount) {
+        return ElMessage.warning('请填写满减的最低消费条件')
+      }
       rule = `满${form.value.minOrderAmount}减${form.value.discountRate}`
       break
     case '秒杀':
-      form.value.minOrderAmount = 0 // 秒杀强制最低消费为0
+      form.value.minOrderAmount = 0 
       rule = `秒杀价 ¥${form.value.discountRate}`
       break
     case '折扣':
-      form.value.minOrderAmount = 0 // 折扣强制最低消费为0
-      rule = `${form.value.discountRate}折`
+      form.value.minOrderAmount = 0 
+      // 0.85 -> 8.5折
+      rule = `${form.value.discountRate * 10}折`
       break
   }
 
-  // 构造符合接口的活动数据
   const newAct = {
     actId: Date.now(),
     actName: form.value.actName,
     actType: form.value.actType,
     categoryID: parseInt(form.value.categoryId),
-    //categoryName: categoryName,
     rule,
     discountRate: form.value.discountRate,
     minOrderAmount: form.value.minOrderAmount,
-    startTime: form.value.startTime,
-    endTime: form.value.endTime,
+    // 🌟 从数组解构时间
+    startTime: form.value.activityTime[0], 
+    endTime: form.value.activityTime[1],
     status: '未开始',
     img: form.value.imgUrl
   }
@@ -427,10 +432,8 @@ const createActivity = async () => {
     operation: 'create'
   }
 
-  console.log('【活动创建】', result)
-  //关闭窗口
   showAddDialog.value = false
-  // 更新活动列表
+  
   const searchCondition = {
     name: searchName.value,
     category_name: searchCategory.value,
@@ -438,10 +441,7 @@ const createActivity = async () => {
     status: statusFilter.value
   }
   await adminStore.updateActivityList(result, searchCondition)
-
-  //清空表单
   resetForm()
-
 
   ElMessage.success('活动创建成功！')
 }
@@ -524,5 +524,36 @@ const getPageData = (currentPage, pageSize) => {
   padding: 40px 0;
   color: #999;
   font-size: 16px;
+}
+
+.rule-card {
+  background-color: #fcfcfc;
+  border: 1px dashed #e4e7ed;
+}
+.tip-text {
+  font-size: 12px;
+  color: #909399;
+  margin-left: 10px;
+}
+.upload-preview-wrapper {
+  position: relative;
+  width: 200px;
+  height: 112px;
+  border-radius: 4px;
+  overflow: hidden;
+  cursor: pointer;
+}
+.hover-mask {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.upload-preview-wrapper:hover .hover-mask {
+  opacity: 1;
 }
 </style>
