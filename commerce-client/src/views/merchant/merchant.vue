@@ -132,7 +132,7 @@ const userInfo = reactive({
 
 // ==============================================
 
-const activeMenu = ref('dashboard')
+const activeMenu = ref('showData')
 const showCreate = ref(false)
 const formRef = ref(null)
 
@@ -170,6 +170,10 @@ const submitCreate = async () => {
   await formRef.value.validate()
   userInfo.hasShop = true
   userInfo.shopInfo = { ...shopForm }
+
+  const operation = 'create'
+  
+
   showCreate.value = false
   ElMessage.success('店铺创建成功！')
 }

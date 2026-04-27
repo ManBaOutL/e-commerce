@@ -7,7 +7,7 @@
       <el-col :span="6"><div class="data-card">本店商品：{{ goodsCount }}</div></el-col>
       <el-col :span="6"><div class="data-card">本店订单：{{ orderCount }}</div></el-col>
       <el-col :span="6"><div class="data-card">待发货：{{ waitSend }}</div></el-col>
-      <el-col :span="6"><div class="data-card">今日销售额：¥6860</div></el-col>
+      <el-col :span="6"><div class="data-card">今日销售额：¥{{ sumOrderAmount }}</div></el-col>
     </el-row>
 
     <!-- 折线图 + 柱状图 -->
@@ -48,6 +48,7 @@ import PieChart from '@/components/Charts/PieChart.vue'
 const goodsCount = ref(68)
 const orderCount = ref(243)
 const waitSend = ref(9)
+const sumOrderAmount = ref(6860)
 
 // 近7日坐标
 const xData = ['1日','2日','3日','4日','5日','6日','7日']

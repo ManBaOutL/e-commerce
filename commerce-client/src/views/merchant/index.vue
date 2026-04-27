@@ -27,7 +27,7 @@
       <!-- 右侧主内容 -->
       <div class="content">
         <!-- 默认面板：数据概览 -->
-        <div v-if="activeMenu === 'dashboard'">
+        <div v-if="activeMenu === 'showData'">
           <h2>店铺数据概览</h2>
           <el-row :gutter="20" class="data-cards">
             <el-col :span="6">
@@ -106,10 +106,10 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 
 const router = useRouter()
-const activeMenu = ref('dashboard')
+const activeMenu = ref('showData')
 
 const menuList = ref([
-  { key: 'dashboard', label: '数据概览' },
+  { key: 'showData', label: '数据概览' },
   { key: 'goods', label: '商品管理' },
   { key: 'order', label: '订单管理' },
   { key: 'comment', label: '评价管理' },
