@@ -122,9 +122,15 @@ export interface CommentItem {
   user_avatar: string;
   images?: string[];
   merchant_reply?: string;
-  append_comment?: string;
+  create_time: string;
+  // 以下字段可选（追评功能）
+  is_appended: number;
+  append_content?: string;
+  append_images?: string[];
+  append_video?: string;
   append_days?: number;
 }
+
 
 
 

@@ -1,5 +1,4 @@
 // 用户模块接口类型定义
-
 import type { BaseEntity } from '../types';
 
 //登陆数据
@@ -44,13 +43,14 @@ export interface RegisterData {
 export interface UserInfo extends BaseEntity {
   user_id: number;
   username: string;
-  type: 'admin' | 'user' | 'merchant'  | '管理员' | '普通用户' | '商家'; // 根据业务扩展
+  type?: 'admin' | 'user' | 'merchant'  | '管理员' | '普通用户' | '商家'; // 根据业务扩展
   email?: string;
   phone?: string;
   age?: number;
   gender?: '男' | '女' | '保密'; // 0:未知, 1:男, 2:女
   is_vip: 0 | 1;
   img?: string; // 用户头像
+  user_status?: '正常' | '禁用'; // 0:正常, 1:禁用
 }
 
 /**
@@ -94,8 +94,49 @@ export interface CommentSubmitData {
   product_id: number;
   rating: number;
   content: string;
+  images?: string; // 逗号分隔的图片路径
+  video?: string;  // 视频路径
+}
+// 追加商品评论
+export interface CommentAppendData {
+  review_id: number,
+  content: string,
+  images?: string,
+  video?: string
 }
 
+export interface MyCommentItem {
+  /** 评价 ID (主键) */
+  review_id: number;
+  /** 订单编号 */
+  order_id: string;
+  /** 商品 ID */
+  product_id: number;
+  /** 商品名称 */
+  product_name: string;
+  /** 商品主图路径 */
+  product_image: string;
+  /** 星级评分 (1-5) */
+  rating: number;
+  /** 首评文字内容 */
+  comment: string;
+  /** 首评图片数组 (已从逗号分隔字符串转为数组) */
+  images?: string[];
+  /** 首评时间 (格式化后的字符串) */
+  create_time: string;
+  /** 商家回复 (可选，因为不一定有回复) */
+  merchant_reply?: string;
+  
+  // --- 追评相关字段 ---
+  /** 是否已追评：0为否，1为是 */
+  is_appended: 0 | 1;
+  /** 追评文字内容 (可选) */
+  append_content?: string;
+  /** 追评图片数组 (可选) */
+  append_images?: string[];
+  /** 追评时间 (可选) */
+  append_time?: string;
+}
 /**
  * 购物车单条商品项 (聚合了 SPU, SKU 和 Cart 表数据)
  */
@@ -116,7 +157,7 @@ export interface CartItem {
   
   // --- 核心校验字段 (决定商品是否失效) ---
   stock: number;        // 该规格的实时库存
-  status: '待审核' | '通过' | '已驳回' | '下架'; // 商品当前的状态
+  product_status: '待审核' | '通过' | '已驳回' | '下架'; // 商品当前的状态
   
   // --- 前端专属交互字段 (后端不存，前端自动挂载) ---
   selected?: boolean;   // 是否被勾选 (用于结算和删除)
@@ -170,6 +211,8 @@ export interface OrderDetailItem {
   quantity: number;            // 购买数量
   main_image?: string;         // 商品主图（可选，如果后端查出来了的话）
   spec?: string;               // 规格名称（如 "256G 钛金属"，如果在列表中需要展示的话）
+  is_appended?: number;         // 是否已追加 (0:未追加, 1:已追加)
+  review_id?: number;
 }
 // 订单使用的优惠券信息
 export interface OrderCouponInfo {
@@ -218,4 +261,27 @@ export interface FavoriteItem {
 // 🌟 切换收藏状态接口的返回数据类型
 export interface ToggleFavoriteData {
   is_favorite: boolean;
+}
+
+
+// 用户统计数据类型定义
+export interface SummaryMetric {
+  value: string | number;
+  trend: string;
+  status: 'up' | 'down';
+}
+
+export interface ChartData {
+  summary: {
+    amount: SummaryMetric;
+    count: SummaryMetric;
+    avg: SummaryMetric;
+  };
+  trend: {
+    xAxis: string[];
+    amountData: number[];
+    countData: number[];
+  };
+  categories: Array<{ name: string; value: number }>;
+  ranking: Array<{ name: string; val: number; percent: number }>;
 }

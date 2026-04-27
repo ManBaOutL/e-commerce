@@ -47,6 +47,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useCartStore } from '@/stores/modules/user/cartStore'
 import { useUserStore } from '@/stores/modules/user/userStore'
+import { useLoginStore} from '@/stores/modules/common/loginStore'
 
 const router = useRouter()
 const route = useRoute()
@@ -54,6 +55,7 @@ const route = useRoute()
 // 引入状态库
 const cartStore = useCartStore()
 const userStore = useUserStore()
+const loginStore = useLoginStore()
 
 // 搜索框输入内容
 const searchKeyword = ref('')
@@ -73,9 +75,7 @@ const handleToUserCenter = () => {
   router.push('/user')
 }
 const handleToLogin = () => {
-  localStorage.removeItem('token')
-  localStorage.removeItem('user')
-  router.push('/login')
+  loginStore.logout()
 }
 const handleSearch = () => {
   router.push({

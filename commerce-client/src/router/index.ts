@@ -46,6 +46,7 @@ const router = createRouter({
       component: () => import('@/views/product/ProductList.vue'),
       meta: { title: '商品列表' },
     },
+    // 用户中心
     {
       path: '/user',
       redirect: '/user/house',
@@ -54,7 +55,7 @@ const router = createRouter({
         {
           path: 'house',
           component: () => import('@/views/user/house/index.vue'),
-          meta: { title: '我的KK' },
+          meta: { title: '我的MALL' },
         },
         {
           path: 'profile',
@@ -82,9 +83,9 @@ const router = createRouter({
           meta: { title: '收货地址' },
         },
         {
-          path: 'security',
-          component: () => import('@/views/user/security/index.vue'),
-          meta: { title: '安全设置' },
+          path: 'comments',
+          component: () => import('@/views/user/comment/index.vue'),
+          meta: { title: '我的评论' },
         },
       ],
     },

@@ -3,8 +3,7 @@ import { message } from 'ant-design-vue';
 
 // 创建 axios 实例
 const request = axios.create({
-    baseURL: 'http://127.0.0.1:8888/api', // 后端接口基础地址
-    //baseURL: 'http://localhost:8887', // 后端接口基础地址
+    baseURL: '/api', // 后端接口地址, 具体ip端口通过代理进行
     timeout: 10000, // 请求超时时间
     headers: {
         'Content-Type': 'application/json',

@@ -1,4 +1,6 @@
 const db = require('@/config/database');
+const path = require('path');
+const fs = require('fs');
 const paginationMiddleware = require('@/middlewares/paginationMiddleware');
 const formatIsoDate = require('@/utils/date').formatIsoDate;
 
@@ -118,37 +120,37 @@ exports.updateActivityStatus = async (req, res) => {
         });
     }
     if (operation === 'create') {
-        // 创建活动
         const { actName, actType, categoryID, rule, discountRate, minOrderAmount, startTime, endTime, status, img } = newActivity;
-        if (
-            !actName ||
-            !actType ||
-            categoryID === undefined || categoryID === null ||
-            !rule ||
-            discountRate === undefined ||
-            minOrderAmount === undefined ||
-            !startTime ||
-            !endTime ||
-            !status
-        ) {
-            return res.status(400).json({
-                status: 400,
-                success: false,
-                message: '新活动信息不能为空',
-                data: {}
-            });
+        if (!actName || !actType || categoryID === undefined || categoryID === null || !rule || discountRate === undefined || minOrderAmount === undefined || !startTime || !endTime || !status) {
+            return res.status(400).json({ status: 400, success: false, message: '新活动信息不能为空', data: {} });
         }
-        // 插入数据库
+
+        // 🌟 2. 处理图片“转正”逻辑 (从 temp 移动到 activities 目录)
+        let finalImgPath = img;
+        if (img && img.includes('/upload/temp/')) {
+            const fileName = path.basename(img);
+            const tempAbsPath = path.join(process.cwd(), 'public', 'upload', 'temp', fileName);
+            const targetDir = path.join(process.cwd(), 'public', 'upload', 'activities');
+            const targetAbsPath = path.join(targetDir, fileName);
+
+            // 如果 activities 目录不存在，则创建
+            if (!fs.existsSync(targetDir)) {
+                fs.mkdirSync(targetDir, { recursive: true });
+            }
+
+            // 移动文件并更新入库路径
+            if (fs.existsSync(tempAbsPath)) {
+                fs.renameSync(tempAbsPath, targetAbsPath);
+                finalImgPath = `/upload/activities/${fileName}`;
+            }
+        }
+        // 🌟 3. 修复了原来最后一个参数写死为 null 的 Bug，换成了 finalImgPath
         await db.query(`
             INSERT INTO activity (name, act_type, goods_type_id, rule, max_discount_value, min_amount, start_time, end_time, act_status, img)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `, [actName, actType, categoryID, rule, discountRate, minOrderAmount, startTime, endTime, status, null]);
-        return res.json({
-            status: 200,
-            success: true,
-            message: '活动创建成功',
-            data: true
-        });
+        `, [actName, actType, categoryID, rule, discountRate, minOrderAmount, startTime, endTime, status, finalImgPath]);
+
+        return res.json({ status: 200, success: true, message: '活动创建成功', data: true });
 
     } else if (operation === 'delete') {
         // 删除活动

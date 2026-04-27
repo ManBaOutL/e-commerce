@@ -251,14 +251,17 @@ exports.getDetail = async (req, res) => {
     }
 };
 
-// 2. 获取商品评论
+// 2. 获取商品评论 (productCtrl.js)
 exports.getComments = async (req, res) => {
     const productId = req.params.id;
     try {
+        // 🌟 核心：把刚刚新增的 5 个追评字段也 SELECT 出来
         const [comments] = await db.execute(
             `SELECT c.review_id as id, c.rating as score, c.comment as comment_text, 
                     DATE_FORMAT(c.create_time, '%Y-%m-%d %H:%i') as created_at,
-                    u.username, u.img as user_avatar, c.parent_id
+                    u.username, u.img as user_avatar, c.parent_id,
+                    c.images, 
+                    c.is_appended, c.append_content, c.append_images, c.append_days
              FROM \`comment\` c
              JOIN user u ON c.user_id = u.user_id
              WHERE c.product_id = ? AND c.comment_status = '正常' AND c.parent_id IS NULL
@@ -266,14 +269,26 @@ exports.getComments = async (req, res) => {
             [productId]
         );
 
-        // 获取商家的回复 (简单处理：遍历找出 parent_id 对应的回复)
-        // 实际企业开发中会用更复杂的联表或分组查询
         for (let i = 0; i < comments.length; i++) {
+            // 1. 处理首评图片字符串转数组
+            if (comments[i].images) {
+                comments[i].images = comments[i].images.split(',');
+            } else {
+                comments[i].images = [];
+            }
+
+            // 🌟 2. 处理追评图片字符串转数组
+            if (comments[i].append_images) {
+                comments[i].append_images = comments[i].append_images.split(',');
+            } else {
+                comments[i].append_images = [];
+            }
+
+            // 3. 处理商家回复
             const [replies] = await db.execute(
                 `SELECT comment FROM \`comment\` WHERE parent_id = ? LIMIT 1`, 
                 [comments[i].id]
             );
-            comments[i].images = []; // 模拟没图
             if (replies.length > 0) {
                 comments[i].merchant_reply = replies[0].comment;
             }

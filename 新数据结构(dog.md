@@ -34,7 +34,7 @@ order(<u>order_id</u>,total_amount，status,create_time,update_time,**user_id,ad
 
 coupon_id初始为NULL
 
-status
+status: 9个状态
 
 已取消
 
@@ -66,13 +66,17 @@ cart(<u>cart_id</u>,quantity,create_time,**user_id**,**sku_id**)
 
 ## 9、商品评论
 
-comment(<u>review_id</u>,**product_id,user_id,order_id**,rating,comment,create_time,update_time，`comment_status`，`parent_id`)
+comment(<u>review_id</u>,**product_id,user_id,order_id**,rating,comment,create_time,update_time，comment_status，parent_id,images, video, 
 
-comment_status:评论状态，正常,待审核，屏蔽
+is_appended,append_content, append_images, append_video, append_time, append_days )
+
+comment_status:评论状态，正常,待审核，屏蔽，删除（前端用户使用删除评论按钮，后端实行软删除）
 
 parent_id,父评论，用于回复评论
 
 商家回复无rating
+
+append_days: 存储距离首评的天数
 
 ## 10、活动管理
 
@@ -84,19 +88,21 @@ rule:适用的规则，活动介绍
 value:折扣/减少价格
 min:使用的最低价
 
+act_status: 未开始，已结束，进行中
+
 ## 11、商品规格sku
 
 sku_product（<u>sku_id</u>, name,act_price,stock,**product_id**,create_time , update_time）
 
 用于计算实际价格
 
-## 13、店铺
+## 12、店铺
 
 shop(<u>shop_id</u>,description,name,create_time,**user_id**)
 
-## 14、日志
+## 13、日志
 
-log(log_id,username,role,content(操作),type(操作类型),create_time,result）
+log(log_id,username,role,content(操作),log_type(操作类型),create_time,result）
 
 > 操作
 >
@@ -159,7 +165,7 @@ log(log_id,username,role,content(操作),type(操作类型),create_time,result�
 >
 > **system** —— 系统操作
 
-## **15、收藏**
+## **14、收藏**
 
 favorites(<u>f_id</u>,**user_id**,**sku_id**,create_time)//收藏
 
@@ -225,8 +231,8 @@ CREATE TABLE `category` (
 -- ----------------------------
 -- 3. 商品基本信息表 (products) - 依赖category, shop
 -- ----------------------------
-DROP TABLE IF EXISTS `products`;
-CREATE TABLE `products` (
+DROP TABLE IF EXISTS `product`;
+CREATE TABLE `product` (
   `product_id` BIGINT AUTO_INCREMENT PRIMARY KEY,
   `name` VARCHAR(255) NOT NULL,
   `description` TEXT,
@@ -364,6 +370,14 @@ CREATE TABLE `comment` (
   `order_id` VARCHAR(50) NOT NULL,
   `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
   `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `images` varchar(1000) DEFAULT NULL COMMENT '评价图片，多个路径用逗号拼接',
+  `video` varchar(255) DEFAULT NULL COMMENT '评价视频，相对路径',
+  `is_appended` tinyint DEFAULT '0' COMMENT '是否追评：0:否，1：是',
+  `append_content` varchar(1000) DEFAULT NULL,
+  `append_images` varchar(255) DEFAULT NULL,
+  `append_video` varchar(255) DEFAULT NULL,
+  `append_time` datetime DEFAULT NULL,
+  `append_days` int DEFAULT '0' COMMENT '距离首评过过了多少天',
   FOREIGN KEY (`product_id`) REFERENCES `products`(`product_id`) ON DELETE CASCADE,
   FOREIGN KEY (`user_id`) REFERENCES `user`(`user_id`) ON DELETE CASCADE,
   FOREIGN KEY (`order_id`) REFERENCES `order`(`order_id`) ON DELETE CASCADE
@@ -396,7 +410,7 @@ CREATE TABLE `log` (
   `username` VARCHAR(50) NOT NULL,
   `role` VARCHAR(20) NOT NULL,
   `content` VARCHAR(255) NOT NULL COMMENT '具体操作描述',
-  `type` VARCHAR(50) NOT NULL COMMENT 'login, user, order, product, shop, comment, admin, system',
+  `log_type` VARCHAR(50) NOT NULL COMMENT 'login, user, order, product, shop, comment, admin, system',
   `result` VARCHAR(20) DEFAULT '成功' COMMENT '成功, 失败',
   `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='系统操作日志表';
@@ -527,7 +541,7 @@ INSERT INTO `activity` (`act_id`, `name`, `type`, `goodsType_id`, `rule`, `value
 -- ----------------------------
 -- 插入 14. 操作日志
 -- ----------------------------
-INSERT INTO `log` (`log_id`, `username`, `role`, `content`, `type`, `result`) VALUES
+INSERT INTO `log` (`log_id`, `username`, `role`, `content`, `log_type`, `result`) VALUES
 (1001, 'user1', '普通用户', '修改登录密码', 'user', '成功'),
 (1002, 'vip_zhang', 'VIP用户', '提交订单 202604070001', 'order', '成功'),
 (1003, 'admin', '管理员', '屏蔽不良评论 (Review ID: 3)', 'comment', '成功'),

@@ -23,11 +23,23 @@
         <!-- 右侧用户信息 -->
         <el-col :lg="5" :md="0" :sm="0" :xs="0">
           <div class="user-panel">
-            <el-avatar :size="60" />
-            <p class="welcome-text">Hi, 欢迎回来!</p>
-            <div class="auth-btns">
+            <el-avatar 
+              :size="60" 
+              :src="isLoggedIn ? getFullUrl(userInfo?.img) : ''" 
+            />
+            
+            <p class="welcome-text">
+              Hi, {{ isLoggedIn ? userInfo?.username : '欢迎来到商城!' }}
+            </p>
+            
+            <div class="auth-btns" v-if="!isLoggedIn">
               <el-button type="primary" size="small" @click="handleToLogin">登录</el-button>
               <el-button size="small" plain @click="handleToRegister">注册</el-button>
+            </div>
+
+            <div class="auth-btns" v-else>
+              <el-button type="primary" size="small" @click="router.push('/user/house')">个人中心</el-button>
+              <el-button size="small" plain @click="handleLogout">退出</el-button>
             </div>
           </div>
         </el-col>
@@ -42,22 +54,79 @@
 </template>
 
 <script setup>
-import {useRouter} from 'vue-router'
+import { computed, ref, onMounted } from 'vue' // 🌟 新增 ref 和 onMounted
+import { useRouter } from 'vue-router'
 import HomeMenu from './HomeMenu.vue'
+import { storeToRefs } from 'pinia'
+import { ElMessage, ElMessageBox } from 'element-plus'
 
-// 🌟 核心：在 Vite/Vue3 中静态图片必须显式 import 进来
+// 静态兜底图片
 import banner1 from '@/assets/images/banners/1.png'
 import banner2 from '@/assets/images/banners/2.png'
 import banner3 from '@/assets/images/banners/3.png'
 
-const router = useRouter()
+import { useLoginStore } from '@/stores/modules/common/loginStore'
+import getFullUrl from '@/utils/getFullUrl'
+import request from '@/utils/request' // 🌟 引入请求库
 
-// 定义轮播图数据数组
-const bannerList = [
-  { id: 1, image: banner1, title: '双十一大促', link: '/product?category_id=1' },
-  { id: 2, image: banner2, title: '数码家电上新', link: '/product?category_id=2' },
-  { id: 3, image: banner3, title: '秋冬服装焕新', link: '/product' }
+const router = useRouter()
+const loginStore = useLoginStore()
+const { userInfo, token } = storeToRefs(loginStore)
+
+const isLoggedIn = computed(() => !!token.value)
+
+// 🌟 1. 将轮播图变为响应式数据
+const bannerList = ref([])
+
+// 🌟 2. 静态兜底数据预设
+const defaultBanners = [
+  { id: 'default_1', image: banner1, title: '双十一大促', link: '/product?category_id=1' },
+  { id: 'default_2', image: banner2, title: '数码家电上新', link: '/product?category_id=2' },
+  { id: 'default_3', image: banner3, title: '秋冬服装焕新', link: '/product' }
 ]
+
+// 🌟 3. 初始化轮播图的核心逻辑
+import { reqGetFrontActivityList } from '@/api/user'
+const initBanners = async () => {
+  try {
+    // 调取后端公共的活动接口（查询状态为“进行中”的活动）
+    const res = await reqGetFrontActivityList()
+    
+    if (res.success && res.data && res.data.length > 0) {
+      // 转换后端数据，并将 img 通过 getFullUrl 拼成完整路径
+      const activeBanners = res.data.map((act) => ({
+        id: act.act_id,
+        image: getFullUrl(act.img), 
+        title: act.name,
+        link: `/product?activity_id=${act.act_id}` // 点击跳转到带活动参数的商品列表
+      }))
+
+      // 【核心逻辑】：判断数量
+      if (activeBanners.length >= 3) {
+        bannerList.value = activeBanners 
+      } else {
+        // 不足 3 张，计算需要几张静态图来补齐
+        const needCount = 3 - activeBanners.length
+        bannerList.value = [
+          ...activeBanners, 
+          ...defaultBanners.slice(0, needCount)
+        ]
+      }
+    } else {
+      // 接口成功但没有进行中的活动，完全使用静态图兜底
+      bannerList.value = defaultBanners
+    }
+  } catch (error) {
+    console.error('获取活动轮播图失败，启用兜底展示', error)
+    // 接口报错，完全使用静态图兜底
+    bannerList.value = defaultBanners
+  }
+}
+
+// 页面加载时拉取数据
+onMounted(() => {
+  initBanners()
+})
 
 // 点击轮播图跳转
 const handleBannerClick = (link) => {
@@ -65,12 +134,22 @@ const handleBannerClick = (link) => {
     router.push(link)
   }
 }
-
 const handleToLogin = () => {
   router.push('/login')
 }
 const handleToRegister = () => {
   router.push('/login/register')
+}
+const handleLogout = () => {
+  ElMessageBox.confirm('确定要退出登录吗?', '提示', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning',
+  }).then(() => {
+    loginStore.logout() // 调用你 store 里的退出方法 (清除 token/缓存)
+    ElMessage.success('已安全退出')
+    // 可以在这里刷新一下页面或停留在首页
+  }).catch(() => {})
 }
 
 </script>

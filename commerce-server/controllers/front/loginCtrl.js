@@ -41,6 +41,7 @@ exports.login = async (req, res) => {
         if (user.user_status === '禁用') {
             return res.status(403).json({ message: '账号已被封禁，请联系管理员', status: 403, success: false })
         }
+        delete user.password;
         // 生成 JWT
         const token = jwt.sign(
             {
@@ -201,3 +202,5 @@ exports.register = async (req, res) => {
         console.error(`注册错误[${new Date().toLocaleTimeString()}]：`, err.message);
     }
 }
+
+exports.verifyCodeStore = verifyCodeStore;

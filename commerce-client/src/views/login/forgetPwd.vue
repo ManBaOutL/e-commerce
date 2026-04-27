@@ -64,13 +64,12 @@
 import { ref, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { showSuccessToast, showFailToast, showToast } from 'vant';
-import { sendCode, resetPassword } from '@/api/user';
 import type { ForgetCodeData } from '@/api/user/types';
 import Title from '@/components/login/title.vue'
-
+import { useLoginStore } from '@/stores/modules/common/loginStore';
 
 const router = useRouter();
-const loading = ref(false);
+const loginStore = useLoginStore();
 // 表单数据
 const form = ref<ForgetCodeData>({
   phone: '',
@@ -83,12 +82,11 @@ const form = ref<ForgetCodeData>({
 // 验证码倒计时
 const codeDisabled = ref(false);
 const codeText = ref('获取验证码');
-let timer: NodeJS.Timeout | null = null;
+let timer: any = null;
 
-const handleSubmit = async ()=>{
-  console.log("忘记密码提交表单数据:", form.value);
-  // 校验验证码
-  const res:any = await resetPassword({
+const handleSubmit = async () => {
+  // 🌟 调用 Store 的重置密码方法
+  const res = await loginStore.resetPwdAction({
     phone: form.value.type === 'phone' ? form.value.phone : '',
     email: form.value.type === 'email' ? form.value.email : '',
     code: form.value.code,
@@ -96,12 +94,12 @@ const handleSubmit = async ()=>{
     repeatPwd: form.value.repeatPwd,
     type: form.value.type
   });
-  console.log("重置密码响应:", res); 
-  if(res.status === 200){
+
+  if (res.success) {
     showSuccessToast('密码重置成功');
     router.push('/login');
   } else {
-    showFailToast(res.message || '密码重置失败');
+    showFailToast(res.message);
   }
 }
 
@@ -126,17 +124,14 @@ const getCode = async () => {
     return;
   }
 
-  const sendData = {
+  const res = await loginStore.sendCodeAction({
     phone: form.value.phone,
     email: form.value.email,
     scene: 'forget'
-  };
+  });
 
-  try {
-    const res:any = await sendCode(sendData);
+  if (res.success) {
     showSuccessToast(`验证码已发送`);
-
-    
     // 倒计时逻辑
     codeDisabled.value = true;
     let count = 30;
@@ -157,8 +152,8 @@ const getCode = async () => {
       }
       //console.log(count);
     }, 1000);
-  } catch (error: any) {
-    showFailToast(error?.msg || '获取验证码失败');
+  } else {
+    showFailToast(res.message);
   }
 };
 

@@ -178,6 +178,7 @@
                   <el-radio-button value="mid">中评 ({{ midComments.length }})</el-radio-button>
                   <el-radio-button value="bad">差评 ({{ badComments.length }})</el-radio-button>
                   <el-radio-button value="img">有图 ({{ imgComments.length }})</el-radio-button>
+                  <el-radio-button value="append">追评 ({{ appendComments.length }})</el-radio-button>
                 </el-radio-group>
               </div>
             </div>
@@ -211,6 +212,27 @@
                     <div class="merchant-reply" v-if="c.merchant_reply">
                       <span class="reply-label">商家回复：</span>
                       <span>{{ c.merchant_reply }}</span>
+                    </div>
+
+                    <div class="append-review" v-if="c.is_appended === 1">
+                      <div class="append-header">
+                        <span class="append-label">用户追评</span>
+                        <span class="append-days" v-if="c.append_days !== undefined && c.append_days > 0">购买后 {{ c.append_days }} 天追评</span>
+                        <span class="append-days" v-else>当天追评</span>
+                      </div>
+                      
+                      <p class="text append-text">{{ c.append_content }}</p>
+                      
+                      <div class="images" v-if="c.append_images?.length">
+                        <el-image 
+                          v-for="(img, i) in c.append_images" 
+                          :key="'app_'+i" 
+                          :src="getFullUrl(img)" 
+                          :preview-src-list="c.append_images.map(img => getFullUrl(img))"
+                          fit="cover"
+                          class="c-img" 
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -257,7 +279,8 @@ const commentFilter = ref('all')
 const goodComments = computed(() => comments.value.filter(c => c.score >= 4))
 const midComments = computed(() => comments.value.filter(c => c.score === 3))
 const badComments = computed(() => comments.value.filter(c => c.score <= 2))
-const imgComments = computed(() => comments.value.filter(c => c.images && c.images.length > 0))
+const imgComments = computed(() => comments.value.filter(c => (c.images && c.images.length > 0) || (c.append_images && c.append_images.length > 0)))
+const appendComments = computed(() => comments.value.filter(c => c.is_appended === 1))
 
 const filteredComments = computed(() => {
   switch (commentFilter.value) {
@@ -265,6 +288,7 @@ const filteredComments = computed(() => {
     case 'mid': return midComments.value;
     case 'bad': return badComments.value;
     case 'img': return imgComments.value;
+    case 'append': return appendComments.value;
     default: return comments.value;
   }
 })
@@ -569,5 +593,32 @@ onUnmounted(() => productStore.clearCurrentProduct())
 .reply-label {
   color: #ff5000;
   font-weight: bold;
+}
+
+/* 🌟 追评专属样式 */
+.append-review {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px dashed #e4e7ed; /* 虚线分隔首评和追评 */
+}
+.append-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.append-label {
+  color: #ff5000;
+  font-size: 12px;
+  border: 1px solid #ff5000;
+  padding: 1px 6px;
+  border-radius: 10px;
+  margin-right: 10px;
+}
+.append-days {
+  font-size: 12px;
+  color: #999;
+}
+.append-text {
+  color: #555; /* 追评的文字稍微暗一点，增加阅读层次感 */
 }
 </style>
