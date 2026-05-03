@@ -67,7 +67,6 @@ import banner3 from '@/assets/images/banners/3.png'
 
 import { useLoginStore } from '@/stores/modules/common/loginStore'
 import getFullUrl from '@/utils/getFullUrl'
-import request from '@/utils/request' // 🌟 引入请求库
 
 const router = useRouter()
 const loginStore = useLoginStore()

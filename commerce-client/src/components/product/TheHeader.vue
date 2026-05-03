@@ -21,7 +21,7 @@
             </el-input>
           </div>
         </el-col>
-
+        <!-- 一些功能按钮 -->
         <el-col :sm="5" :xs="0" class="text-right">
           <div class="action-icons">
             <el-badge :value="cartCount" :hidden="cartCount === 0" class="badge-item">

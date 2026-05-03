@@ -39,6 +39,14 @@ export interface Product extends BaseEntity {
   category_id?: number;
   shop_id?: number;
   status: '待审核' | '通过' | '已驳回' | '下架';
+
+  // ==========================================
+  // 🌟 新增：营销活动扩展字段 (设为可选属性 ?)
+  // ==========================================
+  actual_price?: number;       // 活动折后价 / 最终结算价
+  original_price?: number;     // 原始价格（用于划线展示）
+  is_flash_sale?: boolean;     // 是否正在参与秒杀
+  activities?: string[];       // 享受的活动名称集合，例如 ["满300减50", "数码9折"]
 }
 export interface ResProductList {
   list: Product[];
@@ -53,19 +61,26 @@ export interface CategoryItem {
   children?: CategoryItem[]; // 二级分类 (树形结构特有)
 }
 
-
-/**
- * 活动 (activity 表)
- */
-export interface Activity extends BaseEntity {
-  actid: number;
+// ==========================================
+// 🌟 新增：基础活动项的结构定义
+// ==========================================
+export interface ActivityItem {
+  act_id: number;
   name: string;
-  type: '满减' | '折扣' | '秒杀';
-  goodsType_id: number;  // 商品类型id
+  act_type: '满减' | '折扣' | '秒杀';
   rule: string;
-  status: number;
-  value: number;
-  min: number;
+  max_discount_value: number; // 抵扣金额 / 折扣比例 / 秒杀价
+  min_amount: number;         // 满减最低消费
+  start_time: string;
+  end_time: string;
+}
+
+// ==========================================
+// 🌟 新增：商品详情页专属的活动聚合结构
+// ==========================================
+export interface ActiveCampaigns {
+  flashSale: ActivityItem | null;    // 秒杀活动（独占，最多只有一个，或者为 null）
+  otherActivities: ActivityItem[];   // 其他常规活动（满减、折扣组成的数组）
 }
 
 // SKU 规格选项
@@ -108,6 +123,9 @@ export interface ProductDetail {
   spec_groups: Record<string, SpecGroup>;
   sku_list: Record<string, SkuItem>;
   params?: Array<{ name: string; value: string }>;
+  
+  // 🌟 新增：当前商品享受的活动信息 (设为可选 ? 防止旧接口报错)
+  active_campaigns?: ActiveCampaigns;
 }
 
 /**
