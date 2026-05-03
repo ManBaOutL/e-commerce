@@ -1,7 +1,7 @@
 // 用户模块接口
 import request from '@/utils/request';
-import type { LoginData, CodeData,ForgetCodeData, RegisterData, UserInfo, CommentSubmitData,CommentAppendData} from './types';
-import type { CartItem,AddCartPayload, UpdateCartPayload, RemoveCartPayload } from './types';
+import type { LoginData, CodeData,ForgetCodeData, RegisterData, CommentSubmitData,CommentAppendData} from './types';
+import type { CartListResponse,AddCartPayload, UpdateCartPayload, RemoveCartPayload } from './types';
 import type { CreateOrderPayload, OrderInfo } from './types';
 import type { AddressItem } from './types';
 import type { ToggleFavoriteData } from './types';
@@ -127,7 +127,7 @@ export const reqGetMyCoupons = () => {
 
   // 1. 获取购物车列表
 export const reqGetCartList = () => {
-  return request.get<any, ApiResponse<CartItem[]>>(API.GET_CART_LIST);
+  return request.get<any, ApiResponse<CartListResponse>>(API.GET_CART_LIST);
 }
 
 // 2. 加入购物车
@@ -165,7 +165,7 @@ export const reqPayExistingOrder = (order_id: string | number) => {
 export const reqApplyRefund = (order_id: number, refundReason: string) => {
   return request.post<any, ApiResponse<any>>(API.POST_APPLY_REFUND, { order_id, refundReason });
 }
-
+//  取消订单
 export const reqCancelOrder = (order_id: number) => {
   return request.post<any, ApiResponse<any>>(API.POST_CANCEL_ORDER, { order_id });
 }
