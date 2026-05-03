@@ -97,7 +97,10 @@ enum API {
   // 活动
   GET_FRONT_ACTIVITY_LIST = 'front/activity/list',
   // 统计数据
-  GET_STATISTICS = '/user/statistics/list'
+  GET_STATISTICS = '/user/statistics/list',
+  // 其他接口...
+  GET_SHOP_INFO = 'front/shop/',
+  GET_SHOP_PRODUCTS = 'front/shop/'  , //front/shop/:id/products
 }
 
 // 提交商品评价
@@ -220,3 +223,13 @@ export const reqGetFrontActivityList = () => {
 export const reqGetStatistics = (params: any) => {
   return request.get<any, ApiResponse<any>>(API.GET_STATISTICS, { params });
 };
+
+
+// 店铺相关
+export const reqGetShopInfo = (shop_id: number | string) => {
+  return request.get<any, ApiResponse<any>>(API.GET_SHOP_INFO + shop_id, { params: {  _t: Date.now() } });
+}
+
+export const reqGetShopProducts = (shop_id: number | string) => {
+  return request.get<any, ApiResponse<any>>(API.GET_SHOP_PRODUCTS + shop_id + '/products', { params: { _t: Date.now() } });
+}

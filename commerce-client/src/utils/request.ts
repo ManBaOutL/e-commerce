@@ -1,48 +1,47 @@
 import axios from 'axios';
-import { message } from 'ant-design-vue';
+// 🌟 核心修复 1：绝对不能在 Element Plus 项目里混用 ant-design-vue！
+import { ElMessage } from 'element-plus';
 
 // 创建 axios 实例
 const request = axios.create({
-    baseURL: '/api', // 后端接口地址, 具体ip端口通过代理进行
-    timeout: 10000, // 请求超时时间
+    baseURL: '/api', 
+    timeout: 10000, 
     headers: {
         'Content-Type': 'application/json',
     },
 });
 
-// 请求拦截器：请求发送前的处理（比如添加 token）
+// 请求拦截器
 request.interceptors.request.use(
     (config) => {
         let token = localStorage.getItem('token');
         if (token) {
             token = token.replace(/(^"|"$)/g, '');
-            
-            // 注意 Bearer 后面有一个空格，且没有双引号！
+            // 🌟 修复隐患：确保 headers 存在，防止深层报错
+            config.headers = config.headers || {};
             config.headers['Authorization'] = `Bearer ${token}`; 
-          }
+        }
         return config;
     },
     (error) => Promise.reject(error)
 );
 
-// 响应拦截器：统一处理后端返回结果
+// 响应拦截器
 request.interceptors.response.use(
     (response) => {
-        // 后端返回的原始数据
         const res = response.data;
-        // console.log("res: ", res);
-        //假设后端约定 status=200 为成功
-        if (res.status !== 200) {
-
-            message.error(res.message || '请求失败');
-            return Promise.reject(res);
+        
+        // 🌟 核心修复 2：兼容 304 空响应体的情况，防止 res.status 报错
+        if (!res || res.status !== 200) {
+            ElMessage.error(res?.message || '请求失败');
+            return Promise.reject(res || 'Empty Response');
         }
         return res;
     },
     (error) => {
-        //console.log("url: ", error.config.url);
-        console.log("相应拦截器error: ", error);
-        message.error('网络错误或接口不存在！');
+        console.error("响应拦截器error: ", error);
+        // 🌟 统一使用 Element Plus 的提示组件
+        ElMessage.error('网络错误或接口不存在！');
         return Promise.reject(error);
     }
 );

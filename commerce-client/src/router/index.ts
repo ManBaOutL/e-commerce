@@ -211,7 +211,14 @@ const router = createRouter({
           component: () => import('@/views/manager/allShop.vue'),
         }
       ]
-    }
+    },
+    // 👇 新增：店铺主页路由
+    {
+      path: '/shop/:id',
+      name: 'shopDetail',
+      component: () => import('@/views/shop/index.vue'),
+      meta: { title: '店铺主页' }
+    },
   ],
 })
 

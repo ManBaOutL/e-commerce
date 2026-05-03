@@ -1,102 +1,96 @@
 <template>
-  <div>
+  <div class="merchant-order-page">
     <h2>商家订单管理</h2>
 
-    <!-- 极简筛选 -->
-    <el-select v-model="statusFilter" placeholder="筛选状态" style="width:160px;margin-bottom:10px;">
-      <el-option label="全部" value="" />
-      <el-option label="待发货" value="待发货" />
-      <el-option label="已发货" value="已发货" />
-      <el-option label="已完成" value="已完成" />
-      <el-option label="申请退款" value="申请退款" />
-      <el-option label="已退款" value="已退款" />
-      <el-option label="退款驳回" value="退款驳回" />
-    </el-select>
+    <!-- 🌟 筛选区：双向绑定筛选条件并触发查询 -->
+    <div class="filter-box" style="margin-bottom: 20px;">
+      <el-select v-model="searchParams.status" placeholder="筛选状态" style="width:160px; margin-right: 15px;" clearable @change="handleSearch">
+        <el-option label="全部" value="" />
+        <el-option label="待发货" value="待发货" />
+        <el-option label="已发货" value="已发货" />
+        <el-option label="已完成" value="已完成" />
+        <el-option label="申请退款" value="申请退款" />
+        <el-option label="已退款" value="已退款" />
+        <el-option label="退款驳回" value="退款驳回" />
+      </el-select>
+      <el-button type="primary" @click="handleSearch">查询</el-button>
+    </div>
 
     <!-- 订单列表 -->
-    <el-table :data="filterList" border>
-      <el-table-column label="订单号" prop="orderId" />
+    <el-table :data="orderList" border v-loading="loading">
+      <el-table-column label="订单号" prop="orderId" width="180" />
       <el-table-column label="商品" prop="goodsName" />
-      <el-table-column label="金额" prop="money" />
-      <el-table-column label="订单状态">
+      <el-table-column label="金额(元)" prop="money" width="100" />
+      <el-table-column label="订单状态" width="120">
         <template #default="scope">
-          <el-tag 
-            :type="scope.row.status ==='申请退款'?'warning':scope.row.status ==='已退款'?'success':scope.row.status ==='退款驳回'?'danger':''"
-          >
+          <el-tag :type="getStatusTagType(scope.row.status)">
             {{ scope.row.status }}
           </el-tag>
         </template>
       </el-table-column>
-      <!-- 新增：用户退款原因列 -->
-      <el-table-column label="用户退款原因">
+      <el-table-column label="用户退款原因" show-overflow-tooltip>
         <template #default="scope">
-          <el-tag v-if="scope.row.userRefundReason" type="warning" size="small">
-            {{ scope.row.userRefundReason }}
-          </el-tag>
-          <span v-else>无</span>
+          <span v-if="scope.row.userRefundReason" style="color: #e6a23c;">{{ scope.row.userRefundReason }}</span>
+          <span v-else style="color: #999;">--</span>
         </template>
       </el-table-column>
-      <!-- 原有：驳回理由列 -->
-      <el-table-column label="驳回理由">
+      <el-table-column label="驳回理由" show-overflow-tooltip>
         <template #default="scope">
-          <el-tag v-if="scope.row.refundRejectReason" type="info" size="small">
-            {{ scope.row.refundRejectReason }}
-          </el-tag>
-          <span v-else>无</span>
+          <span v-if="scope.row.refundRejectReason" style="color: #f56c6c;">{{ scope.row.refundRejectReason }}</span>
+          <span v-else style="color: #999;">--</span>
         </template>
       </el-table-column>
-      <el-table-column label="操作">
+      
+      <!-- 🌟 操作列：增加发货逻辑 -->
+      <el-table-column label="操作" width="260" fixed="right">
         <template #default="scope">
-          <!-- 新增：详情按钮 -->
-          <el-button
-            type="primary"
-            text
-            @click="viewDetail(scope.row)"
-          >查看详情</el-button>
-          <!-- 只有申请退款的订单能审核 -->
-          <el-button
-            type="success"
-            text
-            v-if="scope.row.status === '申请退款'"
-            @click="agree(scope.row)"
-          >同意退款</el-button>
-          <el-button
-            type="danger"
-            text
-            v-if="scope.row.status === '申请退款'"
-            @click="reject(scope.row)"
-          >驳回</el-button>
+          <el-button type="primary" link @click="viewDetail(scope.row)">详情</el-button>
+          
+          <el-button 
+            type="success" 
+            link 
+            v-if="scope.row.status === '待发货'"
+            @click="handleShip(scope.row)"
+          >发货</el-button>
+
+          <template v-if="scope.row.status === '申请退款'">
+            <el-button type="success" link @click="agreeRefund(scope.row)">同意退款</el-button>
+            <el-button type="danger" link @click="rejectRefund(scope.row)">驳回</el-button>
+          </template>
         </template>
       </el-table-column>
     </el-table>
 
-    <!-- 订单详情弹窗 -->
-    <el-dialog
-      v-model="detailDialogVisible"
-      title="订单详情"
-      width="600px"
-      destroy-on-close
-    >
+    <!-- 🌟 分页器 -->
+    <div style="margin-top: 20px; display: flex; justify-content: flex-end;">
+      <el-pagination
+        v-model:current-page="currentPage"
+        v-model:page-size="pageSize"
+        :total="orderPagination.total"
+        layout="total, sizes, prev, pager, next, jumper"
+        @size-change="handleSearch"
+        @current-change="loadData"
+      />
+    </div>
+
+    <!-- 订单详情弹窗 (保持原样，只做了排版微调) -->
+    <el-dialog v-model="detailDialogVisible" title="订单详情" width="600px" destroy-on-close>
       <el-descriptions :column="2" border style="margin-top:10px;">
         <el-descriptions-item label="订单号">{{ currentOrder.orderId }}</el-descriptions-item>
         <el-descriptions-item label="商品名称">{{ currentOrder.goodsName }}</el-descriptions-item>
         <el-descriptions-item label="订单金额">¥{{ currentOrder.money }}</el-descriptions-item>
         <el-descriptions-item label="订单状态">
-          <el-tag 
-            :type="currentOrder.status ==='申请退款'?'warning':currentOrder.status ==='已退款'?'success':currentOrder.status ==='退款驳回'?'danger':''"
-          >
-            {{ currentOrder.status }}
-          </el-tag>
+          <el-tag :type="getStatusTagType(currentOrder.status)">{{ currentOrder.status }}</el-tag>
         </el-descriptions-item>
-        <el-descriptions-item label="下单用户">{{ currentOrder.userName || '无' }}</el-descriptions-item>
-        <el-descriptions-item label="用户手机号">{{ currentOrder.userPhone || '无' }}</el-descriptions-item>
-        <el-descriptions-item label="下单时间">{{ currentOrder.createTime || '无' }}</el-descriptions-item>
-        <el-descriptions-item label="收货地址">{{ currentOrder.address || '无' }}</el-descriptions-item>
+        <el-descriptions-item label="下单用户">{{ currentOrder.userName || '--' }}</el-descriptions-item>
+        <el-descriptions-item label="用户手机号">{{ currentOrder.userPhone || '--' }}</el-descriptions-item>
+        <el-descriptions-item label="下单时间" :span="2">{{ currentOrder.createTime || '--' }}</el-descriptions-item>
+        <el-descriptions-item label="收货地址" :span="2">{{ currentOrder.address || '--' }}</el-descriptions-item>
         <el-descriptions-item label="用户退款原因" :span="2">
-          {{ currentOrder.userRefundReason || '无' }}
+          {{ currentOrder.userRefundReason || '--' }}
         </el-descriptions-item>
         <el-descriptions-item label="退款驳回理由" :span="2">
-          {{ currentOrder.refundRejectReason || '无' }}
+          {{ currentOrder.refundRejectReason || '--' }}
         </el-descriptions-item>
       </el-descriptions>
       <template #footer>
@@ -106,135 +100,111 @@
   </div>
 </template>
 
-<script setup>
-import { ref, computed } from 'vue'
+<script setup lang="ts">
+import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { storeToRefs } from 'pinia'
+import { useMerchantStore } from '@/stores/modules/merchantStore' // 路径按你实际的来
 
-// 筛选条件
-const statusFilter = ref('')
+const merchantStore = useMerchantStore()
+const { orderList, orderPagination } = storeToRefs(merchantStore)
+
+// 页面状态
+const loading = ref(false)
+const searchParams = reactive({ status: '' })
+const currentPage = ref(1)
+const pageSize = ref(10)
 
 // 详情弹窗控制
 const detailDialogVisible = ref(false)
-// 当前选中的订单
-const currentOrder = ref({})
+const currentOrder = ref<any>({})
 
-// 订单列表：补充完整字段（userName/userPhone/createTime/address）
-const orderList = ref([
-  { 
-    orderId: '20260407001', 
-    goodsName: '手机', 
-    money: '3999', 
-    status: '待发货', 
-    refundRejectReason: '', 
-    userRefundReason: '',
-    userName: '张三',
-    userPhone: '13800138000',
-    createTime: '2026-04-07 10:00:00',
-    address: '北京市朝阳区XX路XX号'
-  },
-  { 
-    orderId: '20260407002', 
-    goodsName: '电脑', 
-    money: '5999', 
-    status: '已发货', 
-    refundRejectReason: '', 
-    userRefundReason: '',
-    userName: '李四',
-    userPhone: '13900139000',
-    createTime: '2026-04-07 11:00:00',
-    address: '上海市浦东新区XX路XX号'
-  },
-  { 
-    orderId: '20260407003', 
-    goodsName: '耳机', 
-    money: '299', 
-    status: '申请退款', 
-    refundRejectReason: '', 
-    userRefundReason: '商品音质差，不符合预期',
-    userName: '王五',
-    userPhone: '13700137000',
-    createTime: '2026-04-07 12:00:00',
-    address: '广州市天河区XX路XX号'
-  },
-  { 
-    orderId: '20260407004', 
-    goodsName: '平板', 
-    money: '2499', 
-    status: '已完成', 
-    refundRejectReason: '', 
-    userRefundReason: '',
-    userName: '赵六',
-    userPhone: '13600136000',
-    createTime: '2026-04-07 13:00:00',
-    address: '深圳市南山区XX路XX号'
-  },
-  { 
-    orderId: '20260407005', 
-    goodsName: '手表', 
-    money: '1299', 
-    status: '申请退款', 
-    refundRejectReason: '', 
-    userRefundReason: '商品质量有问题',
-    userName: '孙七',
-    userPhone: '13500135000',
-    createTime: '2026-04-07 14:00:00',
-    address: '杭州市西湖区XX路XX号'
-  },
-  { 
-    orderId: '20260407006', 
-    goodsName: '音箱', 
-    money: '899', 
-    status: '退款驳回', 
-    refundRejectReason: '商品影响二次销售，拒绝退款', 
-    userRefundReason: '音箱有杂音，质量问题',
-    userName: '周八',
-    userPhone: '13400134000',
-    createTime: '2026-04-07 15:00:00',
-    address: '成都市锦江区XX路XX号'
-  },
-])
-
-// 筛选逻辑（保留原有）
-const filterList = computed(() => {
-  if (!statusFilter.value) return orderList.value
-  return orderList.value.filter(item => item.status === statusFilter.value)
+// 🌟 初始化加载
+onMounted(() => {
+  loadData()
 })
 
-// 新增：查看订单详情
-const viewDetail = (row) => {
-  currentOrder.value = { ...row } // 深拷贝避免弹窗修改影响原数据
+const handleSearch = () => {
+  currentPage.value = 1
+  loadData()
+}
+
+const loadData = async () => {
+  loading.value = true
+  await merchantStore.fetchOrderList(searchParams, currentPage.value, pageSize.value)
+  loading.value = false
+}
+
+// 标签颜色辅助函数
+const getStatusTagType = (status: string) => {
+  const map: Record<string, string> = {
+    '待发货': 'warning', '已发货': 'primary', '已完成': 'success',
+    '申请退款': 'warning', '已退款': 'info', '退款驳回': 'danger'
+  }
+  return map[status] || 'info'
+}
+
+// 查看详情
+const viewDetail = (row: any) => {
+  currentOrder.value = { ...row }
   detailDialogVisible.value = true
 }
 
-// 同意退款（保留原有逻辑）
-const agree = (row) => {
-  row.status = '已退款'
-  row.refundRejectReason = '' // 同意退款时清空驳回理由
-  ElMessage.success('已同意退款')
+// 🌟 发货动作
+const handleShip = async (row: any) => {
+  try {
+    await ElMessageBox.confirm('确认该订单已发货？', '发货确认', { type: 'info' })
+    const res = await merchantStore.shipOrder(row.orderId)
+    if (res.success) {
+      ElMessage.success('发货成功')
+      loadData() // 刷新列表
+    } else {
+      ElMessage.error(res.message || '发货失败')
+    }
+  } catch (error) { /* 用户取消 */ }
 }
 
-// 驳回退款（保留原有逻辑）
-const reject = async (row) => {
+// 🌟 同意退款 (接入后端事务回滚逻辑)
+const agreeRefund = async (row: any) => {
   try {
-    const { value: reason } = await ElMessageBox.prompt(
-      '请输入驳回退款理由', 
-      '驳回审核', 
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        // 验证理由不能为空
-        validator: (value) => {
-          if (!value) return '驳回理由不能为空！'
-          return true
-        }
-      }
+    await ElMessageBox.confirm(
+      `确定同意退款吗？<br>订单实付款 <b style="color:red">¥${row.money}</b> 将退回给用户，且商品库存会自动回滚。`, 
+      '同意退款', 
+      { type: 'warning', dangerouslyUseHTMLString: true }
     )
-    row.status = '退款驳回'
-    row.refundRejectReason = reason // 存储驳回理由
-    ElMessage.success('已驳回退款申请')
-    ElMessage.info(`驳回理由：${reason}`)
-  } catch (error) {
-    if (error !== 'cancel') ElMessage.error('驳回操作失败')
-  }
+    
+    // 调用 Store (触发后端 agreeRefund 接口)
+    const res = await merchantStore.processRefund({ order_id: row.orderId, is_agree: true })
+    if (res.success) {
+      ElMessage.success('退款已同意，款项正在原路退回')
+      loadData() // 状态变更为'已退款'
+    } else {
+      ElMessage.error(res.message || '处理失败')
+    }
+  } catch (error) { /* 用户取消 */ }
+}
+
+// 🌟 驳回退款
+const rejectRefund = async (row: any) => {
+  try {
+    const { value: reason } = await ElMessageBox.prompt('请输入驳回退款理由（必填）', '驳回审核', {
+      confirmButtonText: '确定驳回',
+      cancelButtonText: '取消',
+      inputValidator: (value) => value && value.trim() ? true : '驳回理由不能为空'
+    })
+    
+    const res = await merchantStore.processRefund({ 
+      order_id: row.orderId, 
+      is_agree: false, 
+      reject_reason: reason 
+    })
+
+    if (res.success) {
+      ElMessage.success('已驳回退款申请')
+      loadData() // 状态变更为'退款驳回'
+    } else {
+      ElMessage.error(res.message || '驳回失败')
+    }
+  } catch (error) { /* 用户取消 */ }
 }
 </script>

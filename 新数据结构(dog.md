@@ -22,6 +22,8 @@ img: 对应商品图片文件夹（命名：/upload/products/img/{product_id}/1.
 
 product_status:待审核，通过，已驳回，下架
 
+sales:销量
+
 ## 4、地址基本信息
 
 address(<u>address_id</u>,recipient_name,phone,address,lng,lat,type,province,city,district,street,streetNumber,is_default,create_time,**user_id**)

@@ -150,6 +150,22 @@
 
               </div>
             </div>
+            <!-- 👇 新增：店铺入口名片 -->
+            <div class="shop-entry-card" v-if="product.shop_id">
+              <div class="shop-info-left">
+                <el-avatar :size="48" src="https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png" />
+                <div class="shop-text">
+                  <div class="shop-name">{{ product.shop_name || '官方严选店铺' }}</div>
+                  <div class="shop-tags">
+                    <el-tag size="small" type="danger" effect="plain">正品保证</el-tag>
+                    <span class="shop-rate">综合体验 4.9 分</span>
+                  </div>
+                </div>
+              </div>
+              <div class="shop-btn-right">
+                <el-button round @click="goToShop(product.shop_id)">进店逛逛</el-button>
+              </div>
+            </div>
           </div>
         </el-col>
       </el-row>
@@ -513,6 +529,11 @@ const handleAddToFav = async () => {
     ElMessage.error(res.message || '操作失败');
   }
 }
+// 跳转到店铺主页
+const goToShop = (shopId: number | string) => {
+  if (!shopId) return;
+  router.push(`/shop/${shopId}`);
+}
 
 onMounted(() => loadProductData())
 onUnmounted(() => productStore.clearCurrentProduct())
@@ -652,4 +673,42 @@ onUnmounted(() => productStore.clearCurrentProduct())
 .append-label { color: #ff5000; font-size: 12px; border: 1px solid #ff5000; padding: 1px 6px; border-radius: 10px; margin-right: 10px; }
 .append-days { font-size: 12px; color: #999; }
 .append-text { color: #555; }
+/* 🌟 新增：店铺入口卡片样式 */
+.shop-entry-card {
+  margin-top: 25px;
+  padding: 20px;
+  background: #fafafa;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: 1px solid #f0f0f0;
+}
+.shop-info-left {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+.shop-text .shop-name {
+  font-size: 16px;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 6px;
+}
+.shop-text .shop-tags {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.shop-rate {
+  font-size: 12px;
+  color: #ff5000;
+}
+.shop-btn-right .el-button {
+  border-color: #ff5000;
+  color: #ff5000;
+}
+.shop-btn-right .el-button:hover {
+  background: #fff5f5;
+}
 </style>

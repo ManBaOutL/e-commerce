@@ -1,5 +1,5 @@
 // 用户模块接口类型定义
-import type { BaseEntity } from '../types';
+import type { BaseEntity, OrderStatus } from '../types';
 
 //登陆数据
 export interface LoginData {
@@ -88,7 +88,9 @@ export interface Coupon {
   end_time: string;
 }
 
-// 提交商品评价
+/**
+ * 评论相关 (comment 表)
+ */
 export interface CommentSubmitData {
   order_id: string;
   product_id: number;
@@ -138,7 +140,7 @@ export interface MyCommentItem {
   append_time?: string;
 }
 /**
- * 购物车单条商品项 (聚合了 SPU, SKU 和 Cart 表数据)
+ * 购物车项 (聚合了 SPU, SKU 和 Cart 表数据)
  */
 export interface CartItem {
   // --- 购物车基础信息 ---
@@ -172,29 +174,25 @@ export interface CartListResponse {
   items: CartItem[];   // 购物车商品列表
   total: number;      // 购物车中商品总数 (用于分页或显示角标)
 }
-/**
- * 1. 加入购物车请求参数
- */
+// 1. 加入购物车请求参数
+
 export interface AddCartPayload {
   sku_id: number;       // 必须是具体的规格 ID
   quantity: number;     // 加入的数量
 }
-/**
- * 2. 更新购物车数量请求参数
- */
+// 2. 更新购物车数量请求参数
 export interface UpdateCartPayload {
   cart_id: number;      // 要修改的那条购物车记录的 ID
   quantity: number;     // 修改后的最终数量
 }
-/**
- * 3. 批量删除购物车请求参数
- */
+// 3. 批量删除购物车请求参数
 export interface RemoveCartPayload {
   cart_ids: number[];   // 购物车 ID 数组，例如 [1, 5, 8]
 }
 
-
-
+/**
+ * 订单项 (聚合了 OrderItem 表和 Product 表的部分数据)
+ */
 // 下单参数类型定义 (兼容购物车结算与直接购买)
 export interface CreateOrderPayload {
   address_id: number;
@@ -228,7 +226,6 @@ export interface OrderCouponInfo {
   name: string;                // 优惠券名称
   discount: number | string;   // 抵扣金额
 }
-export type OrderStatus = '待支付' | '待发货' | '已发货' | '已完成' | '已取消' | '申请退款' |  '已退款' | '待审核' | '退款驳回';
 
 export interface OrderInfo {
   order_id: number;            // 订单流水号 

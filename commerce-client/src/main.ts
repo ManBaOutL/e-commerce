@@ -31,6 +31,7 @@ app.use(ElementPlus, {
 })
 // 5. 注册全局组件
 app.use(GlobalComponents)
-
+// 6. 导入权限控制模块（必须在 pinia 之后）
+import './permission'
 
 app.mount('#app')

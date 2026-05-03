@@ -153,9 +153,12 @@ exports.getDetail = async (req, res) => {
         const [products] = await db.execute(
             `SELECT p.product_id as id, p.name, p.description, p.price, p.price as original_price, 
                     p.stock as stock_count, p.sales as sales_count, p.img, p.rate, p.category_id,
+                    p.shop_id, -- 🌟 查出 shop_id
+                    sh.name as shop_name, -- 🌟 联表查出店铺名
                     c.name as category_name
              FROM product p 
              LEFT JOIN category c ON p.category_id = c.category_id
+             LEFT JOIN shop sh ON p.shop_id = sh.shop_id -- 🌟 关联店铺表
              WHERE p.product_id = ? AND p.product_status = '通过'`,
             [productId]
         );
