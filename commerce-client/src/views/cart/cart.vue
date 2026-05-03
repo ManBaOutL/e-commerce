@@ -71,11 +71,23 @@
                   <div class="text-content">
                     <p class="p-name">{{ item.name }}</p>
                     <p class="p-desc">规格：{{ item.spec }}</p>
+
+                    <!-- 🌟 购物车新增：活动标签区 -->
+                    <div class="cart-tags" v-if="item.is_flash_sale || (item.activities && item.activities.length > 0)">
+                      <span class="tag flash-tag" v-if="item.is_flash_sale">限时秒杀</span>
+                      <span class="tag act-tag" v-for="(act, idx) in item.activities" :key="idx">{{ act }}</span>
+                    </div>
                   </div>
                 </div>
               </el-col>
               <el-col :span="3">
-                <span class="unit-price">¥{{ Number(item.price).toFixed(2) }}</span>
+                <!-- 🌟 购物车新增：活动价与划线价 -->
+                <div class="price-display">
+                  <div class="unit-price">¥{{ Number(item.actual_price ?? item.price).toFixed(2) }}</div>
+                  <div class="original-price" v-if="(item.actual_price ?? item.price) < (item.original_price ?? item.price)">
+                    ¥{{ Number(item.original_price).toFixed(2) }}
+                  </div>
+                </div>
               </el-col>
               <el-col :span="4">
                 <el-input-number 
@@ -88,7 +100,7 @@
                 />
               </el-col>
               <el-col :span="3">
-                <span class="total-price">¥{{ (Number(item.price) * item.count).toFixed(2) }}</span>  
+                <span class="total-price">¥{{ (Number(item.actual_price ?? item.price) * item.count).toFixed(2) }}</span>
               </el-col>
               <el-col :span="3">
                 <el-button type="danger" link @click="removeItem(item.id)">删除</el-button>
@@ -131,6 +143,8 @@
               <div class="final-price-box">
                 <span class="total-label">合计 (不含运费)：</span>
                 <span class="total-amount">¥ <em>{{ (totalPrice + shippingFee - discountTotal).toFixed(2) }}</em></span>
+                <!-- 🌟 新增省钱提示语 -->
+                <div class="save-tip" v-if="savedAmount > 0">已省 ¥{{ savedAmount.toFixed(2) }}</div>
               </div>
               
               <el-button 
@@ -224,7 +238,30 @@ const isIndeterminate = computed(() => {
 })
 
 const selectedCount = computed(() => cartList.value.filter(i => i.selected && i.product_status === '通过' && i.stock > 0).length);
-const totalPrice = computed(() => cartList.value.filter(i => i.selected && i.product_status === '通过' && i.stock > 0).reduce((sum, item) => sum + Number(item.price) * item.count, 0));
+// 🌟 基于活动的真实总价计算
+const totalPrice = computed(() => {
+  return cartList.value
+    .filter(i => i.selected && i.product_status === '通过' && i.stock > 0)
+    .reduce((sum, item) => {
+      // 优先使用引擎计算出的活动价
+      const price = item.actual_price !== undefined ? item.actual_price : item.price;
+      return sum + Number(price) * item.count;
+    }, 0);
+});
+// 🌟 新增：终极省钱计算器（商品活动省的钱 + 优惠券省的钱）
+const savedAmount = computed(() => {
+  // 1. 计算商品参与活动（秒杀、满减、商品折扣）省下的钱
+  const activitySaved = cartList.value
+    .filter(i => i.selected && i.product_status === '通过' && i.stock > 0)
+    .reduce((sum, item) => {
+      const orig = Number(item.original_price || item.price);
+      const curr = Number(item.actual_price !== undefined ? item.actual_price : item.price);
+      return sum + (orig - curr) * item.count;
+    }, 0);
+
+  // 2. 加上底部选中的优惠券省下的钱 (discountTotal)
+  return activitySaved + discountTotal.value;
+});
 const shippingFee = computed(() => (totalPrice.value >= 99 || totalPrice.value === 0 ? 0 : 10));
 
 // 🌟 2. 数量改变时，同步更新到数据库
@@ -479,4 +516,13 @@ const handleCheckout = () => {
   display: flex; justify-content: center; align-items: center;
   font-size: 12px;
 }
+/* 购物车新增样式 */
+.cart-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
+.tag { font-size: 10px; padding: 2px 6px; border-radius: 4px; line-height: 1.2; }
+.flash-tag { background: linear-gradient(90deg, #ff0036, #ff5000); color: #fff; }
+.act-tag { border: 1px solid #ff5000; color: #ff5000; background: #fff1eb; }
+.price-display { display: flex; flex-direction: column; justify-content: center; gap: 4px; }
+.unit-price { color: #333; font-weight: bold; }
+.original-price { font-size: 12px; color: #999; text-decoration: line-through; }
+.save-tip { font-size: 12px; color: #ff5000; text-align: right; margin-top: 2px; font-weight: normal; }
 </style>

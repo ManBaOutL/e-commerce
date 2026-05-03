@@ -12,7 +12,7 @@ export const useCartStore = defineStore('cart', {
     async fetchCartList() {
       const res = await reqGetCartList();
       if (res.success) {
-        this.cartList = res.data;
+        this.cartList = res.data.items || [];
       }
     },
     

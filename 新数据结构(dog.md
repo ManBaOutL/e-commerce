@@ -82,13 +82,15 @@ append_days: 存储距离首评的天数
 
 activity（<u>act_id</u>,name,act_type,goods_type_id,rule,start_time,end_time,act_status,max_discount_value,min_amount，img）
 
-type:类型：满减/折扣/秒杀
-goodsType:适用商品，
+act_type:类型：满减/折扣/秒杀
+goods_type_id:适用商品，目前只根据商品类型创建活动
 rule:适用的规则，活动介绍
-value:折扣/减少价格
-min:使用的最低价
+max_discount_value:（折扣（0.9）、秒杀（固定价格）、满减（减除的价格（按比例分摊）））
+min_amount:使用的最低价（满减类型时）
 
 act_status: 未开始，已结束，进行中
+
+规定：若一个商品同时又多种优惠活动，秒杀优先，或者满减后若有折扣继续打折
 
 ## 11、商品规格sku
 

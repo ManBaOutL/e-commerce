@@ -1,8 +1,9 @@
 const db = require('@/config/database');
 const fs = require('fs');
 const path = require('path');
+const { calculateFinalPrice } = require('@/utils/priceCalculator');
 
-// 1. 获取商品列表 (完美适配前端 queryParams)
+// 1. 获取商品列表 (注入活动试算逻辑)
 exports.getList = async (req, res) => {
     try {
         const { 
@@ -16,13 +17,10 @@ exports.getList = async (req, res) => {
         const offset = (Number(page) - 1) * Number(pageSize);
         let queryParams = [];
 
-        // 🌟 重点修改 1：把需要的字段抽成变量，并新增 create_time
-        const selectFields = "product_id AS id, name, price, img AS image, sales, stock, create_time";
-        let sql = `SELECT ${selectFields} 
-                   FROM product
-                   WHERE product_status = '通过'`;
+        // 🌟 必须查出 category_id，这是匹配活动的前提！
+        const selectFields = "product_id AS id, name, price, img AS image, sales, stock, create_time, category_id";
+        let sql = `SELECT ${selectFields} FROM product WHERE product_status = '通过'`;
 
-        // 支持无限极递归的分类筛选
         if (category_id) {
             const [allCategories] = await db.execute('SELECT category_id, parent_id FROM category');
             const getDescendantIds = (targetId, categories) => {
@@ -33,10 +31,8 @@ exports.getList = async (req, res) => {
                 }
                 return ids;
             };
-
             const allTargetIds = getDescendantIds(category_id, allCategories);
             const placeholders = allTargetIds.map(() => '?').join(',');
-            
             sql += ` AND category_id IN (${placeholders})`;
             queryParams.push(...allTargetIds);
         }
@@ -44,31 +40,11 @@ exports.getList = async (req, res) => {
             sql += ` AND name LIKE ?`;
             queryParams.push(`%${keyword}%`);
         }
-        if (minPrice) {
-            sql += ` AND price >= ?`;
-            queryParams.push(minPrice);
-        }
-        if (maxPrice) {
-            sql += ` AND price <= ?`;
-            queryParams.push(maxPrice);
-        }
-        if (start_time && end_time) {
-            sql += ` AND create_time BETWEEN ? AND ?`;
-            queryParams.push(`${start_time} 00:00:00`, `${end_time} 23:59:59`);
-        }
 
-        // 查总数 (分页用)
-        // 🌟 重点修改 2：使用上面定义的 selectFields 进行精准替换，防止报错
         const countSql = sql.replace(selectFields, 'COUNT(*) as total');
         const [[{ total }]] = await db.execute(countSql, queryParams);
 
-        // 安全处理前端传来的排序字段映射
-        const sortMap = {
-            'id': 'product_id',
-            'sales': 'sales',
-            'price': 'price',
-            'created_time': 'create_time'
-        };
+        const sortMap = { 'id': 'product_id', 'sales': 'sales', 'price': 'price', 'created_time': 'create_time' };
         const actualSortField = sortMap[sort_field] || 'product_id';
         const actualSortOrder = sort_order.toLowerCase() === 'asc' ? 'ASC' : 'DESC';
 
@@ -77,20 +53,38 @@ exports.getList = async (req, res) => {
 
         const [rows] = await db.execute(sql, queryParams);
 
-        // 🌟 重点修改 3：遍历 rows，从本地文件夹读取以 `1.` 开头的文件作为 image
         for (let row of rows) {
             const folderPath = `/upload/product/img/${row.id}/`;
             const absDirPath = path.join(process.cwd(), 'public', folderPath);
-
-            // 如果文件夹存在，进去找 1.jpg / 1.png 等
             if (fs.existsSync(absDirPath)) {
                 const files = fs.readdirSync(absDirPath);
                 const mainFile = files.find(f => f.startsWith('1.'));
-                if (mainFile) {
-                    // 找到了物理文件，覆盖掉原来数据库查出来的 image 字段
-                    row.image = folderPath + mainFile;
-                }
+                if (mainFile) row.image = folderPath + mainFile;
             }
+        }
+
+        // ==========================================
+        // 🌟 重点修改：将列表数据放入计费引擎试算展示价格
+        // ==========================================
+        if (rows.length > 0) {
+            // 构造成引擎能识别的格式（单件购买试算）
+            const itemsToCalc = rows.map(row => ({
+                product_id: row.id,
+                category_id: row.category_id,
+                price: row.price,
+                quantity: 1 
+            }));
+
+            // 跑一遍引擎
+            const calcResult = await calculateFinalPrice(itemsToCalc);
+            
+            // 将引擎算出的活动价和标签，组装回给前端的列表里
+            calcResult.finalItems.forEach((calcItem, index) => {
+                rows[index].original_price = calcItem.original_price;
+                rows[index].actual_price = calcItem.actual_price;
+                rows[index].is_flash_sale = calcItem.is_flash_sale;
+                rows[index].activities = calcItem.applied_activities; // 存入活动名称数组
+            });
         }
 
         res.json({ status: 200, success: true, data: { list: rows, total: Number(total) }, message: '获取成功' });
@@ -152,15 +146,13 @@ exports.getCategoryTree = async (req, res) => {
     }
 };
 
-// 1. 获取商品详情与 SKU 规格字典
+// 2. 获取商品详情 (追加可用活动明细)
 exports.getDetail = async (req, res) => {
-    
     const productId = req.params.id;
     try {
         const [products] = await db.execute(
             `SELECT p.product_id as id, p.name, p.description, p.price, p.price as original_price, 
-                    p.stock as stock_count, p.sales as sales_count, 
-                    p.img, p.rate, 
+                    p.stock as stock_count, p.sales as sales_count, p.img, p.rate, p.category_id,
                     c.name as category_name
              FROM product p 
              LEFT JOIN category c ON p.category_id = c.category_id
@@ -168,81 +160,84 @@ exports.getDetail = async (req, res) => {
             [productId]
         );
 
-        if (products.length === 0) {
-            return res.status(404).json({ success: false, message: '商品不存在或已下架' });
-        }
+        if (products.length === 0) return res.status(404).json({ success: false, message: '商品不存在或已下架' });
         let productInfo = products[0];
 
-        // 1. 规定该商品的专属物理目录和网络相对路径
-        const folderPath = `/upload/product/img/${productId}/`;
-        const absDirPath = path.join(process.cwd(), 'public', folderPath);
-
-        let main_image = '';
-        let sub_images = [];
-
-        // 2. 如果文件夹存在，读取里面的所有文件名
-        if (fs.existsSync(absDirPath)) {
-            const files = fs.readdirSync(absDirPath); // 例如: ['2.png', '1.jpg', '3.jpg']
-
-            // 🌟 寻找主图：只要名字以 '1.' 开头的就是主图 (如 1.jpg, 1.png)
-            const mainFile = files.find(f => f.startsWith('1.'));
-            if (mainFile) {
-                main_image = folderPath + mainFile;
-            }
-
-            // 🌟 寻找副图：循环找 2., 3., 4. 开头的文件
-            for (let i = 2; i <= 4; i++) {
-                const subFile = files.find(f => f.startsWith(`${i}.`));
-                if (subFile) {
-                    sub_images.push(folderPath + subFile);
-                }
-            }
-        }
-        // 3. 赋值给返回对象
-        productInfo.main_image = main_image;
-        productInfo.sub_images = sub_images;
-        
-        // 详情图默认把主图和副图全放进去（过滤掉空值）
-        productInfo.detail_images = [main_image, ...sub_images].filter(Boolean);
-        productInfo.rate = Number(productInfo.rate) || 5;
-
         // ==========================================
-        // 往下是 SKU 的组装逻辑 (保持不变)
+        // 🌟 核心新增：动态计算真实的商品评分 (rate)
         // ==========================================
-        const [skus] = await db.execute(
-            `SELECT sku_id, name as spec_name, act_price, stock FROM sku_product WHERE product_id = ?`,
+        const [rateResult] = await db.execute(
+            `SELECT AVG(rating) as avg_rate 
+             FROM \`comment\` 
+             WHERE product_id = ? AND parent_id IS NULL AND comment_status = '正常'`,
             [productId]
         );
+        
+        // 如果没有评论，默认给 5.0 分满分；如果有评论，算出平均分并保留 1 位小数
+        const realRate = rateResult[0].avg_rate ? Number(rateResult[0].avg_rate).toFixed(1) : 5.0;
+        productInfo.rate = Number(realRate);
 
+        // 顺手把最新算出来的真实评分异步更新回 product 表，这样外面的商品列表页也能展示最新评分
+        db.execute(`UPDATE product SET rate = ? WHERE product_id = ?`, [realRate, productId]).catch(err => {
+            console.error('异步更新商品评分失败:', err);
+        });
+
+        // 处理图片逻辑 (保持你原有的逻辑)
+        const folderPath = `/upload/product/img/${productId}/`;
+        const absDirPath = path.join(process.cwd(), 'public', folderPath);
+        let main_image = '';
+        let sub_images = [];
+        if (fs.existsSync(absDirPath)) {
+            const files = fs.readdirSync(absDirPath);
+            const mainFile = files.find(f => f.startsWith('1.'));
+            if (mainFile) main_image = folderPath + mainFile;
+            for (let i = 2; i <= 4; i++) {
+                const subFile = files.find(f => f.startsWith(`${i}.`));
+                if (subFile) sub_images.push(folderPath + subFile);
+            }
+        }
+        productInfo.main_image = main_image;
+        productInfo.sub_images = sub_images;
+        productInfo.detail_images = [main_image, ...sub_images].filter(Boolean);
+
+        // 处理 SKU
+        const [skus] = await db.execute(`SELECT sku_id, name as spec_name, act_price, stock FROM sku_product WHERE product_id = ?`, [productId]);
         const spec_groups = {};
         const sku_list = {};
-
         skus.forEach(sku => {
             const specValues = sku.spec_name.split(/[\s\-]+/); 
             const skuKey = specValues.join('|');
             sku_list[skuKey] = {
-                sku_id: sku.sku_id,
-                price: Number(sku.act_price),
-                original_price: Number(sku.act_price) + 200, 
-                stock_count: Number(sku.stock)
+                sku_id: sku.sku_id, price: Number(sku.act_price), original_price: Number(sku.act_price), stock_count: Number(sku.stock)
             };
-
             specValues.forEach((val, index) => {
                 const groupKey = `spec_${index}`; 
-                if (!spec_groups[groupKey]) {
-                    spec_groups[groupKey] = { name: index === 0 ? '款式' : '规格', options: [] };
-                }
+                if (!spec_groups[groupKey]) spec_groups[groupKey] = { name: index === 0 ? '款式' : '规格', options: [] };
                 const existOpt = spec_groups[groupKey].options.find(opt => opt.value === val);
-                if (!existOpt) {
-                    spec_groups[groupKey].options.push({ value: val, stock_count: sku.stock });
-                } else {
-                    existOpt.stock_count += sku.stock;
-                }
+                if (!existOpt) spec_groups[groupKey].options.push({ value: val, stock_count: sku.stock });
+                else existOpt.stock_count += sku.stock;
             });
         });
-
         productInfo.spec_groups = spec_groups;
         productInfo.sku_list = sku_list;
+
+        // ==========================================
+        // 🌟 重点修改：查出该商品可用的所有进行中活动
+        // ==========================================
+        const [activities] = await db.query(`
+            SELECT act_id, name, act_type, rule, max_discount_value, min_amount, start_time, end_time 
+            FROM activity 
+            WHERE act_status = '进行中' 
+            AND start_time <= NOW() 
+            AND end_time >= NOW()
+            AND (goods_type_id = 0 OR goods_type_id = ?) 
+        `, [productInfo.category_id]); // 0是全场通用，或者是专属分类
+
+        // 分类存放，方便前端在详情页画不同样式的UI
+        productInfo.active_campaigns = {
+            flashSale: activities.find(a => a.act_type === '秒杀') || null,
+            otherActivities: activities.filter(a => a.act_type !== '秒杀')
+        };
 
         res.json({ status: 200, success: true, data: productInfo, message: '获取成功' });
     } catch (err) {
@@ -251,7 +246,7 @@ exports.getDetail = async (req, res) => {
     }
 };
 
-// 2. 获取商品评论 (productCtrl.js)
+//  获取商品评论 (productCtrl.js)
 exports.getComments = async (req, res) => {
     const productId = req.params.id;
     try {

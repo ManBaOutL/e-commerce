@@ -161,6 +161,16 @@ export interface CartItem {
   
   // --- 前端专属交互字段 (后端不存，前端自动挂载) ---
   selected?: boolean;   // 是否被勾选 (用于结算和删除)
+
+  actual_price?: number;       // 计费引擎算出的真实活动价
+  original_price?: number;     // 原始价格
+  is_flash_sale?: boolean;     // 是否是秒杀商品
+  activities?: string[];       // 命中的满减/折扣活动名
+}
+// 购物车请求列表返回数据类型
+export interface CartListResponse {
+  items: CartItem[];   // 购物车商品列表
+  total: number;      // 购物车中商品总数 (用于分页或显示角标)
 }
 /**
  * 1. 加入购物车请求参数
@@ -169,7 +179,6 @@ export interface AddCartPayload {
   sku_id: number;       // 必须是具体的规格 ID
   quantity: number;     // 加入的数量
 }
-
 /**
  * 2. 更新购物车数量请求参数
  */
@@ -177,13 +186,13 @@ export interface UpdateCartPayload {
   cart_id: number;      // 要修改的那条购物车记录的 ID
   quantity: number;     // 修改后的最终数量
 }
-
 /**
  * 3. 批量删除购物车请求参数
  */
 export interface RemoveCartPayload {
   cart_ids: number[];   // 购物车 ID 数组，例如 [1, 5, 8]
 }
+
 
 
 // 下单参数类型定义 (兼容购物车结算与直接购买)

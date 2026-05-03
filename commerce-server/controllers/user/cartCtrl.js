@@ -1,11 +1,27 @@
 const db = require('@/config/database');
 const fs = require('fs');
 const path = require('path');
+const { calculateFinalPrice } = require('@/utils/priceCalculator');
 
 // 1. 加入购物车
 exports.addToCart = async (req, res) => {
-    const user_id = req.user.user_id || req.user.id;
-    const { sku_id, quantity } = req.body;
+    const user_id = req.user?.user_id || req.user?.id;
+    
+    // 🌟 容错提取：防止前端把参数包在了 params 对象里，或者传到了 query 中
+    const payload = req.body.params ? req.body.params : req.body;
+    const sku_id = payload.sku_id || req.query.sku_id;
+    const quantity = payload.quantity || req.query.quantity;
+
+    // 🌟 增加防呆打印，终端一看便知前端传了什么鬼东西过来
+    // console.log(`[加入购物车] 收到请求 -> user_id: ${user_id}, sku_id: ${sku_id}, quantity: ${quantity}`);
+
+    // 🌟 严格参数校验，如果没拿到数据，立刻拦截并返回 400 报错，绝不让它走到数据库！
+    if (!sku_id || !quantity) {
+        return res.status(400).json({ 
+            success: false, 
+            message: '加入购物车失败：未获取到商品 sku_id 或数量' 
+        });
+    }
 
     try {
         // 先查一下该用户购物车里是不是已经有这个 SKU 了
@@ -15,47 +31,37 @@ exports.addToCart = async (req, res) => {
         );
 
         if (exist.length > 0) {
-            // 如果有了，数量累加
+            // 🌟 如果有了，数量累加 (强制转为 Number，防止变成字符串拼接 '1'+'1'='11')
             await db.execute(
                 `UPDATE cart SET quantity = quantity + ? WHERE cart_id = ?`,
-                [quantity, exist[0].cart_id]
+                [Number(quantity), exist[0].cart_id]
             );
         } else {
-            // 如果没有，新增一条记录
+            // 🌟 如果没有，新增一条记录 (必须显式写入 create_time = NOW())
             await db.execute(
-                `INSERT INTO cart (user_id, sku_id, quantity) VALUES (?, ?, ?)`,
-                [user_id, sku_id, quantity]
+                `INSERT INTO cart (user_id, sku_id, quantity, create_time) VALUES (?, ?, ?, NOW())`,
+                [user_id, sku_id, Number(quantity)]
             );
         }
         
-        // 🌟 统一规范响应
-        res.json({ 
-            success: true, 
-            message: '成功加入购物车', 
-            status: 200, 
-            data: null 
-        });
+        res.json({ success: true, message: '成功加入购物车', status: 200, data: null });
     } catch (err) {
         console.error('加入购物车异常:', err);
-        // 🌟 统一规范错误响应
-        res.status(500).json({ 
-            success: false, 
-            message: '加入购物车失败', 
-            status: 500, 
-            data: null 
-        });
+        res.status(500).json({ success: false, message: '加入购物车失败，服务器异常' });
     }
 };
 
 // 2. 获取购物车列表
 exports.getCartList = async (req, res) => {
     const user_id = req.user.user_id || req.user.id;
+
     try {
-        // 核心联表：把 cart, sku_product, product 三张表连起来查
-        const [rows] = await db.execute(`
-            SELECT c.cart_id as id, c.quantity as count, c.sku_id,
-                   s.name as spec, s.act_price as price, s.stock,
-                   p.name, p.product_status, p.product_id
+        // 🌟 1. 补全 SQL 查询字段：必须查出 product_status！
+        const [rows] = await db.query(`
+            SELECT 
+                c.cart_id, c.quantity, c.sku_id, 
+                s.name as sku_name, s.act_price as price, s.stock as sku_stock,
+                p.product_id, p.name as product_name, p.category_id, p.product_status
             FROM cart c
             JOIN sku_product s ON c.sku_id = s.sku_id
             JOIN product p ON s.product_id = p.product_id
@@ -63,37 +69,62 @@ exports.getCartList = async (req, res) => {
             ORDER BY c.create_time DESC
         `, [user_id]);
 
-        // 动态读取主图
-        rows.forEach(item => {
-            const folderPath = `/upload/product/img/${item.product_id}/`;
+        if (rows.length === 0) {
+            return res.json({ success: true, status: 200, data: { items: [], cartTotal: 0 } });
+        }
+
+        // 🌟 2. 动态读取物理文件夹，找到商品主图 (1.jpg / 1.png)
+        for (let row of rows) {
+            const folderPath = `/upload/product/img/${row.product_id}/`;
             const absDirPath = path.join(process.cwd(), 'public', folderPath);
-            item.main_image = '';
+            row.main_image = ''; // 默认空图
+            
             if (fs.existsSync(absDirPath)) {
                 const files = fs.readdirSync(absDirPath);
                 const mainFile = files.find(f => f.startsWith('1.'));
-                if (mainFile) item.main_image = folderPath + mainFile;
+                if (mainFile) {
+                    row.main_image = folderPath + mainFile;
+                }
             }
-            item.selected = false; 
+        }
+
+        // 🌟 3. 将购物车数据丢进引擎进行“价格试算”
+        const calcResult = await calculateFinalPrice(rows);
+        
+        // 🌟 4. 终极映射：把后端乱七八糟的字段名，完美适配成前端 ts 接口需要的格式！
+        const formattedItems = calcResult.finalItems.map(item => ({
+            id: item.cart_id,                  // cart_id -> id
+            sku_id: item.sku_id,
+            product_id: item.product_id,
+            name: item.product_name,           // product_name -> name
+            spec: item.sku_name,               // sku_name -> spec
+            main_image: item.main_image,       // 动态抓取的真实图片路径
+            count: item.quantity,              // quantity -> count
+            price: Number(item.price),         // 补充上被漏掉的基础单价
+            stock: item.sku_stock,             // sku_stock -> stock
+            product_status: item.product_status, // 决定商品是否置灰失效的关键状态
+            
+            // 活动展示字段
+            original_price: item.original_price, 
+            actual_price: item.actual_price,     
+            is_flash_sale: item.is_flash_sale,   
+            activities: item.applied_activities  
+        }));
+
+        res.json({
+            success: true,
+            status: 200,
+            data: {
+                items: formattedItems,
+                cartTotal: calcResult.totalAmount 
+            }
         });
 
-        // 🌟 统一规范响应
-        res.json({ 
-            success: true, 
-            message: '获取购物车列表成功', 
-            status: 200, 
-            data: rows 
-        });
     } catch (err) {
-        console.error('获取购物车异常:', err);
-        res.status(500).json({ 
-            success: false, 
-            message: '获取购物车失败', 
-            status: 500, 
-            data: null 
-        });
+        console.error('获取购物车列表异常:', err);
+        res.status(500).json({ success: false, message: '获取购物车失败' });
     }
 };
-
 // 3. 更新购物车商品数量
 exports.updateQuantity = async (req, res) => {
     const { cart_id, quantity } = req.body;
