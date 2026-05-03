@@ -15,5 +15,6 @@ router.post('/code', loginController.getCode)
 // 挂载商品路由
 router.use('/front/product', require('./product'));
 router.use('/front/activity', require('./activity'));
+router.use('/front/shop', require('./shop'));
 
 module.exports = router

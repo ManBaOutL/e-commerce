@@ -215,22 +215,54 @@ exports.payOrder = async (req, res) => {
     const user_id = req.user.user_id || req.user.id;
     const { order_id } = req.body;
 
+    // 🌟 开启事务，保证状态变更和销量增加的原子性
+    const connection = await db.getConnection();
+    await connection.beginTransaction();
+
     try {
-        // 3. 继续支付待支付的订单
-        // 🌟 忽略发货流程，支付成功直接标记为 '已完成'
-        const [result] = await db.execute(
+        // 1. 尝试将订单状态更新为 '已完成'
+        const [result] = await connection.execute(
             `UPDATE \`order\` SET status = '已完成' WHERE order_id = ? AND user_id = ? AND status = '待支付'`,
             [order_id, user_id]
         );
 
-        if (result.affectedRows > 0) {
-            res.json({ success: true, message: '支付成功', status: 200, data: null });
-        } else {
-            res.status(400).json({ success: false, message: '订单状态不可支付或订单不存在', status: 400, data: null });
+        if (result.affectedRows === 0) {
+            throw new Error('订单状态不可支付或订单不存在');
         }
+
+        // 2. 🌟 支付成功，获取该订单下的所有商品明细
+        const [details] = await connection.execute(
+            `SELECT od.quantity, s.product_id 
+             FROM order_details od 
+             JOIN sku_product s ON od.sku_id = s.sku_id 
+             WHERE od.order_id = ?`,
+            [order_id]
+        );
+
+        // 3. 🌟 遍历明细，为对应的商品（SPU）增加销量
+        for (let item of details) {
+            await connection.execute(
+                `UPDATE product SET sales = sales + ? WHERE product_id = ?`,
+                [item.quantity, item.product_id]
+            );
+        }
+
+        // 提交事务
+        await connection.commit();
+        res.json({ success: true, message: '支付成功，订单已流转为已完成', status: 200, data: null });
+
     } catch (err) {
+        // 发生错误，回滚事务
+        await connection.rollback();
         console.error('支付订单异常:', err);
-        res.status(500).json({ success: false, message: '支付异常', status: 500, data: null });
+        res.status(err.message.includes('不可支付') ? 400 : 500).json({ 
+            success: false, 
+            message: err.message || '支付异常', 
+            status: err.message.includes('不可支付') ? 400 : 500, 
+            data: null 
+        });
+    } finally {
+        connection.release();
     }
 };
 
