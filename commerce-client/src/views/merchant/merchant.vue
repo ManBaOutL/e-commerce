@@ -71,10 +71,22 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Shop } from '@element-plus/icons-vue'
+import { useMerchantStore } from '@/stores/modules/merchantStore'
+const merchantStore = useMerchantStore()
+
+
+onMounted(async () => {
+  await merchantStore.getMerchantInfo()
+  userInfo.value = merchantStore.merchantInfo
+  shopForm.value.phone = userInfo.value.phone || ''
+  console.log("登录得到的商家信息:", userInfo.value)
+})
+
+
 
 const router = useRouter()
 
@@ -97,7 +109,7 @@ const router = useRouter()
 // })
 
 //2. 手机登录 + 无店铺
-const userInfo = reactive({
+const userInfo = ref({
   id: 1002,
   nickname: '手机商家(无店)',
   phone: '13899887766',
@@ -145,10 +157,10 @@ const menuList = ref([
 ])
 
 // 表单初始化
-const shopForm = reactive({
+const shopForm = ref({
   shopName: '',
   description: '',
-  phone: userInfo.phone || ''
+  phone: userInfo.value.phone || ''
 })
 
 const rules = reactive({
@@ -168,10 +180,13 @@ const openCreateDialog = () => {
 // 提交创建
 const submitCreate = async () => {
   await formRef.value.validate()
-  userInfo.hasShop = true
-  userInfo.shopInfo = { ...shopForm }
+  userInfo.value.hasShop = true
+  userInfo.value.shopInfo = { ...shopForm.value }
 
   const operation = 'create'
+
+  await merchantStore.setMerchantInfo(userInfo.value, operation)
+  console.log(userInfo.value)
   
 
   showCreate.value = false

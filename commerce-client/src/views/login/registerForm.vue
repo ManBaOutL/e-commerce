@@ -22,7 +22,7 @@
         placeholder="请绑定邮箱"
         required
         :rules="[
-          //{ pattern: /^[a-zA-Z0-9_]+@[a-zA-Z0-9_]+(\.[a-zA-Z0-9_]+)+$/, message: '请输入正确的邮箱格式' }
+          { pattern: /^[a-zA-Z0-9_]+@[a-zA-Z0-9_]+(\.[a-zA-Z0-9_]+)+$/, message: '请输入正确的邮箱格式' }
         ]"
       />
 
@@ -152,7 +152,7 @@ const validateRepassword = (val: string) => {
 };
 
 const getCode = async () => {
-  if (!phoneReg.test(form.value.phone)) return showToast('请输入正确的11位手机号');
+  if (!phoneReg.test(form.value.phone)&&!form.value.email) return showToast('请输入正确的手机号或邮箱');
   if (codeDisabled.value) return;
 
   // 🌟 调用 Store 的发验证码方法

@@ -20,6 +20,8 @@ const loginRouter = require('@/routes/front')
 const userRouter = require('@/routes/user')
 //挂载管理员路由
 const managerRouter = require('@/routes/manager')
+//挂载商家路由
+const merchantRouter = require('@/routes/merchant')
 
 const cors = require('cors')
 app.use(cors())
@@ -53,6 +55,8 @@ app.use('/api', loginRouter)
 app.use('/api', userRouter)
 //挂载管理员路由
 app.use('/api', managerRouter)
+//挂载商家路由
+app.use('/api', merchantRouter)
 
 
 

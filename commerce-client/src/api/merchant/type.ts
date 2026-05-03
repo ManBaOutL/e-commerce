@@ -35,3 +35,39 @@ export interface merchantShowData {
     saleData: number[]
     pieData: { categoryName: string, value: number }[]
 }
+
+export interface productList {
+    product_id: number,
+    name: string,
+    price: number,
+    stock: number,// 库存数量，可能要用到触发器更新库存
+    categoryName: string,
+    rate: number,
+    desc: string,
+    img?: string,
+    auditStatus: string,
+    specs: [
+        {
+            name: string,
+            price: number,
+            stock: number
+        }
+    ]
+}
+
+export interface productOperation {
+    product_id?: number,
+    operation: string,
+    product?: productList
+}
+
+export interface productCondition {
+    categoryName?: string,
+    name?: string,
+    stock?: number
+}
+
+export interface productCategory {
+    name: string,
+}
+

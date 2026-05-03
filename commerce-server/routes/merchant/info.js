@@ -5,7 +5,7 @@ const logger = require('@/middlewares/loggerMiddleware');
 
 
 const merchantInfoCtrl = require('@/controllers/merchant/merchantInfoCtrl')
-router.get('/showData', auth.checkMerchant, merchantInfoCtrl.getMerchantInfo)
+router.get('/info', auth.checkMerchant, merchantInfoCtrl.getMerchantInfo)
 router.post('/info', auth.checkMerchant, merchantInfoCtrl.createShop)
 
 

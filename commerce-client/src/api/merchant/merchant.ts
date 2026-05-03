@@ -10,12 +10,15 @@ export const getMerchantInfo = () => {
     })
 }
 
-export const createShop = (data: merchantInfo) => {
+export const createShop = (data: merchantInfo, operation: string) => {
     // 输入参数：管理员用户名和用户类型
     // 输出参数：管理员展示数据，merchantInfo
     return request<merchantInfo>({
         url: '/merchant/info',
         method: 'post',
-        data
+        data: {
+            ...data,
+            operation
+        }
     })
 }

@@ -39,10 +39,27 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref ,onMounted} from 'vue'
 import LineChart from '@/components/Charts/LineChart.vue'
 import BarChart from '@/components/Charts/BarChart.vue'
 import PieChart from '@/components/Charts/PieChart.vue'
+import { useMerchantStore } from '@/stores/modules/merchantStore'
+
+const merchantStore = useMerchantStore()
+
+onMounted(async () => {
+  await merchantStore.getShowData()
+  goodsCount.value = merchantStore.showData.goodsCount
+  orderCount.value = merchantStore.showData.orderCount
+  waitSend.value = merchantStore.showData.waitSend
+  sumOrderAmount.value = merchantStore.showData.sumOrderAmount
+  orderData.value = merchantStore.showData.orderData
+  saleData.value = merchantStore.showData.saleData
+  pieData.value = merchantStore.showData.pieData
+  xData.value = merchantStore.showData.xData
+})
+
+
 
 // 商家数据
 const goodsCount = ref(68)
@@ -51,13 +68,13 @@ const waitSend = ref(9)
 const sumOrderAmount = ref(6860)
 
 // 近7日坐标
-const xData = ['1日','2日','3日','4日','5日','6日','7日']
+const xData = ref(['1日','2日','3日','4日','5日','6日','7日'])
 
 // 订单量折线图
-const orderData = [5,12,8,14,18,20,17]
+const orderData = ref([5,12,8,14,18,20,17])
 
 // 销售额柱状图
-const saleData = [500,1200,800,1400,1800,2000,1700]
+const saleData = ref([500,1200,800,1400,1800,2000,1700])
 
 // 饼图：本店分类成交额
 const pieData = ref([
