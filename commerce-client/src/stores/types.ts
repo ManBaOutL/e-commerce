@@ -4,7 +4,7 @@
 import type { UserInfo } from '@/api/user/types';
 export interface LoginState {
   token: string;
-  userInfo?: UserInfo;
+  userInfo: UserInfo;
 }
 // 用户仓库
 import type { AddressItem, CartItem, Coupon, OrderInfo, FavoriteItem, MyCommentItem } from '@/api/user/types';

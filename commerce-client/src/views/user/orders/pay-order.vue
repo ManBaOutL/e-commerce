@@ -225,9 +225,11 @@ import { useOrderStore } from '@/stores/modules/user/orderStore'
 
 const route = useRoute()
 const router = useRouter()
+// 调用相关获取数据函数
 const cartStore = useCartStore()
-const userStore = useUserStore()
 const productStore = useProductStore()
+// 调用支付逻辑
+const userStore = useUserStore()
 const orderStore = useOrderStore()
 
 const settleItems = ref([]) 
@@ -342,10 +344,11 @@ const finalAmount = computed(() => {
 })
 
 const payMethods = ref([
-  { id: 1, name: '微信支付', color: '#07C160' },
-  { id: 2, name: '支付宝', color: '#1677FF' }
+// id: 'balance' 代表余额，'alipay' 代表支付宝
+{ id: 'balance', name: '余额支付', color: '#07C160' },
+{ id: 'alipay', name: '支付宝', color: '#1677FF' }
 ])
-const selectedPayId = ref(1)
+const selectedPayId = ref('balance') // 默认选余额
 
 // 先下单，后支付
 const handlePay = async () => {
@@ -393,10 +396,19 @@ const handlePay = async () => {
     });
     
     // ================= 3. 确认支付 =================
-    const payRes = await orderStore.payExistingOrder(currentOrderId);
+    // 🌟 传入订单ID 和 选择的支付方式
+    const payRes = await orderStore.payExistingOrder(currentOrderId, selectedPayId.value);
+    
     if (payRes.success) {
-      ElMessage.success('支付成功！订单已流转为【已完成】');
-      router.replace('/user/orders');
+      if (selectedPayId.value === 'balance') {
+        ElMessage.success('余额支付成功！订单已流转为【已完成】');
+        router.replace('/user/orders');
+      } else if (selectedPayId.value === 'alipay' && payRes.url) {
+        // 🌟 支付宝支付，直接跳往支付宝收银台！
+        window.location.href = payRes.url;
+      }
+    } else {
+      ElMessage.error(payRes.message || '支付唤起失败');
     }
 
   } catch (err) {

@@ -14,7 +14,7 @@ exports.getMerchantOrderList = async (req, res) => {
         let queryParams = [merchant_id];
         let countParams = [merchant_id];
         
-        // 🌟 核心修复点：通过 product 关联 shop 表，再去匹配商家的 user_id
+        // 通过 product 关联 shop 表，再去匹配商家的 user_id
         let baseWhere = `
             WHERE sh.user_id = ? 
         `;

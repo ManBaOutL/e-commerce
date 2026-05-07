@@ -9,8 +9,10 @@
         <el-option label="待发货" value="待发货" />
         <el-option label="已发货" value="已发货" />
         <el-option label="已完成" value="已完成" />
+        <el-option label="已取消" value="已取消" />
         <el-option label="申请退款" value="申请退款" />
         <el-option label="已退款" value="已退款" />
+        <el-option label="待审核" value="待审核" />
         <el-option label="退款驳回" value="退款驳回" />
       </el-select>
       <el-button type="primary" @click="handleSearch">查询</el-button>
@@ -113,7 +115,7 @@ const { orderList, orderPagination } = storeToRefs(merchantStore)
 const loading = ref(false)
 const searchParams = reactive({ status: '' })
 const currentPage = ref(1)
-const pageSize = ref(10)
+const pageSize = ref(5)
 
 // 详情弹窗控制
 const detailDialogVisible = ref(false)

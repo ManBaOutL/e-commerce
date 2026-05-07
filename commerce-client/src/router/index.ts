@@ -219,6 +219,12 @@ const router = createRouter({
       component: () => import('@/views/shop/index.vue'),
       meta: { title: '店铺主页' }
     },
+    // 支付宝登录集成
+    {
+      path: '/alipayCallback',
+      name: 'alipayCallback',
+      component: () => import('@/views/login/alipayCallback.vue'),
+    }
   ],
 })
 
