@@ -15,6 +15,13 @@ export const login = (data: LoginData) => {
         data
     })
 }
+export const alipayLogin = (data: { auth_code: string }) => {
+    return request({
+        url: '/alipayLogin',
+        method: 'post',
+        data
+    })
+}
 //登录模拟接口
 export const mockLogin = (data: LoginData) => {
     console.log("data: ", data);
@@ -56,7 +63,13 @@ export const register = (data: RegisterData) => {
     })
 }
 export const reqUpdateUserInfo = (data: Record<string, any>) => {
-    return request.post<any, ApiResponse<any>>(API.UPDATE_USER_INFO, data);
+    return request.post<any, ApiResponse<any>>(API.POST_USER_INFO, data);
+}
+export const reqUserRecharge = (data: { amount: number }) => {
+    return request.post<any, ApiResponse<any>>(API.POST_USER_RECHARGE, data);
+}
+export const reqUserWithdraw = (data: { amount: number }) => {
+    return request.post<any, ApiResponse<any>>(API.POST_USER_WITHDRAW, data);
 }
 
 enum API {
@@ -65,7 +78,9 @@ enum API {
   FORGET = '/forget',
   REGISTER = '/register',
   USERS = '/users',
-  UPDATE_USER_INFO = '/user/profile/update',
+  POST_USER_INFO = '/user/profile/update',
+  POST_USER_RECHARGE = '/user/profile/recharge',
+  POST_USER_WITHDRAW = '/user/profile/withdraw',
   // 用户评论
   POST_ADD_COMMENT = '/user/comment/add',
   GET_COMMENT_LIST = '/user/comment/list',
@@ -160,8 +175,8 @@ export const reqGetOrderList = () => {
 }
 
 // 继续支付未完成的订单
-export const reqPayExistingOrder = (order_id: string | number) => {
-  return request.post<any, any>(API.POST_PAY_EXISTING_ORDER, { order_id });
+export const reqPayExistingOrder = (data: {order_id: string | number, payment_method: string}) => {
+  return request.post<any, any>(API.POST_PAY_EXISTING_ORDER, data);
 }
 
 // 申请订单退款

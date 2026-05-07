@@ -31,6 +31,17 @@
       </div>
 
       <div class="item">
+        <label>账户余额</label>
+        <div class="balance-display" style="flex: 1; display: flex; align-items: center; gap: 15px;">
+          <span style="font-size: 20px; color: #ff5000; font-weight: bold;">
+            ¥ {{ Number(userForm.balance || 0).toFixed(2) }}
+          </span>
+          <el-button type="success" size="small" plain @click="rechargeDialogVisible = true">模拟充值</el-button>
+          <el-button type="warning" size="small" plain @click="withdrawDialogVisible = true">模拟提现</el-button>
+        </div>
+      </div>
+
+      <div class="item">
         <label>用户类型</label>
         <el-input v-model="userForm.type" disabled class="input-el" />
       </div>
@@ -79,8 +90,37 @@
           <el-button @click="cancel">取消</el-button>
         </template>
       </div>
-
     </div>
+
+    <el-dialog v-model="rechargeDialogVisible" title="账户充值" width="400px" destroy-on-close>
+      <div style="margin-bottom: 15px; color: #666; display: flex; justify-content: space-between; align-items: center;">
+        <span>当前余额: <strong style="color: #ff5000;">¥{{ Number(userForm.balance || 0).toFixed(2) }}</strong></span>
+        <el-tag size="small" type="info">单次限额: ¥50,000</el-tag>
+      </div>
+      <el-input-number 
+        v-model="rechargeAmount" 
+        :min="0.01" 
+        :max="50000" 
+        :precision="2" 
+        :step="100" 
+        style="width: 100%;" 
+        placeholder="请输入充值金额" 
+      />
+      <template #footer>
+        <el-button @click="rechargeDialogVisible = false">取消</el-button>
+        <el-button type="success" :loading="balanceLoading" @click="handleRecharge">确认充值</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="withdrawDialogVisible" title="账户提现" width="400px" destroy-on-close>
+      <div style="margin-bottom: 15px; color: #666;">可提现余额: ¥{{ Number(userForm.balance || 0).toFixed(2) }}</div>
+      <el-input-number v-model="withdrawAmount" :min="0.01" :max="Number(userForm.balance || 0)" :precision="2" :step="100" style="width: 100%;" placeholder="请输入提现金额" />
+      <template #footer>
+        <el-button @click="withdrawDialogVisible = false">取消</el-button>
+        <el-button type="warning" :loading="balanceLoading" @click="handleWithdraw">确认提现</el-button>
+      </template>
+    </el-dialog>
+
   </div>
 </template>
 
@@ -88,21 +128,23 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { UploadProps } from 'element-plus'
-import type { UserInfo } from '@/api/user/types'
 import { Camera } from '@element-plus/icons-vue'
 import { storeToRefs } from 'pinia'
 import { useLoginStore } from '@/stores/modules/common/loginStore'
+import { useUserStore } from '@/stores/modules/user/userStore'
 import getFullUrl from '@/utils/getFullUrl'
 import request from '@/utils/request'
+import { reqUpdateUserInfo } from '@/api/user'
 
 const loginStore = useLoginStore()
+const userStore = useUserStore()
 const { userInfo, token } = storeToRefs(loginStore)
 
 const isEdit = ref<boolean>(false)
 const loading = ref<boolean>(false)
 
-// 实例化表单响应式数据
-const userForm = reactive<UserInfo>({
+// 🌟 扩展表单结构，加入 balance
+const userForm = reactive<any>({
   user_id: 0,
   img: '',
   username: '',
@@ -111,10 +153,11 @@ const userForm = reactive<UserInfo>({
   phone: '',
   age: 0,
   gender: '保密',
-  is_vip: 0
+  is_vip: 0,
+  balance: 0 // 新增字段
 })
 
-const originForm = ref<Partial<UserInfo>>({})
+const originForm = ref<any>({})
 const verifyCode = ref<string>('')
 const needCode = ref<boolean>(false)
 let timer: ReturnType<typeof setInterval> | null = null
@@ -129,7 +172,8 @@ const initForm = () => {
       phone: userInfo.value.phone || '',
       age: userInfo.value.age || null,
       gender: userInfo.value.gender || '保密',
-      is_vip: userInfo.value.is_vip || 0 // 修复 boolean 与 number 冲突问题
+      is_vip: userInfo.value.is_vip || 0,
+      balance: userInfo.value.balance || 0 // 提取后端返回的余额
     })
     originForm.value = JSON.parse(JSON.stringify(userForm))
   }
@@ -145,12 +189,11 @@ const uploadHeaders = computed(() => {
   return { Authorization: `Bearer ${cleanToken}` }
 })
 
-// 🌟 修复：统一方法名
 const beforeAvatarUpload: UploadProps['beforeUpload'] = (file) => {
   const isImage = file.type.startsWith('image/')
-  const isLt2M = file.size / 1024 / 1024 < 2
+  const isLt2M = file.size / 1024 / 1024 < 5
   if (!isImage) ElMessage.error('头像只能是图片格式!')
-  if (!isLt2M) ElMessage.error('头像图片大小不能超过 2MB!')
+  if (!isLt2M) ElMessage.error('头像图片大小不能超过 5MB!')
   return isImage && isLt2M
 }
 
@@ -183,14 +226,12 @@ const codeText = ref<string>('获取验证码')
 
 const getCode = async () => {
   if (!userForm.phone) return ElMessage.warning('请输入手机号')
-  
   try {
     codeDisabled.value = true
     const res: any = await loginStore.sendCodeAction({
       phone: userForm.phone,
       scene: 'update_profile'
     })
-    
     if (res.success) {
       ElMessage.success('验证码已发送')
       let sec = 60
@@ -214,15 +255,11 @@ const getCode = async () => {
 }
 
 // === 保存与取消 ===
-import { reqUpdateUserInfo } from '@/api/user'
 const save = async () => {
   if (!userForm.username.trim()) return ElMessage.warning('用户名不能为空')
   if (needCode.value && !verifyCode.value) return ElMessage.warning('请输入验证码')
-
   try {
     loading.value = true
-    
-    // 构建明确类型的 payload
     const payload: Record<string, any> = {
       username: userForm.username,
       img: userForm.img,
@@ -231,25 +268,16 @@ const save = async () => {
       age: userForm.age,
       gender: userForm.gender
     }
+    if (needCode.value) payload.code = verifyCode.value
 
-    if (needCode.value) {
-      payload.code = verifyCode.value
-    }
-
-    const res: any = await reqUpdateUserInfo(payload)
-    
+    const res: any = userStore.updateUserInfo(payload)
     if (res.success || res.status === 200) {
       ElMessage.success('个人资料更新成功')
-      
-      // 🌟 修复：如果后端返回了“转正”后的新头像路径，就用新的；否则沿用原来的
       const finalAvatarUrl = res.data?.avatar || payload.img;
       payload.img = finalAvatarUrl;
-      userForm.img = finalAvatarUrl; // 同步当前表单展示
-      
-      // 更新前端 Store 和 LocalStorage
+      userForm.img = finalAvatarUrl;
       loginStore.userInfo = { ...loginStore.userInfo, ...payload } as any
       localStorage.setItem('userInfo', JSON.stringify(loginStore.userInfo))
-      
       originForm.value = JSON.parse(JSON.stringify(userForm))
       isEdit.value = false
       needCode.value = false
@@ -271,7 +299,64 @@ const cancel = () => {
   if (timer) clearInterval(timer)
   codeDisabled.value = false
   codeText.value = '获取验证码'
-  ElMessage.info('已取消编辑')
+}
+
+// ================= 🌟 充值与提现逻辑 =================
+const rechargeDialogVisible = ref(false)
+const withdrawDialogVisible = ref(false)
+const rechargeAmount = ref(100)
+const withdrawAmount = ref(0)
+const balanceLoading = ref(false)
+
+// 处理充值
+const handleRecharge = async () => {
+  if (rechargeAmount.value <= 0) return ElMessage.warning('金额必须大于 0')
+  balanceLoading.value = true
+  try {
+    // 调后端真实接口（用 axios 的实例 request 直接发请求）
+    const res: any = await userStore.userRecharge({ amount: rechargeAmount.value })
+    if (res.success) {
+      ElMessage.success(`成功充值 ¥${rechargeAmount.value}`)
+      userForm.balance = Number(userForm.balance) + rechargeAmount.value
+      // 更新全局 Store
+      loginStore.userInfo.balance = userForm.balance
+      localStorage.setItem('userInfo', JSON.stringify(loginStore.userInfo))
+      rechargeDialogVisible.value = false
+      rechargeAmount.value = 100 // 重置输入框
+    } else {
+      ElMessage.error(res.message || '充值失败')
+    }
+  } catch (error) {
+    console.error(error)
+    ElMessage.error('网络异常，无法充值')
+  } finally {
+    balanceLoading.value = false
+  }
+}
+
+// 处理提现
+const handleWithdraw = async () => {
+  if (withdrawAmount.value <= 0) return ElMessage.warning('金额必须大于 0')
+  if (withdrawAmount.value > Number(userForm.balance)) return ElMessage.warning('余额不足')
+  balanceLoading.value = true
+  try {
+    const res: any = await userStore.userWithdraw({ amount: withdrawAmount.value })
+    if (res.success) {
+      ElMessage.success(`成功提现 ¥${withdrawAmount.value}`)
+      userForm.balance = Number(userForm.balance) - withdrawAmount.value
+      // 更新全局 Store
+      loginStore.userInfo.balance = userForm.balance
+      localStorage.setItem('userInfo', JSON.stringify(loginStore.userInfo))
+      withdrawDialogVisible.value = false
+      withdrawAmount.value = 0
+    } else {
+      ElMessage.error(res.message || '提现失败')
+    }
+  } catch (error) {
+    ElMessage.error('网络异常，无法提现')
+  } finally {
+    balanceLoading.value = false
+  }
 }
 </script>
 
@@ -286,7 +371,6 @@ const cancel = () => {
 .code-btn { width: 120px; flex-shrink: 0; }
 .item-btn { margin-top: 20px; padding-left: 90px; display: flex; gap: 15px; }
 
-/* 头像交互样式 */
 .avatar-uploader { cursor: pointer; }
 .img-wrapper { position: relative; border-radius: 50%; overflow: hidden; display: inline-block; }
 .edit-mask { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); display: flex; justify-content: center; align-items: center; opacity: 0; transition: opacity 0.3s; }

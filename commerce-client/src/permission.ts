@@ -3,7 +3,7 @@ import { useLoginStore } from '@/stores/modules/common/loginStore'
 import { ElMessage } from 'element-plus'
 
 // 1. 定义免登录白名单路由 (精确匹配)
-const whiteList = ['/', '/login', '/login/register', '/login/forgetPwd']
+const whiteList = ['/', '/login', '/login/register', '/login/forgetPwd', '/alipayCallback']
 
 // 2. 新版全局前置守卫 (去掉 next 参数，使用 return)
 router.beforeEach(async (to, from) => {
