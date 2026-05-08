@@ -11,9 +11,12 @@ router.post('/register', loginController.register)
 router.post('/forget', loginController.forget)
 // 挂载验证码路由
 router.post('/code', loginController.getCode)
+// 挂载支付宝登录路由
+router.post('/alipayLogin', loginController.alipayLogin)
 
 // 挂载商品路由
 router.use('/front/product', require('./product'));
 router.use('/front/activity', require('./activity'));
+router.use('/front/shop', require('./shop'));
 
 module.exports = router

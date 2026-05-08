@@ -37,6 +37,8 @@ import { useAdminStore } from '@/stores/modules/adminStore'
 import { onMounted } from 'vue'
 const adminStore = useAdminStore()
 const router = useRouter()
+import {useLoginStore} from '@/stores/modules/common/loginStore'
+const loginStore = useLoginStore()
 
 const menuList = [
   { key: 'showdata', name: '数据概览' },
@@ -56,8 +58,7 @@ const goMenu = (key) => {
 }
 
 const logout = () => {
-  localStorage.removeItem('token')
-  localStorage.removeItem('user')
+  loginStore.logout()
   ElMessage.success('退出成功')
   router.push('/login')
 }

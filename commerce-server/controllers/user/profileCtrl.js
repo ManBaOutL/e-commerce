@@ -86,3 +86,92 @@ exports.updateProfile = async (req, res) => {
         res.status(500).json({ success: false, message: '服务器异常' });
     }
 };
+
+// 模拟账户充值
+exports.recharge = async (req, res) => {
+    const user_id = req.user.user_id || req.user.id;
+    const amount = Number(req.body.amount);
+
+    // ==========================================
+    // 🛡️ 1. 单次交易额度限制拦截
+    // ==========================================
+    const MIN_RECHARGE = 0.01;
+    const MAX_RECHARGE = 50000; // 单次最高 5 万
+
+    if (!amount || amount < MIN_RECHARGE) {
+        return res.status(400).json({ success: false, message: `充值金额异常，不能低于 ¥${MIN_RECHARGE}` });
+    }
+    if (amount > MAX_RECHARGE) {
+        return res.status(400).json({ success: false, message: `风控拦截：单次充值金额不能超过 ¥${MAX_RECHARGE}` });
+    }
+
+    // 🌟 开启事务，防止并发充值
+    const connection = await db.getConnection();
+    await connection.beginTransaction();
+
+    try {
+        // ==========================================
+        // 🛡️ 2. 账户总容量限制拦截 (锁行查询)
+        // ==========================================
+        const MAX_BALANCE = 999999.99; // 假设平台规定普通用户账户最多存放 100 万
+
+        // FOR UPDATE 会锁住该用户的这行数据，直到事务提交，彻底杜绝并发刷钱
+        const [users] = await connection.execute(`SELECT balance FROM user WHERE user_id = ? FOR UPDATE`, [user_id]);
+        
+        const currentBalance = Number(users[0].balance || 0);
+
+        if (currentBalance + amount > MAX_BALANCE) {
+            throw new Error(`充值失败：您的账户总余额将超过系统上限 (¥${MAX_BALANCE})`);
+        }
+
+        // ==========================================
+        // 💰 3. 安全更新余额
+        // ==========================================
+        await connection.execute(`UPDATE user SET balance = balance + ? WHERE user_id = ?`, [amount, user_id]);
+        
+        // 提交事务
+        await connection.commit();
+        res.json({ success: true, message: '充值成功', status: 200 });
+
+    } catch (err) {
+        // 发生错误，回滚数据
+        await connection.rollback();
+        console.error('充值异常:', err);
+        res.status(400).json({ success: false, message: err.message || '系统繁忙，充值失败' });
+    } finally {
+        // 释放数据库连接
+        connection.release();
+    }
+};
+
+// 模拟账户提现 (加锁防止高并发透支)
+exports.withdraw = async (req, res) => {
+    const user_id = req.user.user_id || req.user.id;
+    const amount = Number(req.body.amount);
+
+    if (!amount || amount <= 0) {
+        return res.status(400).json({ success: false, message: '提现金额无效' });
+    }
+
+    const connection = await db.getConnection();
+    await connection.beginTransaction();
+
+    try {
+        const [users] = await connection.execute(`SELECT balance FROM user WHERE user_id = ? FOR UPDATE`, [user_id]);
+        
+        if (users.length === 0 || Number(users[0].balance) < amount) {
+            throw new Error('账户余额不足');
+        }
+
+        await connection.execute(`UPDATE user SET balance = balance - ? WHERE user_id = ?`, [amount, user_id]);
+        await connection.commit();
+
+        res.json({ success: true, message: '提现成功', status: 200 });
+    } catch (err) {
+        await connection.rollback();
+        console.error('提现失败:', err);
+        res.status(400).json({ success: false, message: err.message || '提现失败,请重新操作' });
+    } finally {
+        connection.release();
+    }
+};

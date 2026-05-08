@@ -62,7 +62,7 @@ export interface CategoryItem {
 }
 
 // ==========================================
-// 🌟 新增：基础活动项的结构定义
+// 基础活动项的结构定义
 // ==========================================
 export interface ActivityItem {
   act_id: number;
@@ -76,7 +76,7 @@ export interface ActivityItem {
 }
 
 // ==========================================
-// 🌟 新增：商品详情页专属的活动聚合结构
+// 商品详情页专属的活动聚合结构
 // ==========================================
 export interface ActiveCampaigns {
   flashSale: ActivityItem | null;    // 秒杀活动（独占，最多只有一个，或者为 null）
@@ -119,6 +119,9 @@ export interface ProductDetail {
   sub_images: string[];
   detail_images: string[];
   category_name?: string;
+  // 店铺信息字段
+  shop_id?: number;
+  shop_name?: string;
   // 复杂的字典类型定义
   spec_groups: Record<string, SpecGroup>;
   sku_list: Record<string, SkuItem>;

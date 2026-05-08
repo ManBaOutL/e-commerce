@@ -9,4 +9,6 @@ router.post('/pay',authMiddleware.checkUser, orderController.payOrder);
 router.post('/applyRefund', authMiddleware.checkUser,orderController.applyRefund);
 router.post('/cancel',authMiddleware.checkUser, orderController.cancelOrder);
 
+router.post('/checkAlipayStatus', authMiddleware.checkUser, orderController.checkAlipayStatus); // 主动查询需要登录
+
 module.exports = router;

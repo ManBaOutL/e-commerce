@@ -1,3 +1,4 @@
+import type { OrderStatus } from '../types';
 export interface pagination {
     currentPage: number
     pageSize: number
@@ -23,6 +24,7 @@ export interface merchantInfo {
 }
 
 // 展示数据类型定义
+// 商家展示数据类型定义
 export interface merchantShowData {
     //总体数据
     goodsCount: number
@@ -130,3 +132,40 @@ export interface shopOperation {
     password?: string
 }
 
+
+// 商家订单列表项
+export interface MerchantOrder {
+    orderId: string;
+    goodsName: string;
+    money: string | number;
+    status: OrderStatus;
+    userName?: string;
+    userPhone?: string;
+    createTime?: string;
+    address?: string;
+    userRefundReason?: string;
+    refundRejectReason?: string;
+}
+
+// 订单查询条件
+export interface OrderCondition {
+    status?: string;
+    orderId?: string;
+}
+
+// 退款操作载荷
+export interface RefundOperation {
+    order_id: string;
+    is_agree: boolean;      // true 同意, false 驳回
+    reject_reason?: string; // 驳回时必填
+}
+
+// 商家订单列表返回数据类型
+export interface MerchantOrderListResData {
+    list: MerchantOrder[];
+    pagination: pagination; // 复用你文件顶部已有的 pagination 接口
+}
+// 退款审核结果返回数据类型
+export interface RefundResData {
+    refundAmount: number;
+}

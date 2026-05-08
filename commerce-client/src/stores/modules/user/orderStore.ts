@@ -41,11 +41,13 @@ export const useOrderStore = defineStore('order', {
     },
 
     // 继续支付已存在的订单
-    async payExistingOrder(order_id: string | number) {
+    async payExistingOrder(order_id: string | number, payment_method: string) {
       try {
-        const res = await reqPayExistingOrder(order_id);
+        // ⚠️ 注意：你需要同步去你的 src/api/user/index.ts 中，把 reqPayExistingOrder 的参数改成接收这两个值
+        const res = await reqPayExistingOrder({ order_id, payment_method });
         if (res.success) {
-          return { success: true };
+          // 🌟 如果是支付宝，把后端的 url 原封不动返回给 Vue 组件
+          return { success: true, url: res.url || null }; 
         } else {
           return { success: false, message: res.message };
         }

@@ -9,6 +9,12 @@ export interface ApiResponse<T = any> {
 }
 
 /**
+ * 订单状态类型定义
+ */
+export type OrderStatus = '待支付' | '待发货' | '已发货' | '已完成' | '已取消' | '申请退款' |  '已退款' | '待审核' | '退款驳回';
+
+
+/**
  * 通用分页请求/返回
  */
 export interface PageParams {

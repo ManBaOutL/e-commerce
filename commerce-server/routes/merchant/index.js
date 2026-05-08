@@ -13,5 +13,6 @@ router.use('/merchant', require('./shop'))
 
 
 
+router.use('/merchant', require('./order'))
 
 module.exports = router

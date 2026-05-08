@@ -20,6 +20,11 @@ import {
   reqRemoveFavorite,
   reqToggleFavorite
 } from '@/api/user/index';
+import {
+  reqUpdateUserInfo,
+  reqUserRecharge,
+  reqUserWithdraw
+} from '@/api/user/index';
 
 export const useUserStore = defineStore('user', {
   state: (): UserState => ({
@@ -196,6 +201,36 @@ export const useUserStore = defineStore('user', {
         return { success: false, message: res.message || '操作失败' };
       } catch (error) {
         console.error('切换收藏状态异常:', error);
+        return { success: false, message: '网络异常' };
+      }
+    },
+
+    // profile页面相关
+    // 🌟 更新用户信息（昵称、邮箱、手机号等）
+    async updateUserInfo(data: Record<string, any>) {
+      try {
+        const res = await reqUpdateUserInfo(data);
+        return res;
+      } catch (error) {
+        console.error('更新用户信息异常:', error);
+        return { success: false, message: '网络异常' };
+      }
+    },
+    async userRecharge(data:  { amount: number }) {
+      try {
+        const res = await reqUserRecharge(data);
+        return res;
+      } catch (error) {
+        console.error('用户充值异常:', error);
+        return { success: false, message: '网络异常' };
+      }
+    },
+    async userWithdraw(data: { amount: number }) {
+      try {
+        const res = await reqUserWithdraw(data);
+        return res;
+      } catch (error) {
+        console.error('用户提现异常:', error);
         return { success: false, message: '网络异常' };
       }
     }

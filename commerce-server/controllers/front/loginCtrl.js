@@ -1,6 +1,25 @@
 const db = require('@/config/database')
 const jwt = require('jsonwebtoken')
 const bcrypt = require('bcryptjs')
+const path = require('path');
+const AlipaySdkRaw = require('alipay-sdk');
+const AlipaySdk = AlipaySdkRaw.default || AlipaySdkRaw.AlipaySdk || AlipaySdkRaw;
+
+// 1. 获取 alipay-sdk 主文件的绝对路径 (比如 C:\...\dist\commonjs\alipay.js)
+const sdkMainPath = require.resolve('alipay-sdk'); 
+// 2. 推导出同一目录下 form.js 的物理绝对路径
+const formFilePath = path.join(sdkMainPath, '../form.js'); 
+// 3. 直接通过绝对路径引入，完美绕过拦截！
+const FormRaw = require(formFilePath);
+const AlipayFormData = FormRaw.default || FormRaw;
+
+// 初始化支付宝 SDK (参数从沙箱控制台获取)
+const alipaySdk = new AlipaySdk({
+  appId: process.env.ALIPAY_APP_ID,
+  privateKey: process.env.ALIPAY_PRIVATE_KEY,
+  alipayPublicKey: process.env.ALIPAY_PUBLIC_KEY,
+  gateway: process.env.ALIPAY_GATEWAY,
+});
 
 const verifyCodeStore = {};
 
@@ -204,3 +223,90 @@ exports.register = async (req, res) => {
 }
 
 exports.verifyCodeStore = verifyCodeStore;
+
+
+// 支付宝登录控制器
+exports.alipayLogin = async (req, res) => {
+    const { auth_code } = req.body;
+    // console.log("支付宝登录请求体: ", req.body)
+    if (!auth_code) {
+        return res.status(400).json({ message: '缺少授权码', status: 400, success: false });
+    }
+
+    try {
+        // 1. 向支付宝换取 access_token
+        // 添加一个简单的超时控制和错误捕获
+        const tokenResult = await alipaySdk.exec('alipay.system.oauth.token', {
+            grantType: 'authorization_code',
+            code: auth_code,
+        }).catch(err => {
+             // 捕获 sdk 内部错误
+             console.error("SDK 换取 token 失败:", err);
+             throw new Error(err.message.includes('504') ? '支付宝网关超时，请稍后再试' : '获取授权令牌失败');
+        });
+        
+        const accessToken = tokenResult.accessToken;
+        const alipayUserId = tokenResult.userId; 
+
+        // 2. 拿着 access_token 去查用户昵称和头像
+        // 沙箱环境下，这一步有时候非常容易报错。
+        let nickName = `支付宝用户_${alipayUserId.substring(alipayUserId.length - 4)}`;
+        let avatar = '';
+
+        try {
+            const userInfoResult = await alipaySdk.exec('alipay.user.info.share', {
+                auth_token: accessToken,
+            });
+            if (userInfoResult.nickName) nickName = userInfoResult.nickName;
+            if (userInfoResult.avatar) avatar = userInfoResult.avatar;
+        } catch (infoErr) {
+            console.warn("沙箱获取用户信息失败，使用默认信息。原因:", infoErr.message);
+            // 这里不抛出错误，继续走下面的登录/注册流程
+        }
+
+        // 3. 在本地数据库查找该用户
+        const [rows] = await db.execute('SELECT * FROM user WHERE alipay_user_id = ?', [alipayUserId]);
+        
+        let user = null;
+
+        if (rows.length > 0) {
+            // 老用户直接登录
+            user = rows[0];
+            if (user.status === '禁用') {
+                return res.status(403).json({ message: '账号已被封禁', status: 403, success: false });
+            }
+        } else {
+            // 给第三方登录的用户生成一个占位虚拟密码
+            // 使用常规登录时，由于 bcrypt 无法匹配这个明文占位符，所以绝对安全！
+            const dummyPassword = 'ALIPAY_QUICK_LOGIN_NO_PASSWORD';
+
+            // 新用户自动注册绑定 (把 password 字段加上去)
+            const [insertRes] = await db.execute(
+                `INSERT INTO user (username, password, type, img, alipay_user_id, create_time, status) 
+                 VALUES (?, ?, '普通用户', ?, ?, NOW(), '正常')`,
+                [nickName, dummyPassword, avatar, alipayUserId] // 🌟 按照顺序传入 dummyPassword
+            );
+            
+            user = {
+                user_id: insertRes.insertId,
+                username: nickName,
+                type: '普通用户',
+                img: avatar
+            };
+        }
+
+        // 4. 生成系统 JWT Token
+        const token = jwt.sign(
+            { user_id: user.user_id, username: user.username, type: user.type },
+            'abcdef123456', 
+            { expiresIn: '7d' } 
+        );
+
+        res.json({ message: '支付宝登录成功', data: { token, user }, status: 200, success: true });
+
+    } catch (err) {
+        console.error(`支付宝登录异常[${new Date().toLocaleTimeString()}]：`, err.message);
+        // 将友好的错误信息返回给前端
+        res.status(500).json({ success: false, message: err.message || '支付宝授权验证失败' });
+    }
+};

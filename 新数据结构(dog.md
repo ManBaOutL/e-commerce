@@ -22,6 +22,8 @@ img: 对应商品图片文件夹（命名：/upload/products/img/{product_id}/1.
 
 product_status:待审核，通过，已驳回，下架
 
+sales:销量
+
 ## 4、地址基本信息
 
 address(<u>address_id</u>,recipient_name,phone,address,lng,lat,type,province,city,district,street,streetNumber,is_default,create_time,**user_id**)
@@ -77,6 +79,8 @@ parent_id,父评论，用于回复评论
 商家回复无rating
 
 append_days: 存储距离首评的天数
+
+images: 评论图片，多张图片有逗号隔开
 
 ## 10、活动管理
 
@@ -206,6 +210,11 @@ CREATE TABLE `user` (
   `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
   `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户表';
+ALTER TABLE user ADD COLUMN alipay_user_id VARCHAR(100) DEFAULT NULL COMMENT '支付宝用户的唯一标识';
+-- 建议加个唯一索引加快查询速度
+ALTER TABLE user ADD UNIQUE INDEX idx_alipay_user (alipay_user_id);
+ALTER TABLE user ADD COLUMN balance DECIMAL(10, 2) DEFAULT 10000.00 COMMENT '用户余额(元)';
+-- 为了方便测试，你可以默认给新用户发1万块钱模拟金
 
 -- ----------------------------
 -- 13. 店铺表 (shop) - 依赖user(商家类型)
@@ -342,6 +351,10 @@ CREATE TABLE `order_details` (
   FOREIGN KEY (`order_id`) REFERENCES `order`(`order_id`) ON DELETE CASCADE,
   FOREIGN KEY (`sku_id`) REFERENCES `sku_product`(`sku_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='订单明细表';
+
+ALTER TABLE order_details 
+DROP PRIMARY KEY, 
+ADD id INT AUTO_INCREMENT PRIMARY KEY FIRST;
 
 -- ----------------------------
 -- 8. 购物车表 (cart) - 依赖user, sku_product

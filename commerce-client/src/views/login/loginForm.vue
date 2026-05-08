@@ -44,6 +44,13 @@
           </van-button>
         </div>
       </van-form>
+      <!-- 👇 新增：第三方登录入口 -->
+      <van-divider>第三方登录</van-divider>
+      <div style="margin: 16px;">
+        <van-button round block plain type="primary" @click="handleAlipayLogin">
+          支付宝登录
+        </van-button>
+      </div>
       <!-- 登录方式切换 -->
       <div class="login-switch">
           <div @click="loginType = 'username'">用户名登录</div>
@@ -77,6 +84,20 @@ const form = ref<LoginData>({
 })
 const loginType = ref('username')
 
+
+// 支付宝登录重定向
+const handleAlipayLogin = () => {
+  // 🌟 使用 Vite 的 import.meta.env 获取环境变量
+  const APP_ID = import.meta.env.VITE_ALIPAY_APP_ID;
+  const REDIRECT_URI = encodeURIComponent(import.meta.env.VITE_ALIPAY_REDIRECT_URI);
+  const BASE_AUTH_URL = import.meta.env.VITE_ALIPAY_AUTH_URL;
+  
+  // 拼接授权链接
+  const authUrl = `${BASE_AUTH_URL}?app_id=${APP_ID}&scope=auth_user&redirect_uri=${REDIRECT_URI}`;
+  
+  // 跳转
+  window.location.href = authUrl;
+}
 
 const handleSubmit = async (e: Event) => {
   const sendData: any = { password: form.value.password, loginType: loginType.value };

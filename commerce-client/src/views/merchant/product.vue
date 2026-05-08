@@ -133,7 +133,7 @@
             <div>点击上传商品图片</div>
           </div>
         </el-upload>
-        <div class="upload-tip">建议尺寸比例 1:1，支持JPG/PNG，不超过2MB</div>
+        <div class="upload-tip">建议尺寸比例 1:1，支持JPG/PNG，不超过5MB</div>
       </el-form-item>
 
       <div style="margin-bottom:8px; font-weight:500">商品价格</div>
@@ -456,9 +456,9 @@ const beforeUpload = (file) => {
     ElMessage.error('只能上传JPG/PNG格式的图片！')
     return false
   }
-  const isLt2M = file.size / 1024 / 1024 < 2
+  const isLt2M = file.size / 1024 / 1024 < 5
   if (!isLt2M) {
-    ElMessage.error('图片大小不能超过2MB！')
+    ElMessage.error('图片大小不能超过5MB！')
     return false
   }
   return true

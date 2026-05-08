@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import { 
   login, 
+  alipayLogin, 
   register, 
   sendCode, 
   resetPassword,
@@ -91,5 +92,25 @@ export const useLoginStore = defineStore('loginStore', {
       }
     },
    
+    // 6. 支付宝登录
+    async alipayLoginAction(auth_code: string) {
+      try {
+        
+        // 假设直接用 axios/request 工具发送：
+        const res: any = await alipayLogin({ auth_code });
+        
+        if (res.status === 200 || res.success !== false) {
+          this.token = res.data.token;
+          this.userInfo = res.data.user;
+          localStorage.setItem('token', JSON.stringify(res.data.token));
+          localStorage.setItem('userInfo', JSON.stringify(res.data.user));
+          
+          return { success: true, userType: res.data.user.type };
+        }
+        return { success: false, message: res.message || '支付宝登录失败' };
+      } catch (error: any) {
+        return { success: false, message: error?.message || '网络异常' };
+      }
+    },
   },
 });

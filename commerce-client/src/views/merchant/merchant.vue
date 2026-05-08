@@ -77,6 +77,8 @@ import { ElMessage } from 'element-plus'
 import { Shop } from '@element-plus/icons-vue'
 import { useMerchantStore } from '@/stores/modules/merchantStore'
 const merchantStore = useMerchantStore()
+import {useLoginStore} from '@/stores/modules/common/loginStore'
+const loginStore = useLoginStore()
 
 
 onMounted(async () => {
@@ -201,9 +203,9 @@ const goPage = (key) => {
 
 // 退出
 const logout = () => {
+    loginStore.logout()
   router.push('/login')
-  localStorage.removeItem('token')
-  localStorage.removeItem('user')
+
   ElMessage.success('退出成功')
 }
 </script>

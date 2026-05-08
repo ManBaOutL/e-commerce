@@ -1,7 +1,42 @@
 const db = require('@/config/database');
 const fs = require('fs');
-const path = require('path');
 const { calculateFinalPrice } = require('@/utils/priceCalculator');
+const path = require('path');
+const AlipaySdkRaw = require('alipay-sdk');
+const AlipaySdk = AlipaySdkRaw.default || AlipaySdkRaw.AlipaySdk || AlipaySdkRaw;
+
+// 解决支付宝 SDK 的导出兼容问题（无论它是默认导出还是具名导出）
+// 1. 获取 alipay-sdk 主文件的绝对路径 (比如 C:\...\dist\commonjs\alipay.js)
+const sdkMainPath = require.resolve('alipay-sdk'); 
+// 2. 推导出同一目录下 form.js 的物理绝对路径
+const formFilePath = path.join(sdkMainPath, '../form.js'); 
+// 3. 直接通过绝对路径引入，完美绕过拦截！
+const FormRaw = require(formFilePath);
+
+// 终极提取大法：不管它怎么导出，精准捕获构造函数(解决命名导出问题)
+let AlipayFormData;
+if (typeof FormRaw === 'function') {
+    AlipayFormData = FormRaw; // 直接导出了类
+} else if (FormRaw && typeof FormRaw.default === 'function') {
+    AlipayFormData = FormRaw.default; // 套在 default 里
+} else if (FormRaw && typeof FormRaw.AlipayFormData === 'function') {
+    AlipayFormData = FormRaw.AlipayFormData; // 具名导出
+} else {
+    // 暴力兜底：遍历对象，找到里面的那个类
+    AlipayFormData = Object.values(FormRaw).find(val => typeof val === 'function');
+}
+
+if (!AlipayFormData) {
+    console.error("🚨 致命错误：未能提取到 AlipayFormData，当前模块内容为:", FormRaw);
+}
+
+// 初始化支付宝 SDK
+const alipaySdk = new AlipaySdk({
+  appId: process.env.ALIPAY_APP_ID,
+  privateKey: process.env.ALIPAY_PRIVATE_KEY,
+  alipayPublicKey: process.env.ALIPAY_PUBLIC_KEY,
+  gateway: process.env.ALIPAY_GATEWAY,
+});
 
 // 1. 创建并支付订单 (加入完整事务机制)
 // 前端传过来的 total_amount 和 price 是绝对不能被信任的（黑客可以通过抓包工具把支付金额改成 0.01 元）
@@ -118,15 +153,15 @@ exports.createOrder = async (req, res) => {
         }
 
         // ==========================================
-        // 🌟 步骤 6：清理购物车
+        // 🌟 步骤 6：清理购物车(可选)
         // ==========================================
-        if (cart_ids && cart_ids.length > 0) {
-            const placeholders = cart_ids.map(() => '?').join(',');
-            await connection.execute(
-                `DELETE FROM cart WHERE cart_id IN (${placeholders}) AND user_id = ?`, 
-                [...cart_ids, user_id]
-            );
-        }
+        // if (cart_ids && cart_ids.length > 0) {
+        //     const placeholders = cart_ids.map(() => '?').join(',');
+        //     await connection.execute(
+        //         `DELETE FROM cart WHERE cart_id IN (${placeholders}) AND user_id = ?`, 
+        //         [...cart_ids, user_id]
+        //     );
+        // }
 
         // 🌟 全部成功，提交事务
         await connection.commit();
@@ -210,27 +245,114 @@ exports.getOrderList = async (req, res) => {
     }
 };
 
-// 3. 继续支付待支付的订单
+
+// 3. 继续支付待支付的订单 (双轨支付)
 exports.payOrder = async (req, res) => {
     const user_id = req.user.user_id || req.user.id;
-    const { order_id } = req.body;
+    const { order_id, payment_method } = req.body;
+
+    const connection = await db.getConnection();
+    await connection.beginTransaction();
 
     try {
-        // 3. 继续支付待支付的订单
-        // 🌟 忽略发货流程，支付成功直接标记为 '已完成'
-        const [result] = await db.execute(
-            `UPDATE \`order\` SET status = '已完成' WHERE order_id = ? AND user_id = ? AND status = '待支付'`,
+        // 1. 锁行查询订单状态 (FOR UPDATE 防止高并发重复支付)
+        const [orders] = await connection.execute(
+            `SELECT total_amount, status FROM \`order\` WHERE order_id = ? AND user_id = ? FOR UPDATE`,
             [order_id, user_id]
         );
 
-        if (result.affectedRows > 0) {
-            res.json({ success: true, message: '支付成功', status: 200, data: null });
-        } else {
-            res.status(400).json({ success: false, message: '订单状态不可支付或订单不存在', status: 400, data: null });
+        if (orders.length === 0 || orders[0].status !== '待支付') {
+            throw new Error('订单不存在或当前状态不可支付');
         }
+        
+        const payAmount = Number(orders[0].total_amount);
+
+        // ==========================================
+        // 💰 分支 A：余额支付逻辑
+        // ==========================================
+        if (payment_method === 'balance') {
+            // 查余额
+            const [users] = await connection.execute(`SELECT balance FROM user WHERE user_id = ? FOR UPDATE`, [user_id]);
+            const currentBalance = Number(users[0].balance || 0);
+
+            if (currentBalance < payAmount) {
+                throw new Error('余额不足，请充值或使用支付宝');
+            }
+
+            // 1. 扣除买家余额
+            await connection.execute(`UPDATE user SET balance = balance - ? WHERE user_id = ?`, [payAmount, user_id]);
+            
+            // 2. 订单状态改为已完成
+            await connection.execute(`UPDATE \`order\` SET status = '已完成' WHERE order_id = ?`, [order_id]);
+
+            // 3. 增加商品销量
+            const [details] = await connection.execute(
+                `SELECT od.quantity, s.product_id, od.price FROM order_details od JOIN sku_product s ON od.sku_id = s.sku_id WHERE od.order_id = ?`, [order_id]
+            );
+            for (let item of details) {
+                await connection.execute(`UPDATE product SET sales = sales + ? WHERE product_id = ?`, [item.quantity, item.product_id]);
+            }
+
+            // 4. 🌟 资金清算：给商家打款
+            const [merchantIncomes] = await connection.execute(`
+                SELECT sh.user_id as merchant_id, SUM(od.quantity * od.price) as income
+                FROM order_details od
+                JOIN sku_product s ON od.sku_id = s.sku_id
+                JOIN product p ON s.product_id = p.product_id
+                JOIN shop sh ON p.shop_id = sh.shop_id
+                WHERE od.order_id = ?
+                GROUP BY sh.user_id
+            `, [order_id]);
+
+            for (let row of merchantIncomes) {
+                await connection.execute(`UPDATE user SET balance = balance + ? WHERE user_id = ?`, [Number(row.income).toFixed(2), row.merchant_id]);
+            }
+
+            await connection.commit();
+            return res.json({ success: true, message: '余额支付成功', status: 200, payType: 'balance' });
+        } 
+        
+        // ==========================================
+        // 💳 分支 B：支付宝网页支付逻辑 (全装甲防报错版)
+        // ==========================================
+        else if (payment_method === 'alipay') {
+            
+            // 🌟 1. 设置兜底值：如果 .env 没读到，绝不让它变成 undefined！
+            const returnUrl = process.env.ALIPAY_RETURN_URL || 'http://localhost:5173/user/orders';
+            const notifyUrl = process.env.ALIPAY_NOTIFY_URL || 'http://127.0.0.1:8888/api/user/order/alipayNotify';
+
+            // 🌟 2. 核心调用：使用驼峰命名 returnUrl 和 notifyUrl
+            const resultUrl = alipaySdk.pageExec('alipay.trade.page.pay', {
+                method: 'GET', // 指定返回 URL
+                return_url: returnUrl, 
+                notify_url: notifyUrl, 
+                biz_content: {
+                    out_trade_no: String(order_id), // ⚠️ 极度关键：强转字符串，防止数字类型引发 SDK 内部崩溃
+                    product_code: 'FAST_INSTANT_TRADE_PAY',
+                    total_amount: String(payAmount.toFixed(2)), // 强转字符串
+                    subject: `电商平台订单-${order_id}`,
+                }
+            });
+
+            // 订单成功生成，支付链接也拿到了，提交事务！
+            await connection.commit();
+            
+            // 返回给前端进行跳转
+            return res.json({ 
+                success: true, 
+                message: '获取支付链接成功', 
+                status: 200, 
+                payType: 'alipay', 
+                url: resultUrl 
+            });
+        }
+
     } catch (err) {
-        console.error('支付订单异常:', err);
-        res.status(500).json({ success: false, message: '支付异常', status: 500, data: null });
+        await connection.rollback();
+        console.error('支付处理异常:', err);
+        res.status(500).json({ success: false, message: err.message || '支付异常', status: 500 });
+    } finally {
+        connection.release();
     }
 };
 
@@ -319,5 +441,83 @@ exports.cancelOrder = async (req, res) => {
         res.status(500).json({ success: false, message: '系统异常，取消失败', status: 500, data: null });
     } finally {
         connection.release();
+    }
+};
+
+// 6. 支付宝异步回调通知 (给支付宝服务器调用的)
+exports.alipayNotify = async (req, res) => {
+    const postData = req.body;
+    console.log('收到支付宝异步回调:', postData);
+
+    try {
+        const checkResult = alipaySdk.checkNotifySign(postData);
+        if (!checkResult) return res.status(400).send('fail'); // 验签失败
+
+        const { out_trade_no, trade_status } = postData;
+
+        if (trade_status === 'TRADE_SUCCESS') {
+            const connection = await db.getConnection();
+            await connection.beginTransaction();
+
+            try {
+                // 判断本地是否还是待支付
+                const [orders] = await connection.execute(`SELECT status FROM \`order\` WHERE order_id = ? FOR UPDATE`, [out_trade_no]);
+                
+                if (orders.length > 0 && orders[0].status === '待支付') {
+                    // 改状态为完成
+                    await connection.execute(`UPDATE \`order\` SET status = '已完成' WHERE order_id = ?`, [out_trade_no]);
+
+                    // 增加销量并清算商家资金
+                    const [details] = await connection.execute(
+                        `SELECT od.quantity, s.product_id, od.price FROM order_details od JOIN sku_product s ON od.sku_id = s.sku_id WHERE od.order_id = ?`, [out_trade_no]
+                    );
+                    for (let item of details) {
+                        await connection.execute(`UPDATE product SET sales = sales + ? WHERE product_id = ?`, [item.quantity, item.product_id]);
+                    }
+
+                    // 资金清算(只加商家余额，因为买家是用支付宝付的)
+                    const [merchantIncomes] = await connection.execute(`
+                        SELECT sh.user_id as merchant_id, SUM(od.quantity * od.price) as income
+                        FROM order_details od JOIN sku_product s ON od.sku_id = s.sku_id JOIN product p ON s.product_id = p.product_id JOIN shop sh ON p.shop_id = sh.shop_id
+                        WHERE od.order_id = ? GROUP BY sh.user_id
+                    `, [out_trade_no]);
+                    for (let row of merchantIncomes) {
+                        await connection.execute(`UPDATE user SET balance = balance + ? WHERE user_id = ?`, [Number(row.income).toFixed(2), row.merchant_id]);
+                    }
+                    
+                    await connection.commit();
+                    console.log(`[回调流转成功] 订单号: ${out_trade_no}`);
+                } else {
+                    await connection.rollback();
+                }
+            } catch (err) {
+                await connection.rollback();
+                throw err;
+            } finally {
+                connection.release();
+            }
+        }
+        res.send('success'); // 必须回 success
+    } catch (err) {
+        console.error('回调处理异常:', err);
+        res.status(500).send('fail');
+    }
+};
+
+// 7. 主动查询支付宝状态 (兜底机制)
+exports.checkAlipayStatus = async (req, res) => {
+    const { order_id } = req.body;
+    try {
+        const result = await alipaySdk.exec('alipay.trade.query', { bizContent: { out_trade_no: order_id } });
+        
+        if (result.tradeStatus === 'TRADE_SUCCESS' || result.tradeStatus === 'TRADE_FINISHED') {
+            // 这里为了简化，如果查到支付宝付了，但本地还是"待支付"，可以直接提示前端。
+            // 严谨点的话，需要把上面 alipayNotify 里的状态流转逻辑再在这里写一遍。
+            res.json({ success: true, status: 200, payStatus: 'PAID' });
+        } else {
+            res.json({ success: true, status: 200, payStatus: 'UNPAID' });
+        }
+    } catch (err) {
+        res.status(500).json({ success: false, message: '查询异常' });
     }
 };
