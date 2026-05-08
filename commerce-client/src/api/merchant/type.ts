@@ -22,7 +22,7 @@ export interface merchantInfo {
     }
 }
 
-// 管理员展示数据类型定义
+// 展示数据类型定义
 export interface merchantShowData {
     //总体数据
     goodsCount: number
@@ -69,5 +69,64 @@ export interface productCondition {
 
 export interface productCategory {
     name: string,
+}
+
+export interface commentList {
+    comment_id: number,
+    orderId: string,
+    username: string,
+    goodsName: string,
+    score: number,
+    content: string,
+    createTime: string,
+    status: string,
+    buyNumber: number,
+    mediaUrls?: string[]
+    isAppended: 1 | 0, // 是否有追评，1表示有追评，0表示没有追评
+    appendContent: string,
+    appendTime: string,
+    appendMediaUrls?: string[],
+    isNotReply: boolean,
+}
+
+export interface commentCondition {
+    goodsName?: string,
+    orderBy?: string,
+    isAppended?: number
+}
+
+export interface commentOperation {
+    comment_id?: number,
+    operation: string,
+    replyComment?: commentList
+}
+
+export interface merchant {
+    user_id: number,
+    type: string,
+    username: string,
+    email: string,
+    phone: string,
+    age: number,
+    gender: string
+    create_time: string,
+    update_time: string
+    img?: string
+    status: string
+}
+
+export interface shop {
+    shop_id: number,
+    shop_name: string,
+    description: string,
+    create_time: string
+}
+
+export interface shopOperation {
+    shop_id?: number,
+    operation: string,
+    shop?: shop,
+    user?: merchant,
+    password?: string
 }
 

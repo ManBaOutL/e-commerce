@@ -271,17 +271,22 @@ const goodsList = ref([
 ])
 
 const filterForm = ref({ categoryName: undefined, name: undefined, stock: undefined })
-const handleFilter = () => {
+const handleFilter = async () => {
   const condition = {
     categoryName: filterForm.value.categoryName?.trim() || undefined,
     name: filterForm.value.name?.trim() || undefined,
     stock: filterForm.value.stock ?? undefined
   }
+
+  await merchantStore.getProductList(condition)
+  goodsList.value = merchantStore.productList
+  pagination.value = merchantStore.pagination
   console.log('筛选条件：', condition)
   ElMessage.success('已输出筛选条件')
 }
-const clearFilter = () => {
+const clearFilter = async () => {
   filterForm.value = { categoryName: undefined, name: undefined, stock: undefined }
+  await handleFilter()
   ElMessage.info('已清空')
 }
 

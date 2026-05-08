@@ -91,6 +91,7 @@ exports.getAllProduct = [paginationMiddleware, async (req, res) => {
             `;
         // 追加分页参数
         params.push(offset, pageSize);
+        console.log("查询SQL：", listSql);
 
 
         // 3. 执行查询，获取商品列表

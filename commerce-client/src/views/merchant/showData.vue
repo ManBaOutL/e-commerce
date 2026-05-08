@@ -49,6 +49,7 @@ const merchantStore = useMerchantStore()
 
 onMounted(async () => {
   await merchantStore.getShowData()
+  console.log("商家数据",merchantStore.showData)
   goodsCount.value = merchantStore.showData.goodsCount
   orderCount.value = merchantStore.showData.orderCount
   waitSend.value = merchantStore.showData.waitSend
