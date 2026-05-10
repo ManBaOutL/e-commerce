@@ -104,14 +104,14 @@ exports.auditRefund = async (req, res) => {
     await connection.beginTransaction();
 
     try {
-        // 🌟 核心修复点：鉴权时同样需要 JOIN shop 表来确认归属权
+        // 🌟 核心修复点：鉴权时同样需要 JOIN shop 表来确认归属权，并查出买家 user_id
         const [orders] = await connection.execute(
-            `SELECT o.order_id, o.total_amount, o.coupon_id 
+            `SELECT o.order_id, o.total_amount, o.coupon_id, o.user_id as buyer_id 
              FROM \`order\` o
              JOIN order_details od ON o.order_id = od.order_id
              JOIN sku_product s ON od.sku_id = s.sku_id
              JOIN product p ON s.product_id = p.product_id
-             JOIN shop sh ON p.shop_id = sh.shop_id -- 🌟 关键连表
+             JOIN shop sh ON p.shop_id = sh.shop_id 
              WHERE o.order_id = ? AND o.status = '申请退款' AND sh.user_id = ?
              LIMIT 1`,
             [order_id, merchant_id]
@@ -141,9 +141,11 @@ exports.auditRefund = async (req, res) => {
 
         } else {
             // ==========================================
-            // 商家同意退款：执行完整的逆向资产回滚
+            // 商家同意退款：执行完整的逆向资金与资产回滚
             // ==========================================
             const orderInfo = orders[0];
+            const buyer_id = orderInfo.buyer_id;
+            const payAmount = Number(orderInfo.total_amount);
 
             // 1) 订单主表改状态
             await connection.execute(
@@ -159,7 +161,31 @@ exports.auditRefund = async (req, res) => {
                 }
             }
 
-            // 3) 获取明细，精确回滚库存与销量
+            // 3) 资金逆向清算 A：将钱退回到买家的平台余额中
+            await connection.execute(
+                `UPDATE user SET balance = balance + ? WHERE user_id = ?`, 
+                [payAmount, buyer_id]
+            );
+
+            //  4) 资金逆向清算 B：从商家的余额里把钱扣回来
+            const [merchantIncomes] = await connection.execute(`
+                SELECT sh.user_id as target_merchant_id, SUM(od.quantity * od.price) as income
+                FROM order_details od 
+                JOIN sku_product s ON od.sku_id = s.sku_id 
+                JOIN product p ON s.product_id = p.product_id 
+                JOIN shop sh ON p.shop_id = sh.shop_id
+                WHERE od.order_id = ?
+                GROUP BY sh.user_id
+            `, [order_id]);
+
+            for (let row of merchantIncomes) {
+                await connection.execute(
+                    `UPDATE user SET balance = balance - ? WHERE user_id = ?`, 
+                    [Number(row.income).toFixed(2), row.target_merchant_id]
+                );
+            }
+
+            // 5) 获取明细，精确回滚库存与销量
             const [details] = await connection.execute(
                 `SELECT od.sku_id, od.quantity, s.product_id 
                  FROM order_details od 
@@ -188,7 +214,7 @@ exports.auditRefund = async (req, res) => {
             await connection.commit();
             return res.json({ 
                 success: true, 
-                message: `已同意退款，¥${orderInfo.total_amount} 实付款将原路退回`, 
+                message: `已同意退款，¥${payAmount.toFixed(2)} 货款已全额退至买家平台余额`, 
                 status: 200 
             });
         }

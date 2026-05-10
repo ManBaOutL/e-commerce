@@ -44,6 +44,10 @@ exports.createOrder = async (req, res) => {
     const user_id = req.user.user_id || req.user.id;
     // 🌟 弃用前端传的 total_amount，我们将重新计算以保证绝对安全！
     const { cart_ids, direct_buy, address_id, coupon_id } = req.body;
+
+    if (!address_id) {
+        return res.status(400).json({ success: false, message: '请提供收货地址', status: 400 });
+    }
     
     // 订单号生成
     const order_id = Date.now().toString().slice(0, -3) + Math.floor(Math.random() * 1000).toString().padStart(3, '0');
@@ -244,7 +248,6 @@ exports.getOrderList = async (req, res) => {
         res.status(500).json({ success: false, message: '获取订单失败', status: 500, data: null });
     }
 };
-
 
 // 3. 继续支付待支付的订单 (双轨支付)
 exports.payOrder = async (req, res) => {
