@@ -99,6 +99,7 @@ enum API {
   POST_PAY_EXISTING_ORDER = '/user/order/pay',
   POST_APPLY_REFUND = '/user/order/applyRefund',
   POST_CANCEL_ORDER = '/user/order/cancel',
+  POST_CHECK_ALIPAY_STATUS = '/user/order/checkAlipayStatus',
   // 地址管理
   GET_ADDRESS_LIST = '/user/address/list',
   POST_ADD_ADDRESS = '/user/address/add',
@@ -168,17 +169,14 @@ export const reqRemoveCartItems = (data: RemoveCartPayload) => {
 export const reqCreateOrder = (data: CreateOrderPayload) => {
   return request.post<any, any>(API.POST_CREATE_ORDER, data);
 }
-
 // 获取订单列表
 export const reqGetOrderList = () => {
   return request.get<any, ApiResponse<OrderInfo[]>>(API.GET_ORDER_LIST);
 }
-
 // 继续支付未完成的订单
 export const reqPayExistingOrder = (data: {order_id: string | number, payment_method: string}) => {
   return request.post<any, any>(API.POST_PAY_EXISTING_ORDER, data);
 }
-
 // 申请订单退款
 export const reqApplyRefund = (order_id: number, refundReason: string) => {
   return request.post<any, ApiResponse<any>>(API.POST_APPLY_REFUND, { order_id, refundReason });
@@ -187,7 +185,10 @@ export const reqApplyRefund = (order_id: number, refundReason: string) => {
 export const reqCancelOrder = (order_id: number) => {
   return request.post<any, ApiResponse<any>>(API.POST_CANCEL_ORDER, { order_id });
 }
-
+// 检查支付宝支付状态
+export const reqCheckAlipayStatus = (out_trade_no: number) => {
+  return request.post<any, ApiResponse<any>>(API.POST_CHECK_ALIPAY_STATUS, { order_id: out_trade_no });
+}
 // ================== 地址管理相关接口 ==================
 
 // 1. 获取当前用户的收货地址列表

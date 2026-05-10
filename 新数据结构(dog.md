@@ -26,7 +26,7 @@ sales:销量
 
 ## 4、地址基本信息
 
-address(<u>address_id</u>,recipient_name,phone,address,lng,lat,type,province,city,district,street,streetNumber,is_default,create_time,**user_id**)
+address(<u>address_id</u>,recipient_name,phone,address,lng,lat,type,province,city,district,street,streetNumber,is_default,create_time,is_deleted,**user_id**)
 
 type: 地址标签（家、公司、学校、其他）
 
