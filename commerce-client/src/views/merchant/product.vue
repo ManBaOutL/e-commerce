@@ -38,7 +38,7 @@
       <el-button size="small" @click="clearFilter">清空</el-button>
     </div>
 
-    <el-table :data="goodsList" border style="width: 100%; margin-top: 10px;">
+    <el-table :data="goodsList" border style="width: 100%; margin-top: 5px;">
       <el-table-column prop="product_id" label="商品ID" />
       <el-table-column prop="name" label="商品名称" />
       <el-table-column prop="categoryName" label="商品种类" />
@@ -183,14 +183,14 @@
     </el-dialog>
 
         <!-- 分页 -->
-    <!-- <el-pagination
+    <el-pagination
       v-model:current-page="pagination.currentPage"
       v-model:page-size="pagination.pageSize"
       :total="pagination.total"
       layout="total, sizes, prev, pager, next, jumper"
       style="margin-top:15px; text-align:right;"
       @change="getPageData"  
-    /> -->
+    />
   </div>
   
 </template>
@@ -375,7 +375,10 @@ const saveGoods = async () => {
   }
 
   await merchantStore.updateProductList(operation)
-  await merchantStore.getProductList()
+  await merchantStore.getProductList(filterForm.value)
+  goodsList.value = merchantStore.productList
+  pagination.value = merchantStore.pagination
+  //console.log("列表:", goodsList.value)
   ElMessage.success('保存成功')
 }
 
@@ -478,6 +481,13 @@ const handleUploadSuccess = (res, file) => {
 // 新增上传失败处理
 const handleUploadError = () => {
   ElMessage.error('网络异常，图片上传失败！')
+}
+
+const getPageData = async (currentPage, pageSize) => {
+  await merchantStore.getProductList(filterForm.value, currentPage, pageSize)
+  goodsList.value = merchantStore.productList
+  pagination.value = merchantStore.pagination
+  console.log("列表:", goodsList.value)
 }
 
 

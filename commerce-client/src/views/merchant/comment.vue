@@ -167,6 +167,15 @@
       :comment="currentRow"
       @submit="handleReplySubmit"
     />
+
+    <el-pagination
+      v-model:current-page="pagination.currentPage"
+      v-model:page-size="pagination.pageSize"
+      :total="pagination.total"
+      layout="total, sizes, prev, pager, next, jumper"
+      style="margin-top:15px; text-align:right;"
+      @change="getPageData"  
+    />
   </div>
 </template>
 
@@ -185,7 +194,11 @@ onMounted(async () => {
   pagination.value = merchantStore.pagination
 })
 
-const pagination = ref({})
+const pagination = ref({
+  currentPage: 1,
+  pageSize: 10,
+  total: 0
+})
 
 // 评论数据（新增mediaUrls媒体URL数组字段）
 const commentList = ref([
@@ -438,7 +451,12 @@ const formatAppendTime = (row) => {
   return `${agoText} - ${diffText}`
 }
 
-
+const getPageData = async (currentPage, pageSize) => {
+  await merchantStore.getCommentList(filterForm.value, currentPage, pageSize)
+  commentList.value = merchantStore.commentList
+  pagination.value = merchantStore.pagination
+  //console.log("列表:", commentList.value)
+}
 </script>
 
 
