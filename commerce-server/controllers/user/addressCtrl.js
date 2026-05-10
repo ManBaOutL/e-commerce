@@ -32,7 +32,8 @@ exports.getList = async (req, res) => {
     const user_id = req.user.user_id || req.user.id;
     try {
         const [rows] = await db.execute(
-            `SELECT * FROM \`address\` WHERE user_id = ? ORDER BY is_default DESC, create_time DESC`, 
+            // 🌟 核心修改：加上 AND is_deleted = 0
+            `SELECT * FROM \`address\` WHERE user_id = ? AND is_deleted = 0 ORDER BY is_default DESC, create_time DESC`, 
             [user_id]
         );
         rows.forEach(r => r.is_default = !!r.is_default); 
@@ -74,10 +75,16 @@ exports.deleteAddress = async (req, res) => {
     const user_id = req.user.user_id || req.user.id;
     const { address_id } = req.body;
     try {
-        await db.execute(`DELETE FROM \`address\` WHERE address_id = ? AND user_id = ?`, [address_id, user_id]);
+        // 🌟 核心修改：不使用 DELETE，而是用 UPDATE 将 is_deleted 设为 1
+        // 同时把 is_default 设为 0，防止删除的地址一直占据着默认地址的名额
+        await db.execute(
+            `UPDATE \`address\` SET is_deleted = 1, is_default = 0 WHERE address_id = ? AND user_id = ?`, 
+            [address_id, user_id]
+        );
         res.json({ success: true, message: '删除成功', status: 200, data: null });
     } catch (err) {
         res.status(500).json({ success: false, message: '删除失败', status: 500, data: null });
+        console.error('删除地址异常:', err);
     }
 };
 

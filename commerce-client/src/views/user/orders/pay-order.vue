@@ -357,6 +357,12 @@ const handlePay = async () => {
   try {
     // ================= 1. 未生成订单的先生成订单 =================
     if (buyType.value !== 'unpaid') {
+
+      // 拦截空地址！如果没选地址，直接 return 终止后续流程
+      if (!selectedAddressId.value) {
+        ElMessage.warning('请先选择或添加收货地址！');
+        return; 
+      }
       // 组装下单参数
       const payload = {
         address_id: selectedAddressId.value,

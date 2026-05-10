@@ -26,7 +26,7 @@ sales:销量
 
 ## 4、地址基本信息
 
-address(<u>address_id</u>,recipient_name,phone,address,lng,lat,type,province,city,district,street,streetNumber,is_default,create_time,**user_id**)
+address(<u>address_id</u>,recipient_name,phone,address,lng,lat,type,province,city,district,street,streetNumber,is_default,create_time,is_deleted,**user_id**)
 
 type: 地址标签（家、公司、学校、其他）
 
@@ -298,6 +298,8 @@ CREATE TABLE `address` (
   `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (`user_id`) REFERENCES `user`(`user_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='收货地址表';
+-- 地址信息软删除
+ALTER TABLE `address` ADD COLUMN `is_deleted` TINYINT(1) DEFAULT 0 COMMENT '0-正常，1-已删除';
 
 -- ----------------------------
 -- 7. 优惠卷表 (coupon) - 依赖user

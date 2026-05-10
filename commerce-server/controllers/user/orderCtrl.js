@@ -44,6 +44,10 @@ exports.createOrder = async (req, res) => {
     const user_id = req.user.user_id || req.user.id;
     // 🌟 弃用前端传的 total_amount，我们将重新计算以保证绝对安全！
     const { cart_ids, direct_buy, address_id, coupon_id } = req.body;
+
+    if (!address_id) {
+        return res.status(400).json({ success: false, message: '请提供收货地址', status: 400 });
+    }
     
     // 订单号生成
     const order_id = Date.now().toString().slice(0, -3) + Math.floor(Math.random() * 1000).toString().padStart(3, '0');
@@ -244,7 +248,6 @@ exports.getOrderList = async (req, res) => {
         res.status(500).json({ success: false, message: '获取订单失败', status: 500, data: null });
     }
 };
-
 
 // 3. 继续支付待支付的订单 (双轨支付)
 exports.payOrder = async (req, res) => {
@@ -504,20 +507,84 @@ exports.alipayNotify = async (req, res) => {
     }
 };
 
-// 7. 主动查询支付宝状态 (兜底机制)
+// 7. 主动查询支付宝状态 (兜底机制 - 终极双保险)
 exports.checkAlipayStatus = async (req, res) => {
     const { order_id } = req.body;
+    
     try {
-        const result = await alipaySdk.exec('alipay.trade.query', { bizContent: { out_trade_no: order_id } });
+        // 1. 向支付宝官方服务器发起真实状态查询
+        const result = await alipaySdk.exec('alipay.trade.query', { 
+            bizContent: { out_trade_no: String(order_id) } 
+        });
         
+        // 如果支付宝那边确实已经付款成功了
         if (result.tradeStatus === 'TRADE_SUCCESS' || result.tradeStatus === 'TRADE_FINISHED') {
-            // 这里为了简化，如果查到支付宝付了，但本地还是"待支付"，可以直接提示前端。
-            // 严谨点的话，需要把上面 alipayNotify 里的状态流转逻辑再在这里写一遍。
-            res.json({ success: true, status: 200, payStatus: 'PAID' });
+            
+            // 🌟 开启事务进行本地兜底清算
+            const connection = await db.getConnection();
+            await connection.beginTransaction();
+
+            try {
+                // 🌟 幂等性校验核心：锁行并检查状态
+                const [orders] = await connection.execute(
+                    `SELECT status FROM \`order\` WHERE order_id = ? FOR UPDATE`, 
+                    [order_id]
+                );
+                
+                // 如果本地还是“待支付”，说明异步回调丢了或者还没到，我们在这里主动给它办了！
+                if (orders.length > 0 && orders[0].status === '待支付') {
+                    console.log(`[主动查询兜底生效] 订单号: ${order_id}，正在执行状态流转和清算...`);
+
+                    // 1) 改状态为已完成
+                    await connection.execute(`UPDATE \`order\` SET status = '已完成' WHERE order_id = ?`, [order_id]);
+
+                    // 2) 增加商品销量
+                    const [details] = await connection.execute(
+                        `SELECT od.quantity, s.product_id, od.price FROM order_details od JOIN sku_product s ON od.sku_id = s.sku_id WHERE od.order_id = ?`, 
+                        [order_id]
+                    );
+                    for (let item of details) {
+                        await connection.execute(`UPDATE product SET sales = sales + ? WHERE product_id = ?`, [item.quantity, item.product_id]);
+                    }
+
+                    // 3) 资金清算 (给商家打款)
+                    const [merchantIncomes] = await connection.execute(`
+                        SELECT sh.user_id as merchant_id, SUM(od.quantity * od.price) as income
+                        FROM order_details od 
+                        JOIN sku_product s ON od.sku_id = s.sku_id 
+                        JOIN product p ON s.product_id = p.product_id 
+                        JOIN shop sh ON p.shop_id = sh.shop_id
+                        WHERE od.order_id = ? 
+                        GROUP BY sh.user_id
+                    `, [order_id]);
+
+                    for (let row of merchantIncomes) {
+                        await connection.execute(`UPDATE user SET balance = balance + ? WHERE user_id = ?`, [Number(row.income).toFixed(2), row.merchant_id]);
+                    }
+                    
+                    await connection.commit();
+                    console.log(`[主动查询兜底完成] 订单号: ${order_id} 清算完毕！`);
+                } else {
+                    // 如果状态已经是“已完成”，说明异步回调已经先一步处理过了，这里直接放行即可
+                    await connection.rollback(); 
+                }
+            } catch (err) {
+                await connection.rollback();
+                throw err; // 交给外层 catch 统一处理
+            } finally {
+                connection.release();
+            }
+
+            // 无论刚才有没有执行清算，只要走到这里，就告诉前端：这单稳了！
+            return res.json({ success: true, status: 200, payStatus: 'PAID' });
+
         } else {
-            res.json({ success: true, status: 200, payStatus: 'UNPAID' });
+            // 支付宝那边显示没付钱 (可能是用户扫了码但没输入密码)
+            return res.json({ success: true, status: 200, payStatus: 'UNPAID' });
         }
     } catch (err) {
-        res.status(500).json({ success: false, message: '查询异常' });
+        console.error('主动查询支付宝状态异常:', err);
+        // 如果查询报错（比如订单在支付宝那边根本不存在），依然返回未支付，不阻断前端逻辑
+        res.status(200).json({ success: true, status: 200, payStatus: 'UNPAID' });
     }
 };

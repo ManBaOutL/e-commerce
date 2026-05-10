@@ -152,9 +152,28 @@ const statusFilter = ref('')
 // 页面初始化：拉取真实订单
 onMounted(async () => {
   loading.value = true
+  
+  // 如果 URL 传了 out_trade_no 参数，说明是支付宝回调，需要主动查询支付状态
+  if (route.query.out_trade_no) {
+    try {
+      // 告诉用户正在同步数据
+      ElMessage.success({ message: '正在同步支付结果...', duration: 2000 })
+      
+      // 1. 拿着 URL 里的订单号，主动去后端触发一次查询和兜底清算
+      await orderStore.checkAlipayStatus(Number(route.query.out_trade_no))
+      
+      // 2. 为了页面美观，清空 URL 上那一长串支付宝自带的参数，只保留干干净净的路径
+      router.replace({ path: route.path })
+    } catch (err) {
+      console.error('主动查询支付状态异常:', err)
+    }
+  }
+
+  // 此时拉取的订单列表，绝对是最新的状态！
   await orderStore.fetchOrderList()
   loading.value = false
-  // 🌟 如果 URL 传了 status 参数，自动赋值给筛选框
+  
+  // 如果 URL 传了 status 参数，自动赋值给筛选框
   if (route.query.status) {
     statusFilter.value = route.query.status as string
   }

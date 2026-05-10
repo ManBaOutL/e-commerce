@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import type { CreateOrderPayload } from '@/api/user/types';
 import type { OrderState } from '@/stores/types';
-import { reqCreateOrder, reqGetOrderList, reqPayExistingOrder, reqApplyRefund, reqCancelOrder } from '@/api/user';
+import { reqCreateOrder, reqGetOrderList, reqPayExistingOrder, reqApplyRefund, reqCancelOrder, reqCheckAlipayStatus } from '@/api/user';
 import { ElMessage } from 'element-plus';
 
 export const useOrderStore = defineStore('order', {
@@ -83,5 +83,19 @@ export const useOrderStore = defineStore('order', {
         return { success: false, message: error.message || '取消订单异常' };
       }
     },
+
+    // 检查订单状态
+    async checkAlipayStatus(out_trade_no: number) {
+      try {
+        const res = await reqCheckAlipayStatus(out_trade_no);
+        if (res.success) {
+          return { success: true };
+        } else {
+          return { success: false, message: res.message };
+        }
+      } catch (error: any) {
+        return { success: false, message: error.message || '检查支付状态异常' };
+      }
+    }
   }
 });

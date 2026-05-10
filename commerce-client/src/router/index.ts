@@ -224,6 +224,12 @@ const router = createRouter({
       path: '/alipayCallback',
       name: 'alipayCallback',
       component: () => import('@/views/login/alipayCallback.vue'),
+    },
+    // 404 兜底路由 (必须放在整个 routes 数组的最末尾！)
+    {
+      path: '/:pathMatch(.*)*',
+      name: 'NotFound',
+      redirect: '/'
     }
   ],
 })

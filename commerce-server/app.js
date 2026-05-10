@@ -24,6 +24,7 @@ const managerRouter = require('@/routes/manager')
 //挂载商家路由
 const merchantRouter = require('@/routes/merchant')
 
+
 const cors = require('cors')
 app.use(cors())
 
