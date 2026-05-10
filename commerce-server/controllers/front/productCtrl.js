@@ -6,12 +6,12 @@ const { calculateFinalPrice } = require('@/utils/priceCalculator');
 // 1. 获取商品列表 (注入活动试算逻辑)
 exports.getList = async (req, res) => {
     try {
-        const { 
-            page = 1, pageSize = 10, 
-            keyword, category_id, shop_id, 
-            start_time, end_time, 
-            minPrice, maxPrice, 
-            sort_field = 'product_id', sort_order = 'desc' 
+        const {
+            page = 1, pageSize = 10,
+            keyword, category_id, shop_id,
+            start_time, end_time,
+            minPrice, maxPrice,
+            sort_field = 'product_id', sort_order = 'desc'
         } = req.query;
 
         const offset = (Number(page) - 1) * Number(pageSize);
@@ -24,7 +24,7 @@ exports.getList = async (req, res) => {
         if (category_id) {
             const [allCategories] = await db.execute('SELECT category_id, parent_id FROM category');
             const getDescendantIds = (targetId, categories) => {
-                let ids = [Number(targetId)]; 
+                let ids = [Number(targetId)];
                 const children = categories.filter(c => c.parent_id === Number(targetId));
                 for (const child of children) {
                     ids = ids.concat(getDescendantIds(child.category_id, categories));
@@ -72,12 +72,12 @@ exports.getList = async (req, res) => {
                 product_id: row.id,
                 category_id: row.category_id,
                 price: row.price,
-                quantity: 1 
+                quantity: 1
             }));
 
             // 跑一遍引擎
             const calcResult = await calculateFinalPrice(itemsToCalc);
-            
+
             // 将引擎算出的活动价和标签，组装回给前端的列表里
             calcResult.finalItems.forEach((calcItem, index) => {
                 rows[index].original_price = calcItem.original_price;
@@ -98,7 +98,7 @@ exports.getList = async (req, res) => {
 exports.getCategoryTree = async (req, res) => {
     try {
         const [rows] = await db.execute('SELECT category_id AS id, name, parent_id FROM category');
-        
+
         // 1. 初始化 Map 和最终的 Tree 数组
         const map = {};
         const tree = [];
@@ -112,7 +112,7 @@ exports.getCategoryTree = async (req, res) => {
         // 3. 再次遍历数据，建立父子关系
         rows.forEach(item => {
             const node = map[item.id];
-            
+
             if (item.parent_id === 0) {
                 // 如果 parent_id 是 0，说明它是最顶层的根分类，直接推入 tree
                 tree.push(node);
@@ -175,7 +175,7 @@ exports.getDetail = async (req, res) => {
              WHERE product_id = ? AND parent_id IS NULL AND comment_status = '正常'`,
             [productId]
         );
-        
+
         // 如果没有评论，默认给 5.0 分满分；如果有评论，算出平均分并保留 1 位小数
         const realRate = rateResult[0].avg_rate ? Number(rateResult[0].avg_rate).toFixed(1) : 5.0;
         productInfo.rate = Number(realRate);
@@ -208,13 +208,13 @@ exports.getDetail = async (req, res) => {
         const spec_groups = {};
         const sku_list = {};
         skus.forEach(sku => {
-            const specValues = sku.spec_name.split(/[\s\-]+/); 
+            const specValues = sku.spec_name.split(/[\s\-]+/);
             const skuKey = specValues.join('|');
             sku_list[skuKey] = {
                 sku_id: sku.sku_id, price: Number(sku.act_price), original_price: Number(sku.act_price), stock_count: Number(sku.stock)
             };
             specValues.forEach((val, index) => {
-                const groupKey = `spec_${index}`; 
+                const groupKey = `spec_${index}`;
                 if (!spec_groups[groupKey]) spec_groups[groupKey] = { name: index === 0 ? '款式' : '规格', options: [] };
                 const existOpt = spec_groups[groupKey].options.find(opt => opt.value === val);
                 if (!existOpt) spec_groups[groupKey].options.push({ value: val, stock_count: sku.stock });
@@ -284,7 +284,7 @@ exports.getComments = async (req, res) => {
 
             // 3. 处理商家回复
             const [replies] = await db.execute(
-                `SELECT comment FROM \`comment\` WHERE parent_id = ? LIMIT 1`, 
+                `SELECT comment FROM \`comment\` WHERE parent_id = ? LIMIT 1`,
                 [comments[i].id]
             );
             if (replies.length > 0) {
