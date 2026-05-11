@@ -47,6 +47,32 @@ export const operationMap = {
     },
     "/api/manager/alloperationlogs": {
         "get": { content: "分页获取操作日志", operation_type: "数据查询" }
+    },
+    "/api/merchant/showData": {
+        "get": { content: "获取商户数据概览", operation_type: "数据查询" }
+    },
+    "/api/merchant/comments": {
+        "get": { content: "分页获取评论数据", operation_type: "数据查询" },
+        "report": { content: "举报评论", operation_type: "评论管理" },
+        "reply": { content: "回复评论", operation_type: "评论管理" }
+    },
+    "/api/merchant/info": {
+        "get": { content: "获取商户信息", operation_type: "数据查询" },
+        "create": { content: "创建商家初始店铺", operation_type: "店铺管理" }
+    },
+    "/api/merchant/products": {
+        "get": { content: "分页获取商户商品数据", operation_type: "数据查询" },
+        "add": { content: "新增商品", operation_type: "商品管理" },
+        "edit": { content: "编辑商品信息", operation_type: "商品管理" },
+        "delete": { content: "下架商品", operation_type: "商品管理" },
+        "pass": { content: "上架商品", operation_type: "商品管理" },
+        "stock": { content: "调整商品库存", operation_type: "商品管理" }
+    },
+    "/api/merchant/shop": {
+        "get": { content: "获取商户店铺数据", operation_type: "数据查询" },
+        "shop": { content: "修改店铺信息", operation_type: "店铺管理" },
+        "user": { content: "修改商户账号", operation_type: "用户管理" },
+        "password": { content: "修改商户账号密码", operation_type: "用户管理" }
     }
 }
 
