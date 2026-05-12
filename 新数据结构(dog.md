@@ -181,11 +181,11 @@ favorites(<u>f_id</u>,**user_id**,**sku_id**,create_time)//收藏
 
 ## 1. 创建表格
 
-> 为了确保外键关联不出错，建表语句必须**按照被依赖的顺序**来执行（例如：先建 `user`，再建 `shop`，再建 `products`）。
+> 为了确保外键关联不出错，建表语句必须**按照被依赖的顺序**来执行（例如：先建 `user`，再建 `shop`，再建 `product`）。
 
 ```
 -- 创建并切换数据库
-CREATE DATABASE IF NOT EXISTS `ecommerce_system` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE IF NOT EXISTS `ecommerce_system_test` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE `ecommerce_system`;
 
 -- 禁用外键检查（方便重新运行脚本时覆盖数据）
@@ -242,29 +242,32 @@ CREATE TABLE `category` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='商品分类表';
 
 -- ----------------------------
--- 3. 商品基本信息表 (products) - 依赖category, shop
+-- 3. 商品基本信息表 (product) - 依赖category, shop
 -- ----------------------------
 DROP TABLE IF EXISTS `product`;
 CREATE TABLE `product` (
-  `product_id` BIGINT AUTO_INCREMENT PRIMARY KEY,
-  `name` VARCHAR(255) NOT NULL,
-  `description` TEXT,
-  `price` DECIMAL(10, 2) NOT NULL COMMENT '商品基础展示价',
-  `stock` INT NOT NULL DEFAULT 0 COMMENT 'SPU总库存',
-  `img` VARCHAR(1000) COMMENT '主图URL或JSON数组',
-  `sales` INT DEFAULT 0 COMMENT '销量',
-  `rate` DOUBLE COMMENT '评分',
-  `status` VARCHAR(20) DEFAULT '待审核' COMMENT '待审核, 通过, 已驳回, 下架',
-  `category_id` BIGINT NOT NULL,
-  `shop_id` BIGINT NOT NULL,
-  `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
-  `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  FOREIGN KEY (`category_id`) REFERENCES `category`(`category_id`),
-  FOREIGN KEY (`shop_id`) REFERENCES `shop`(`shop_id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='商品表(SPU)';
+    `product_id` bigint NOT NULL AUTO_INCREMENT,
+    `name` varchar(255) NOT NULL,
+    `description` text,
+    `price` decimal(10, 2) NOT NULL COMMENT '商品基础展示价',
+    `stock` int NOT NULL DEFAULT '0' COMMENT 'SPU总库存',
+    `img` varchar(1000) DEFAULT NULL COMMENT '主图URL或JSON数组',
+    `sales` int DEFAULT '0' COMMENT '销量',
+    `product_status` varchar(20) DEFAULT '待审核' COMMENT '待审核, 通过, 已驳回, 下架',
+    `category_id` bigint NOT NULL,
+    `shop_id` bigint NOT NULL,
+    `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
+    `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `rate` double unsigned DEFAULT NULL COMMENT '商品评分',
+    PRIMARY KEY (`product_id`),
+    KEY `category_id` (`category_id`),
+    KEY `shop_id` (`shop_id`),
+    CONSTRAINT `product_ibfk_1` FOREIGN KEY (`category_id`) REFERENCES `category` (`category_id`),
+    CONSTRAINT `product_ibfk_2` FOREIGN KEY (`shop_id`) REFERENCES `shop` (`shop_id`) ON DELETE CASCADE
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '商品表(SPU)';
 
 -- ----------------------------
--- 11. 规格表 (sku_product) - 依赖products
+-- 11. 规格表 (sku_product) - 依赖product
 -- ----------------------------
 DROP TABLE IF EXISTS `sku_product`;
 CREATE TABLE `sku_product` (
@@ -274,8 +277,8 @@ CREATE TABLE `sku_product` (
   `stock` INT NOT NULL DEFAULT 0 COMMENT 'SKU库存',
   `product_id` BIGINT NOT NULL,
   `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
-  `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-  FOREIGN KEY (`product_id`) REFERENCES `products`(`product_id`) ON DELETE CASCADE
+  `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (`product_id`) REFERENCES `product`(`product_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='商品规格表(SKU)';
 
 -- ----------------------------
@@ -375,7 +378,7 @@ CREATE TABLE `cart` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='购物车表';
 
 -- ----------------------------
--- 9. 商品评论表 (comment) - 依赖user, products, order
+-- 9. 商品评论表 (comment) - 依赖user, product, order
 -- ----------------------------
 DROP TABLE IF EXISTS `comment`;
 CREATE TABLE `comment` (
@@ -397,7 +400,7 @@ CREATE TABLE `comment` (
   `append_video` varchar(255) DEFAULT NULL,
   `append_time` datetime DEFAULT NULL,
   `append_days` int DEFAULT '0' COMMENT '距离首评过过了多少天',
-  FOREIGN KEY (`product_id`) REFERENCES `products`(`product_id`) ON DELETE CASCADE,
+  FOREIGN KEY (`product_id`) REFERENCES `product`(`product_id`) ON DELETE CASCADE,
   FOREIGN KEY (`user_id`) REFERENCES `user`(`user_id`) ON DELETE CASCADE,
   FOREIGN KEY (`order_id`) REFERENCES `order`(`order_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='商品评价表';
@@ -407,19 +410,19 @@ CREATE TABLE `comment` (
 -- ----------------------------
 DROP TABLE IF EXISTS `activity`;
 CREATE TABLE `activity` (
-  `act_id` BIGINT AUTO_INCREMENT PRIMARY KEY,
-  `name` VARCHAR(100) NOT NULL,
-  `type` VARCHAR(20) NOT NULL COMMENT '满减, 折扣, 秒杀',
-  `goodsType_id` BIGINT COMMENT '适用的分类ID或商品ID',
-  `rule` TEXT COMMENT '活动规则/介绍',
-  `value` DECIMAL(10, 2) COMMENT '折扣值(如90表示9折)或减免金额',
-  `min` DECIMAL(10, 2) COMMENT '使用门槛(最低价)',
-  `img` VARCHAR(255) COMMENT '活动宣传图',
-  `status` VARCHAR(20) DEFAULT '进行中' COMMENT '未开始, 进行中, 已结束',
-  `startTime` DATETIME NOT NULL,
-  `endTime` DATETIME NOT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='活动管理表';
-
+    `act_id` bigint NOT NULL AUTO_INCREMENT,
+    `name` varchar(100) NOT NULL,
+    `act_type` varchar(20) NOT NULL COMMENT '满减, 折扣, 秒杀',
+    `goods_type_id` bigint DEFAULT NULL COMMENT '适用的分类ID或商品ID',
+    `rule` text COMMENT '活动规则/介绍',
+    `max_discount_value` decimal(10, 2) DEFAULT NULL COMMENT '折扣值(如0.9表示9折)或减免金额',
+    `min_amount` decimal(10, 2) DEFAULT NULL COMMENT '使用门槛(最低价)',
+    `img` varchar(255) DEFAULT NULL COMMENT '活动宣传图',
+    `act_status` varchar(20) DEFAULT '进行中' COMMENT '未开始, 进行中, 已结束',
+    `start_time` datetime NOT NULL,
+    `end_time` datetime NOT NULL,
+    PRIMARY KEY (`act_id`)
+) ENGINE = InnoDB AUTO_INCREMENT = 7 DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '活动管理表';
 -- ----------------------------
 -- 14. 日志表 (log)
 -- ----------------------------
@@ -439,139 +442,449 @@ CREATE TABLE `log` (
 -- ----------------------------
 DROP TABLE IF EXISTS `favorites`;
 CREATE TABLE `favorites` (
-  `f_id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `f_id` bigint NOT NULL AUTO_INCREMENT,
+    `user_id` bigint NOT NULL,
+    `sku_id` bigint NOT NULL COMMENT '对应 sku_product 的 sku_id',
+    `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`f_id`),
+    KEY `user_id` (`user_id`),
+    KEY `spec_id` (`sku_id`),
+    CONSTRAINT `favorites_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `user` (`user_id`) ON DELETE CASCADE,
+    CONSTRAINT `favorites_ibfk_2` FOREIGN KEY (`sku_id`) REFERENCES `sku_product` (`sku_id`) ON DELETE CASCADE
+) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_0900_ai_ci COMMENT = '用户收藏表';
+
+-- 恢复外键检查
+SET FOREIGN_KEY_CHECKS = 1;
+```
+
+```
+
+-- 创建并切换数据库
+CREATE DATABASE IF NOT EXISTS `ecommerce_system_test` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+USE `ecommerce_system`;
+
+-- 禁用外键检查（避免建表时因为顺序问题或重新运行脚本导致报错）
+SET FOREIGN_KEY_CHECKS = 0;
+
+-- ----------------------------
+-- 1. 用户表 (user)
+-- ----------------------------
+DROP TABLE IF EXISTS `user`;
+CREATE TABLE `user` (
+  `user_id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+  `type` VARCHAR(20) NOT NULL COMMENT '用户类型: 普通用户, 商家, 管理员',
+  `username` VARCHAR(50) NOT NULL UNIQUE,
+  `password` VARCHAR(255) NOT NULL,
+  `email` VARCHAR(100),
+  `phone` VARCHAR(20),
+  `age` INT,
+  `gender` VARCHAR(10) DEFAULT '保密' COMMENT '男, 女, 保密',
+  `is_vip` BOOLEAN DEFAULT FALSE,
+  `img` VARCHAR(255) COMMENT '头像URL',
+  `status` VARCHAR(20) DEFAULT '正常' COMMENT '正常, 禁用',
+  `alipay_user_id` VARCHAR(100) DEFAULT NULL COMMENT '支付宝用户的唯一标识',
+  `balance` DECIMAL(10, 2) DEFAULT 0.00 COMMENT '用户余额(元)',
+  `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE INDEX idx_alipay_user (`alipay_user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户表';
+
+-- ----------------------------
+-- 2. 店铺表 (shop) - 依赖 user (商家)
+-- ----------------------------
+DROP TABLE IF EXISTS `shop`;
+CREATE TABLE `shop` (
+  `shop_id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+  `name` VARCHAR(100) NOT NULL,
+  `description` TEXT,
+  `user_id` BIGINT NOT NULL COMMENT '店主ID',
+  `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (`user_id`) REFERENCES `user`(`user_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='店铺表';
+
+-- ----------------------------
+-- 3. 商品分类表 (category)
+-- ----------------------------
+DROP TABLE IF EXISTS `category`;
+CREATE TABLE `category` (
+  `category_id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+  `name` VARCHAR(50) NOT NULL,
+  `parent_id` BIGINT DEFAULT 0 COMMENT '父分类ID, 0为一级分类'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='商品分类表';
+
+-- ----------------------------
+-- 4. 商品基本信息表 (product) - 依赖 category, shop
+-- ----------------------------
+DROP TABLE IF EXISTS `product`;
+CREATE TABLE `product` (
+  `product_id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+  `name` VARCHAR(255) NOT NULL,
+  `description` TEXT,
+  `price` DECIMAL(10, 2) NOT NULL COMMENT '商品基础展示价',
+  `stock` INT NOT NULL DEFAULT 0 COMMENT 'SPU总库存',
+  `img` VARCHAR(1000) COMMENT '主图URL或JSON数组',
+  `sales` INT DEFAULT 0 COMMENT '销量',
+  `rate` DOUBLE COMMENT '评分',
+  `product_status` VARCHAR(20) DEFAULT '待审核' COMMENT '待审核, 通过, 已驳回, 下架',
+  `category_id` BIGINT NOT NULL,
+  `shop_id` BIGINT NOT NULL,
+  `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (`category_id`) REFERENCES `category`(`category_id`),
+  FOREIGN KEY (`shop_id`) REFERENCES `shop`(`shop_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='商品主表(SPU)';
+
+-- ----------------------------
+-- 5. 规格表 (sku_product) - 依赖 product
+-- ----------------------------
+DROP TABLE IF EXISTS `sku_product`;
+CREATE TABLE `sku_product` (
+  `sku_id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+  `name` VARCHAR(255) NOT NULL COMMENT '规格名称, 如: 256GB 原色钛金属',
+  `act_price` DECIMAL(10, 2) NOT NULL COMMENT '该规格实际价格',
+  `stock` INT NOT NULL DEFAULT 0 COMMENT 'SKU库存',
+  `product_id` BIGINT NOT NULL,
+  `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (`product_id`) REFERENCES `product`(`product_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='商品规格表(SKU)';
+
+-- ----------------------------
+-- 6. 地址基本信息表 (address) - 依赖 user
+-- ----------------------------
+DROP TABLE IF EXISTS `address`;
+CREATE TABLE `address` (
+  `address_id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+  `recipient_name` VARCHAR(50) NOT NULL,
+  `phone` VARCHAR(20) NOT NULL,
+  `province` VARCHAR(50),
+  `city` VARCHAR(50),
+  `district` VARCHAR(50),
+  `street` VARCHAR(100),
+  `streetNumber` VARCHAR(100),
+  `address` VARCHAR(255) NOT NULL COMMENT '详细地址',
+  `lng` DECIMAL(10, 6) COMMENT '高德经度',
+  `lat` DECIMAL(10, 6) COMMENT '高德纬度',
+  `type` VARCHAR(20) COMMENT '如: 家, 公司',
+  `is_default` BOOLEAN DEFAULT FALSE,
+  `is_deleted` TINYINT(1) DEFAULT 0 COMMENT '0-正常，1-已删除(软删除)',
   `user_id` BIGINT NOT NULL,
-  `spec_id` BIGINT NOT NULL COMMENT '对应 sku_product 的 sku_id',
+  `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (`user_id`) REFERENCES `user`(`user_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='收货地址表';
+
+-- ----------------------------
+-- 7. 优惠卷表 (coupon) - 依赖 user
+-- ----------------------------
+DROP TABLE IF EXISTS `coupon`;
+CREATE TABLE `coupon` (
+  `coupon_id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+  `name` VARCHAR(100) NOT NULL,
+  `type` VARCHAR(20) NOT NULL COMMENT '满减, 折扣, 无门槛',
+  `discount_value` DECIMAL(10, 2) NOT NULL COMMENT '减免金额或折扣率',
+  `min_order_amount` DECIMAL(10, 2) DEFAULT 0 COMMENT '起用金额',
+  `start_time` DATETIME NOT NULL,
+  `end_time` DATETIME NOT NULL,
+  `status` VARCHAR(20) DEFAULT '未使用' COMMENT '未使用, 已使用, 已过期',
+  `user_id` BIGINT NOT NULL,
+  `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (`user_id`) REFERENCES `user`(`user_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='优惠券表';
+
+-- ----------------------------
+-- 8. 订单基本信息表 (order) - 依赖 user, address, coupon
+-- ----------------------------
+DROP TABLE IF EXISTS `order`;
+CREATE TABLE `order` (
+  `order_id` VARCHAR(50) PRIMARY KEY COMMENT '时间戳/雪花算法生成的订单号',
+  `total_amount` DECIMAL(10, 2) NOT NULL,
+  `status` VARCHAR(20) NOT NULL DEFAULT '待支付' COMMENT '待支付, 待发货, 已发货, 已完成, 申请退款, 待审核, 已退款, 退款驳回, 已取消',
+  `refundReason` VARCHAR(255) COMMENT '退款理由(买家填写)',
+  `RejectReason` VARCHAR(255) COMMENT '商家驳回退款理由',
+  `user_id` BIGINT NOT NULL,
+  `address_id` BIGINT NOT NULL,
+  `coupon_id` BIGINT DEFAULT NULL,
+  `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (`user_id`) REFERENCES `user`(`user_id`),
+  FOREIGN KEY (`address_id`) REFERENCES `address`(`address_id`),
+  FOREIGN KEY (`coupon_id`) REFERENCES `coupon`(`coupon_id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='订单主表';
+
+-- ----------------------------
+-- 9. 订单明细表 (order_details) - 依赖 order, sku_product
+-- ----------------------------
+DROP TABLE IF EXISTS `order_details`;
+CREATE TABLE `order_details` (
+  `order_id` VARCHAR(50) NOT NULL,
+  `sku_id` BIGINT NOT NULL,
+  `quantity` INT NOT NULL,
+  `price` DECIMAL(10, 2) NOT NULL COMMENT '购买时的快照单价(包含活动分摊)',
+  PRIMARY KEY (`order_id`, `sku_id`),
+  FOREIGN KEY (`order_id`) REFERENCES `order`(`order_id`) ON DELETE CASCADE,
+  FOREIGN KEY (`sku_id`) REFERENCES `sku_product`(`sku_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='订单明细表';
+
+-- ----------------------------
+-- 10. 购物车表 (cart) - 依赖 user, sku_product
+-- ----------------------------
+DROP TABLE IF EXISTS `cart`;
+CREATE TABLE `cart` (
+  `cart_id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+  `quantity` INT NOT NULL,
+  `user_id` BIGINT NOT NULL,
+  `sku_id` BIGINT NOT NULL,
   `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (`user_id`) REFERENCES `user`(`user_id`) ON DELETE CASCADE,
-  FOREIGN KEY (`spec_id`) REFERENCES `sku_product`(`sku_id`) ON DELETE CASCADE
+  FOREIGN KEY (`sku_id`) REFERENCES `sku_product`(`sku_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='购物车表';
+
+-- ----------------------------
+-- 11. 商品评论表 (comment) - 依赖 user, product, order
+-- ----------------------------
+DROP TABLE IF EXISTS `comment`;
+CREATE TABLE `comment` (
+  `review_id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+  `rating` INT COMMENT '评分1-5, 商家回复无评分可为空',
+  `comment` TEXT NOT NULL,
+  `comment_status` VARCHAR(20) DEFAULT '正常' COMMENT '正常, 待审核, 屏蔽',
+  `parent_id` BIGINT DEFAULT NULL COMMENT '父评论ID(用于商家回复)',
+  `product_id` BIGINT NOT NULL,
+  `user_id` BIGINT NOT NULL,
+  `order_id` VARCHAR(50) NOT NULL,
+  `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `images` VARCHAR(1000) DEFAULT NULL COMMENT '评价图片，多个路径用逗号拼接',
+  `video` VARCHAR(255) DEFAULT NULL COMMENT '评价视频，相对路径',
+  `is_appended` TINYINT(1) DEFAULT 0 COMMENT '是否有追评：0:否，1:是',
+  `append_content` VARCHAR(1000) DEFAULT NULL COMMENT '追评内容',
+  `append_images` VARCHAR(255) DEFAULT NULL COMMENT '追评图片',
+  `append_video` VARCHAR(255) DEFAULT NULL COMMENT '追评视频',
+  `append_time` DATETIME DEFAULT NULL COMMENT '追评时间',
+  `append_days` INT DEFAULT 0 COMMENT '距离首评过了多少天',
+  FOREIGN KEY (`product_id`) REFERENCES `product`(`product_id`) ON DELETE CASCADE,
+  FOREIGN KEY (`user_id`) REFERENCES `user`(`user_id`) ON DELETE CASCADE,
+  FOREIGN KEY (`order_id`) REFERENCES `order`(`order_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='商品评价表';
+
+-- ----------------------------
+-- 12. 活动管理表 (activity)
+-- ----------------------------
+DROP TABLE IF EXISTS `activity`;
+CREATE TABLE `activity` (
+  `act_id` BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  `name` VARCHAR(100) NOT NULL,
+  `act_type` VARCHAR(20) NOT NULL COMMENT '满减, 折扣, 秒杀',
+  `goods_type_id` BIGINT DEFAULT NULL COMMENT '适用的分类ID或商品ID',
+  `rule` TEXT COMMENT '活动规则/介绍',
+  `max_discount_value` DECIMAL(10, 2) DEFAULT NULL COMMENT '折扣值(如0.9)或减免金额',
+  `min_amount` DECIMAL(10, 2) DEFAULT NULL COMMENT '使用门槛(最低价)',
+  `img` VARCHAR(255) DEFAULT NULL COMMENT '活动宣传图',
+  `act_status` VARCHAR(20) DEFAULT '进行中' COMMENT '未开始, 进行中, 已结束',
+  `start_time` DATETIME NOT NULL,
+  `end_time` DATETIME NOT NULL,
+  `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='活动管理表';
+
+-- ----------------------------
+-- 13. 日志表 (log)
+-- ----------------------------
+DROP TABLE IF EXISTS `log`;
+CREATE TABLE `log` (
+  `log_id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+  `username` VARCHAR(50) NOT NULL,
+  `role` VARCHAR(20) NOT NULL,
+  `content` VARCHAR(255) NOT NULL COMMENT '具体操作描述',
+  `log_type` VARCHAR(50) NOT NULL COMMENT 'login, user, order, product, shop, comment, admin, system',
+  `result` VARCHAR(20) DEFAULT '成功' COMMENT '成功, 失败',
+  `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='系统操作日志表';
+
+-- ----------------------------
+-- 14. 收藏表 (favorites) - 依赖 user, sku_product
+-- ----------------------------
+DROP TABLE IF EXISTS `favorites`;
+CREATE TABLE `favorites` (
+  `f_id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+  `user_id` BIGINT NOT NULL,
+  `sku_id` BIGINT NOT NULL COMMENT '对应 sku_product 的 sku_id',
+  `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (`user_id`) REFERENCES `user`(`user_id`) ON DELETE CASCADE,
+  FOREIGN KEY (`sku_id`) REFERENCES `sku_product`(`sku_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户收藏表';
 
 -- 恢复外键检查
 SET FOREIGN_KEY_CHECKS = 1;
 ```
 
-## 2. 初始数据插入
+#### 初始化数据
 
 ```
--- ----------------------------
--- 插入 1. 用户 (管理员、商家、普通用户、VIP)
--- ----------------------------
-INSERT INTO `user` (`user_id`, `type`, `username`, `password`, `email`, `phone`, `age`, `gender`, `is_vip`, `status`) VALUES
-(1, '管理员', 'admin', 'e10adc3949ba59abbe56e057f20f883e', 'admin@kk.com', '13800138001', 30, '保密', 1, '正常'),
-(2, '商家', 'seller1', 'e10adc3949ba59abbe56e057f20f883e', 'seller1@kk.com', '13800138002', 28, '男', 0, '正常'),
-(3, '普通用户', 'user1', 'e10adc3949ba59abbe56e057f20f883e', 'user1@kk.com', '13800138003', 22, '女', 0, '正常'),
-(4, '普通用户', 'vip_zhang', 'e10adc3949ba59abbe56e057f20f883e', 'vip@kk.com', '13800138004', 25, '男', 1, '正常'),
-(5, '普通用户', 'baduser', 'e10adc3949ba59abbe56e057f20f883e', 'bad@kk.com', '13800138005', 20, '保密', 0, '禁用');
+USE `ecommerce_system_t`;
 
--- ----------------------------
--- 插入 13. 店铺
--- ----------------------------
-INSERT INTO `shop` (`shop_id`, `name`, `description`, `status`, `user_id`) VALUES
-(1, '优品数码店', '主营数码3C产品，正品保障，假一赔十', '已通过', 2),
-(2, '极客外设专营', '高端机械键盘、鼠标、电竞椅', '待审核', 2);
+-- 关闭外键检查，清空旧数据，防止冲突
+SET FOREIGN_KEY_CHECKS = 0;
+TRUNCATE TABLE `user`;
+TRUNCATE TABLE `shop`;
+TRUNCATE TABLE `category`;
+TRUNCATE TABLE `product`;
+TRUNCATE TABLE `sku_product`;
+TRUNCATE TABLE `address`;
+TRUNCATE TABLE `coupon`;
+TRUNCATE TABLE `order`;
+TRUNCATE TABLE `order_details`;
+TRUNCATE TABLE `cart`;
+TRUNCATE TABLE `comment`;
+TRUNCATE TABLE `activity`;
+TRUNCATE TABLE `log`;
+TRUNCATE TABLE `favorites`;
+SET FOREIGN_KEY_CHECKS = 1;
 
--- ----------------------------
--- 插入 2. 分类 (支持无限极递归)
--- ----------------------------
+-- ==========================================
+-- 1. 插入用户数据 (1管理员, 3商家, 5普通用户)
+-- ==========================================
+INSERT INTO `user` (`user_id`, `type`, `username`, `password`, `email`, `phone`, `age`, `gender`, `is_vip`, `balance`, `status`) VALUES
+(1, '管理员', 'admin', 'e10adc3949ba59abbe56e057f20f883e', 'admin@system.com', '13800000000', 35, '男', 1, 999999.00, '正常'),
+(2, '商家', 'apple_official', 'e10adc3949ba59abbe56e057f20f883e', 'apple@shop.com', '13800000001', 30, '保密', 1, 50000.00, '正常'),
+(3, '商家', 'huawei_official', 'e10adc3949ba59abbe56e057f20f883e', 'huawei@shop.com', '13800000002', 32, '男', 1, 80000.00, '正常'),
+(4, '商家', 'mi_official', 'e10adc3949ba59abbe56e057f20f883e', 'mi@shop.com', '13800000003', 28, '女', 0, 15000.00, '正常'),
+(5, '普通用户', 'zhangwei', 'e10adc3949ba59abbe56e057f20f883e', 'zhangwei@qq.com', '13900000001', 22, '男', 0, 10000.00, '正常'),
+(6, '普通用户', 'liming', 'e10adc3949ba59abbe56e057f20f883e', 'liming@qq.com', '13900000002', 25, '女', 1, 500.00, '正常'),
+(7, '普通用户', 'wangfang', 'e10adc3949ba59abbe56e057f20f883e', 'wangfang@qq.com', '13900000003', 24, '女', 1, 2000.00, '正常'),
+(8, '普通用户', 'zhaoliu', 'e10adc3949ba59abbe56e057f20f883e', 'zhaoliu@qq.com', '13900000004', 29, '男', 0, 0.00, '正常'),
+(9, '普通用户', 'banned_user', 'e10adc3949ba59abbe56e057f20f883e', 'bad@qq.com', '13900000005', 18, '保密', 0, 0.00, '禁用');
+
+-- ==========================================
+-- 2. 插入店铺数据
+-- ==========================================
+INSERT INTO `shop` (`shop_id`, `name`, `description`, `user_id`) VALUES
+(1, 'Apple 官方旗舰店', 'Apple 官方授权，正品保障，全场免息', 2),
+(2, '华为官方旗舰店', '全场景智慧生活，遥遥领先', 3),
+(3, '小米官方旗舰店', '让每个人都能享受科技的乐趣', 4);
+
+-- ==========================================
+-- 3. 插入商品分类数据
+-- ==========================================
 INSERT INTO `category` (`category_id`, `name`, `parent_id`) VALUES
-(1, '手机数码', 0),
-(2, '电脑办公', 0),
-(3, '耳机音频', 0),
-(4, '苹果手机', 1),
-(5, '安卓手机', 1),
-(6, '无线耳机', 3),
-(7, '降噪耳机', 6);
+(1, '数码电子', 0),
+(2, '家用电器', 0),
+(3, '服装鞋包', 0),
+(4, '智能手机', 1),
+(5, '平板电脑', 1),
+(6, '智能穿戴', 1),
+(7, '电视', 2);
 
--- ----------------------------
--- 插入 3. 商品 (SPU)
--- ----------------------------
-INSERT INTO `products` (`product_id`, `name`, `description`, `price`, `stock`, `img`, `sales`, `status`, `category_id`, `shop_id`) VALUES
-(10001, 'iPhone 15 Pro', '苹果最新A17 Pro芯片旗舰手机，钛金属边框', 8999.00, 35, 'img/iphone15pro.jpg', 120, '通过', 4, 1),
-(10002, 'AirPods Pro 2', 'H2芯片，主动降噪，自适应通透模式', 1899.00, 100, 'img/airpods.jpg', 560, '通过', 7, 1),
-(10003, 'ROG夜魔机械键盘', '客制化无线电竞机械键盘，OLED显示屏', 1799.00, 20, 'img/keyboard.jpg', 45, '待审核', 2, 2);
+-- ==========================================
+-- 4. 插入商品基础数据 (SPU)
+-- ==========================================
+INSERT INTO `product` (`product_id`, `name`, `description`, `price`, `stock`, `img`, `sales`, `rate`, `status`, `category_id`, `shop_id`) VALUES
+(1001, 'iPhone 15 Pro Max', 'A17 Pro 芯片，全新钛金属机身', 9999.00, 1000, '["/upload/product/img/1001/1.jpg"]', 3500, 4.9, '通过', 4, 1),
+(1002, 'iPad Pro 2024', 'M4 芯片，OLED 屏幕，极其轻薄', 8999.00, 500, '["/upload/product/img/1002/1.jpg"]', 1200, 4.8, '通过', 5, 1),
+(1003, 'HUAWEI Mate 60 Pro', '未发先售，卫星通话，玄武架构', 6999.00, 800, '["/upload/product/img/1003/1.jpg"]', 5000, 4.9, '通过', 4, 2),
+(1004, 'HUAWEI WATCH 4 Pro', '独立微体检，星球设计', 3399.00, 300, '["/upload/product/img/1004/1.jpg"]', 800, 4.7, '通过', 6, 2),
+(1005, 'Xiaomi 14 Ultra', '徕卡光学，全明星四摄', 6499.00, 600, '["/upload/product/img/1005/1.jpg"]', 2100, 4.8, '通过', 4, 3),
+(1006, 'Redmi 智能电视 86寸', '巨幕影院，4K 超高清', 4999.00, 50, '["/upload/product/img/1006/1.jpg"]', 300, 4.5, '待审核', 7, 3);
 
--- ----------------------------
--- 插入 11. 商品规格 (SKU)
--- ----------------------------
+-- ==========================================
+-- 5. 插入商品规格数据 (SKU)
+-- ==========================================
 INSERT INTO `sku_product` (`sku_id`, `name`, `act_price`, `stock`, `product_id`) VALUES
-(20001, '256GB 原色钛金属', 8999.00, 20, 10001),
-(20002, '512GB 原色钛金属', 10999.00, 15, 10001),
-(20003, 'Type-C 标准版', 1899.00, 100, 10002),
-(20004, '红轴 黑色版', 1799.00, 20, 10003);
+(2001, '256GB 原色钛金属', 9999.00, 500, 1001),
+(2002, '512GB 原色钛金属', 11999.00, 300, 1001),
+(2003, '1TB 白色钛金属', 13999.00, 200, 1001),
+(2004, '11英寸 256GB Wi-Fi版', 8999.00, 250, 1002),
+(2005, '13英寸 512GB 蜂窝版', 13999.00, 250, 1002),
+(2006, '12GB+512GB 雅川青', 6999.00, 400, 1003),
+(2007, '12GB+1TB 白沙银', 7999.00, 400, 1003),
+(2008, '蔚蓝地球 钛金属表带', 3399.00, 300, 1004),
+(2009, '16GB+512GB 黑色素皮', 6499.00, 600, 1005),
+(2010, '86寸 标准版', 4999.00, 50, 1006);
 
--- ----------------------------
--- 插入 4. 收货地址
--- ----------------------------
-INSERT INTO `address` (`address_id`, `recipient_name`, `phone`, `province`, `city`, `district`, `address`, `type`, `is_default`, `user_id`) VALUES
-(1, '张伟', '13800138004', '北京市', '北京市', '朝阳区', '阳光新城12栋301室', '家', 1, 4),
-(2, '李四', '13800138003', '浙江省', '杭州市', '西湖区', '文三路电子信息街99号', '公司', 1, 3);
+-- ==========================================
+-- 6. 插入地址数据
+-- ==========================================
+INSERT INTO `address` (`address_id`, `recipient_name`, `phone`, `province`, `city`, `district`, `street`, `streetNumber`, `address`, `type`, `is_default`, `user_id`) VALUES
+(1, '张伟', '13900000001', '广东省', '深圳市', '南山区', '粤海街道', '科技南十二路', '腾讯大厦20层', '公司', 1, 5),
+(2, '张伟', '13900000001', '广东省', '广州市', '天河区', '猎德街道', '猎德大道', '猎德花园一期2栋', '家', 0, 5),
+(3, '李明', '13900000002', '北京市', '北京市', '海淀区', '上地街道', '西二旗北路', '百度科技园', '公司', 1, 6),
+(4, '王芳', '13900000003', '上海市', '上海市', '浦东新区', '张江镇', '祖冲之路', '张江高科技园区', '公司', 1, 7);
 
--- ----------------------------
--- 插入 7. 优惠券
--- ----------------------------
+-- ==========================================
+-- 7. 插入优惠券数据
+-- ==========================================
 INSERT INTO `coupon` (`coupon_id`, `name`, `type`, `discount_value`, `min_order_amount`, `start_time`, `end_time`, `status`, `user_id`) VALUES
-(1, '数码满减券', '满减', 200.00, 10000.00, '2025-01-01 00:00:00', '2026-12-31 23:59:59', '已使用', 4),
-(2, '全场9折券', '折扣', 90.00, 100.00, '2026-04-01 00:00:00', '2026-05-01 00:00:00', '未使用', 3),
-(3, '新用户无门槛', '无门槛', 50.00, 0.00, '2026-04-01 00:00:00', '2026-04-30 23:59:59', '未使用', 3);
+(1, '数码产品满减券', '满减', 500.00, 5000.00, '2024-01-01 00:00:00', '2026-12-31 23:59:59', '未使用', 5),
+(2, 'VIP全场9折券', '折扣', 90.00, 0.00, '2024-01-01 00:00:00', '2026-12-31 23:59:59', '未使用', 5),
+(3, '新人无门槛神券', '无门槛', 100.00, 0.00, '2024-01-01 00:00:00', '2026-12-31 23:59:59', '已使用', 6),
+(4, '过期优惠券', '满减', 200.00, 1000.00, '2023-01-01 00:00:00', '2023-12-31 23:59:59', '已过期', 5);
 
--- ----------------------------
--- 插入 5. 订单
--- ----------------------------
-INSERT INTO `order` (`order_id`, `total_amount`, `status`, `user_id`, `address_id`, `coupon_id`, `create_time`) VALUES
-('202604070001', 10698.00, '已完成', 4, 1, 1, '2026-04-07 10:30:00'),
-('202604070002', 1899.00, '待发货', 3, 2, NULL, '2026-04-08 14:20:00'),
-('202604070003', 10999.00, '申请退款', 3, 2, NULL, '2026-04-09 09:15:00');
+-- ==========================================
+-- 8. 插入订单主表
+-- ==========================================
+INSERT INTO `order` (`order_id`, `total_amount`, `status`, `refundReason`, `RejectReason`, `user_id`, `address_id`, `coupon_id`, `create_time`) VALUES
+('202605010001', 9499.00, '已完成', NULL, NULL, 5, 1, 1, '2026-05-01 10:00:00'),
+('202605020002', 6899.00, '已发货', NULL, NULL, 6, 3, 3, '2026-05-02 14:30:00'),
+('202605030003', 11999.00, '申请退款', '买错了，不想要了', NULL, 5, 2, NULL, '2026-05-03 09:15:00'),
+('202605040004', 3399.00, '待审核', '手表颜色发错了', '颜色没发错，拆封不支持无理由', 7, 4, NULL, '2026-05-04 11:00:00'),
+('202605050005', 6499.00, '待支付', NULL, NULL, 8, 4, NULL, '2026-05-05 15:20:00'),
+('202605060006', 13999.00, '已取消', NULL, NULL, 5, 1, NULL, '2026-05-06 08:00:00');
 
--- 补全退款订单的理由
-UPDATE `order` SET `refundReason` = '商品质量有问题', `RejectReason` = '' WHERE `order_id` = '202604070003';
-
--- ----------------------------
--- 插入 6. 订单明细
--- ----------------------------
+-- ==========================================
+-- 9. 插入订单明细表
+-- ==========================================
 INSERT INTO `order_details` (`order_id`, `sku_id`, `quantity`, `price`) VALUES
-('202604070001', 20001, 1, 8999.00), -- 买了一台256G手机
-('202604070001', 20003, 1, 1899.00), -- 搭配了一个耳机
-('202604070002', 20003, 1, 1899.00),
-('202604070003', 20002, 1, 10999.00);
+('202605010001', 2001, 1, 9999.00),
+('202605020002', 2006, 1, 6999.00),
+('202605030003', 2002, 1, 11999.00),
+('202605040004', 2008, 1, 3399.00),
+('202605050005', 2009, 1, 6499.00),
+('202605060006', 2005, 1, 13999.00);
 
--- ----------------------------
--- 插入 8. 购物车
--- ----------------------------
+-- ==========================================
+-- 10. 插入购物车数据
+-- ==========================================
 INSERT INTO `cart` (`cart_id`, `quantity`, `user_id`, `sku_id`) VALUES
-(1, 1, 3, 20001),
-(2, 2, 4, 20004);
+(1, 2, 5, 2008),
+(2, 1, 5, 2004),
+(3, 1, 6, 2001);
 
--- ----------------------------
--- 插入 9. 评论
--- ----------------------------
-INSERT INTO `comment` (`review_id`, `rating`, `comment`, `comment_status`, `parent_id`, `product_id`, `user_id`, `order_id`) VALUES
-(1, 5, '质量很好，物流快，钛金属手感无敌！', '正常', NULL, 10001, 4, '202604070001'),
-(2, NULL, '感谢老板支持，祝您生活愉快！', '正常', 1, 10001, 2, '202604070001'),
-(3, 1, '包装破损，疑似二手商品。', '屏蔽', NULL, 10001, 5, '202604070001');
+-- ==========================================
+-- 11. 插入商品评论数据 (含首评和追评)
+-- ==========================================
+INSERT INTO `comment` (`review_id`, `rating`, `comment`, `comment_status`, `product_id`, `user_id`, `order_id`, `is_appended`, `append_content`, `append_days`) VALUES
+(1, 5, '钛金属手感绝了，非常轻，系统极其流畅！', '正常', 1001, 5, '202605010001', 1, '用了一周，续航确实比上一代强很多，打游戏也不发烫。', 7),
+(2, 4, '遥遥领先！屏幕非常清晰，就是抢不到想要的版本。', '正常', 1003, 6, '202605020002', 0, NULL, 0),
+(3, 1, '垃圾东西，坚决退款！', '正常', 1001, 5, '202605030003', 0, NULL, 0),
+(4, NULL, '亲爱的顾客您好，很抱歉给您带来不好的体验，请联系客服处理。', '正常', 1001, 2, '202605030003', 0, NULL, 0); -- 商家回复
 
--- ----------------------------
--- 插入 10. 活动
--- ----------------------------
-INSERT INTO `activity` (`act_id`, `name`, `type`, `goodsType_id`, `rule`, `value`, `min`, `status`, `start_time`, `end_time`) VALUES
-(1, '数码节满300减50', '满减', 1, '全场手机数码可用，满300减50', 50.00, 300.00, '进行中', '2026-04-01', '2026-04-15'),
-(2, 'AirPods限时秒杀', '秒杀', 10002, '耳机超值秒杀价1499', 400.00, 0.00, '未开始', '2026-04-10', '2026-04-11');
+-- 将第4条设置为第3条的子评论
+UPDATE `comment` SET `parent_id` = 3 WHERE `review_id` = 4;
 
--- ----------------------------
--- 插入 14. 操作日志
--- ----------------------------
-INSERT INTO `log` (`log_id`, `username`, `role`, `content`, `log_type`, `result`) VALUES
-(1001, 'user1', '普通用户', '修改登录密码', 'user', '成功'),
-(1002, 'vip_zhang', 'VIP用户', '提交订单 202604070001', 'order', '成功'),
-(1003, 'admin', '管理员', '屏蔽不良评论 (Review ID: 3)', 'comment', '成功'),
-(1004, 'seller1', '商家', '上架商品 iPhone 15 Pro', 'product', '成功');
+-- ==========================================
+-- 12. 插入活动管理数据
+-- ==========================================
+INSERT INTO `activity` (`act_id`, `name`, `act_type`, `goods_type_id`, `rule`, `max_discount_value`, `min_amount`, `act_status`, `start_time`, `end_time`) VALUES
+(1, '数码狂欢节-手机满减', '满减', 4, '买手机满5000减400', 400.00, 5000.00, '进行中', '2026-05-01 00:00:00', '2026-05-31 23:59:59'),
+(2, '平板专场打折', '折扣', 5, '平板电脑全场95折', 95.00, 0.00, '进行中', '2026-05-01 00:00:00', '2026-05-15 23:59:59'),
+(3, '穿戴设备限时秒杀', '秒杀', 6, '星表秒杀直降500', 2899.00, 0.00, '未开始', '2026-06-01 00:00:00', '2026-06-03 23:59:59');
 
--- ----------------------------
--- 插入 15. 收藏夹
--- ----------------------------
+-- ==========================================
+-- 13. 插入日志数据
+-- ==========================================
+INSERT INTO `log` (`log_id`, `username`, `role`, `content`, `log_type`, `result`, `create_time`) VALUES
+(1, 'admin', '管理员', '管理员登录系统', 'login', '成功', '2026-05-01 08:00:00'),
+(2, 'apple_official', '商家', '上架了新商品: iPad Pro 2024', 'product', '成功', '2026-05-01 09:00:00'),
+(3, 'zhangwei', '普通用户', '成功支付了订单 202605010001', 'order', '成功', '2026-05-01 10:05:00'),
+(4, 'zhangwei', '普通用户', '申请取消订单 202605060006', 'order', '成功', '2026-05-06 08:30:00');
+
+-- ==========================================
+-- 14. 插入收藏数据
+-- ==========================================
 INSERT INTO `favorites` (`f_id`, `user_id`, `spec_id`) VALUES
-(1, 3, 20002),
-(2, 4, 20004);
+(1, 5, 2004),
+(2, 5, 2009),
+(3, 6, 2001);
 ```
 
 
@@ -584,7 +897,7 @@ INSERT INTO `favorites` (`f_id`, `user_id`, `spec_id`) VALUES
 
 右侧登录信息：username
 
-猜你喜欢：productCard : products(name,price,image)
+猜你喜欢：productCard : product(name,price,image)
 
 搜索框：？
 

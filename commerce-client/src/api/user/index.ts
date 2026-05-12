@@ -62,6 +62,9 @@ export const register = (data: RegisterData) => {
         data
     })
 }
+export const reqGetUserInfo = () => {
+  return request.get<any, ApiResponse<any>>(API.GET_USER_INFO);
+}
 export const reqUpdateUserInfo = (data: Record<string, any>) => {
     return request.post<any, ApiResponse<any>>(API.POST_USER_INFO, data);
 }
@@ -77,7 +80,7 @@ enum API {
   CODE = '/code',
   FORGET = '/forget',
   REGISTER = '/register',
-  USERS = '/users',
+  GET_USER_INFO = 'user/profile/info',
   POST_USER_INFO = '/user/profile/update',
   POST_USER_RECHARGE = '/user/profile/recharge',
   POST_USER_WITHDRAW = '/user/profile/withdraw',

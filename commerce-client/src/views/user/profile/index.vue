@@ -114,7 +114,7 @@
 
     <el-dialog v-model="withdrawDialogVisible" title="账户提现" width="400px" destroy-on-close>
       <div style="margin-bottom: 15px; color: #666;">可提现余额: ¥{{ Number(userForm.balance || 0).toFixed(2) }}</div>
-      <el-input-number v-model="withdrawAmount" :min="0.01" :max="Number(userForm.balance || 0)" :precision="2" :step="100" style="width: 100%;" placeholder="请输入提现金额" />
+      <el-input-number v-model="withdrawAmount" :min="0.01" :precision="2" :step="100" style="width: 100%;" placeholder="请输入提现金额" />
       <template #footer>
         <el-button @click="withdrawDialogVisible = false">取消</el-button>
         <el-button type="warning" :loading="balanceLoading" @click="handleWithdraw">确认提现</el-button>
@@ -133,8 +133,6 @@ import { storeToRefs } from 'pinia'
 import { useLoginStore } from '@/stores/modules/common/loginStore'
 import { useUserStore } from '@/stores/modules/user/userStore'
 import getFullUrl from '@/utils/getFullUrl'
-import request from '@/utils/request'
-import { reqUpdateUserInfo } from '@/api/user'
 
 const loginStore = useLoginStore()
 const userStore = useUserStore()
@@ -154,7 +152,7 @@ const userForm = reactive<any>({
   age: 0,
   gender: '保密',
   is_vip: 0,
-  balance: 0 // 新增字段
+  balance: 0 
 })
 
 const originForm = ref<any>({})
@@ -172,14 +170,15 @@ const initForm = () => {
       phone: userInfo.value.phone || '',
       age: userInfo.value.age || null,
       gender: userInfo.value.gender || '保密',
-      is_vip: userInfo.value.is_vip || 0,
-      balance: userInfo.value.balance || 0 // 提取后端返回的余额
     })
     originForm.value = JSON.parse(JSON.stringify(userForm))
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
+  const res = await userStore.getUserInfo()
+  userForm.balance = res.data.balance || 0
+  userForm.is_vip = res.data.is_vip || 0
   initForm()
 })
 
@@ -344,9 +343,7 @@ const handleWithdraw = async () => {
     if (res.success) {
       ElMessage.success(`成功提现 ¥${withdrawAmount.value}`)
       userForm.balance = Number(userForm.balance) - withdrawAmount.value
-      // 更新全局 Store
-      loginStore.userInfo.balance = userForm.balance
-      localStorage.setItem('userInfo', JSON.stringify(loginStore.userInfo))
+      // 更新全局 Stor
       withdrawDialogVisible.value = false
       withdrawAmount.value = 0
     } else {

@@ -158,6 +158,7 @@ exports.withdraw = async (req, res) => {
 
     try {
         const [users] = await connection.execute(`SELECT balance FROM user WHERE user_id = ? FOR UPDATE`, [user_id]);
+        console.log("用户",users);
         
         if (users.length === 0 || Number(users[0].balance) < amount) {
             throw new Error('账户余额不足');
@@ -175,3 +176,14 @@ exports.withdraw = async (req, res) => {
         connection.release();
     }
 };
+
+// 获取当前登录用户的最新信息（一些敏感信息不返回）
+exports.getUserInfo = async (req, res) => {
+    const user_id = req.user.user_id || req.user.id;
+    try {
+        const [rows] = await db.execute('SELECT balance, is_vip FROM user WHERE user_id = ?', [user_id]);
+        res.json({ success: true, status: 200, data: rows[0] });
+    } catch (err) {
+        res.status(500).json({ success: false, message: '获取信息失败' });
+    }
+}

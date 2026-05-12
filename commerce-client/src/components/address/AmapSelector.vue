@@ -135,7 +135,7 @@ const initMap = async () => {
   AMapLoader.reset() 
 
   AMap = await AMapLoader.load({
-    key: "461b52d49983cd0ff1d49a52dbddcb97",
+    key: import.meta.env.VITE_APP_AMAP_API_KEY,
     version: "2.0",
     plugins: ['AMap.Geocoder', 'AMap.AutoComplete', 'AMap.InfoWindow']
   })

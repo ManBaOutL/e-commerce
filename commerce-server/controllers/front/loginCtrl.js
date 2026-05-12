@@ -71,8 +71,19 @@ exports.login = async (req, res) => {
             'abcdef123456', // 密钥，随便写，别泄露
             { expiresIn: '7d' } // 7天过期
         )
+
+        const safeUser = {
+            user_id: user.user_id,
+            username: user.username,
+            type: user.type,
+            img: user.img,
+            email: user.email,
+            phone: user.phone,
+            age: user.age,
+            gender: user.gender,
+        };
         // 返回登录成功响应
-        res.json({ message: '登录成功', data: { token, user }, status: 200, success: true })
+        res.json({ message: '登录成功', data: { token, user: safeUser }, status: 200, success: true })
     } catch (err) {
         // 只打印关键错误，不打印完整堆栈（避免刷屏）
         console.error(`登录错误[${new Date().toLocaleTimeString()}]：`, err.message);
@@ -224,7 +235,6 @@ exports.register = async (req, res) => {
 
 exports.verifyCodeStore = verifyCodeStore;
 
-
 // 支付宝登录控制器
 exports.alipayLogin = async (req, res) => {
     const { auth_code } = req.body;
@@ -266,15 +276,24 @@ exports.alipayLogin = async (req, res) => {
 
         // 3. 在本地数据库查找该用户
         const [rows] = await db.execute('SELECT * FROM user WHERE alipay_user_id = ?', [alipayUserId]);
-
-        let user = null;
-
+        let safeUser = null;
         if (rows.length > 0) {
             // 老用户直接登录
             user = rows[0];
             if (user.status === '禁用') {
                 return res.status(403).json({ message: '账号已被封禁', status: 403, success: false });
             }
+
+            safeUser = {
+                user_id: dbUser.user_id,
+                username: dbUser.username,
+                type: dbUser.type,
+                img: dbUser.img,
+                email: dbUser.email,
+                phone: dbUser.phone,
+                age: dbUser.age,
+                gender: dbUser.gender,
+            };
         } else {
             // 给第三方登录的用户生成一个占位虚拟密码
             // 使用常规登录时，由于 bcrypt 无法匹配这个明文占位符，所以绝对安全！
@@ -295,6 +314,18 @@ exports.alipayLogin = async (req, res) => {
             };
         }
 
+        // 🌟 新用户的脱敏对象
+        safeUser = {
+            user_id: insertRes.insertId,
+            username: nickName,
+            type: '普通用户',
+            img: avatar,
+            email: null,
+            phone: null,
+            age: null,
+            gender: '保密',
+        };
+
         // 4. 生成系统 JWT Token
         const token = jwt.sign(
             { user_id: user.user_id, username: user.username, type: user.type },
@@ -302,7 +333,7 @@ exports.alipayLogin = async (req, res) => {
             { expiresIn: '7d' }
         );
 
-        res.json({ message: '支付宝登录成功', data: { token, user }, status: 200, success: true });
+        res.json({ message: '支付宝登录成功', data: { token, user: safeUser }, status: 200, success: true });
 
     } catch (err) {
         console.error(`支付宝登录异常[${new Date().toLocaleTimeString()}]：`, err.message);
@@ -310,3 +341,4 @@ exports.alipayLogin = async (req, res) => {
         res.status(500).json({ success: false, message: err.message || '支付宝授权验证失败' });
     }
 };
+

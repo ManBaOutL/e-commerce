@@ -10,6 +10,7 @@ const { startCleanUpTask } = require('./utils/cronTask');
 //    data: {}
 //}
 require('dotenv').config();
+const { startOrderTasks } = require('./tasks/orderTasks');
 const express = require('express')
 const app = express()
 const path = require('path');
@@ -71,4 +72,6 @@ app.use((err, req, res, next) => {
 // 启动服务
 app.listen(8888, () => {
     console.log(`后端服务启动成功，端口：8888`);
+
+    startOrderTasks();  // 启动订单相关的定时任务
 });
