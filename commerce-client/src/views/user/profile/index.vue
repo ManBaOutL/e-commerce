@@ -133,7 +133,6 @@ import { storeToRefs } from 'pinia'
 import { useLoginStore } from '@/stores/modules/common/loginStore'
 import { useUserStore } from '@/stores/modules/user/userStore'
 import getFullUrl from '@/utils/getFullUrl'
-import { login, reqUpdateUserInfo } from '@/api/user'
 
 const loginStore = useLoginStore()
 const userStore = useUserStore()
@@ -153,7 +152,7 @@ const userForm = reactive<any>({
   age: 0,
   gender: '保密',
   is_vip: 0,
-  balance: 0 // 新增字段
+  balance: 0 
 })
 
 const originForm = ref<any>({})
