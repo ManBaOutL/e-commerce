@@ -23,7 +23,8 @@ import {
 import {
   reqUpdateUserInfo,
   reqUserRecharge,
-  reqUserWithdraw
+  reqUserWithdraw,
+  reqGetUserInfo
 } from '@/api/user/index';
 
 export const useUserStore = defineStore('user', {
@@ -233,6 +234,18 @@ export const useUserStore = defineStore('user', {
         console.error('用户提现异常:', error);
         return { success: false, message: '网络异常' };
       }
-    }
+    },
+    // 6. 获取用户信息
+    async getUserInfo() {
+      try {
+        const res: any = await reqGetUserInfo();
+        if (res.status === 200 || res.success !== false) {
+          return res;
+        } 
+        return { success: false, message: res.message || '获取用户信息失败' };
+      } catch (error: any) {
+        return { success: false, message: '网络异常' };
+      } 
+    },
   }
 });

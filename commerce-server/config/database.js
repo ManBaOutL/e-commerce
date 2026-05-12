@@ -4,7 +4,7 @@ const db = mysql.createPool({
     host: '127.0.0.1',
     user: 'root',
     password: 'Hua20050924',
-    database: 'ecommerce_system',
+    database: 'ecommerce_system_test',
     charset: 'utf8',
 })
 

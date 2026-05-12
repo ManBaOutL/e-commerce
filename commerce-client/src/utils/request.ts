@@ -41,7 +41,7 @@ request.interceptors.response.use(
     (error) => {
         console.error("响应拦截器error: ", error);
         // 🌟 统一使用 Element Plus 的提示组件
-        ElMessage.error('网络错误或接口不存在！');
+        // ElMessage.error('网络错误或接口不存在！');
         return Promise.reject(error);
     }
 );

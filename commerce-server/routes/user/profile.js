@@ -7,5 +7,7 @@ const auth = require('@/middlewares/auth'); // JWT 验证中间件
 router.post('/update', auth.checkUser, profileCtrl.updateProfile);
 router.post('/recharge', auth.checkUser,profileCtrl.recharge);
 router.post('/withdraw', auth.checkUser,profileCtrl.withdraw);
+// 挂载获取用户信息路由
+router.get('/info', profileCtrl.getUserInfo)
 
 module.exports = router;
