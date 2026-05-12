@@ -5,6 +5,6 @@ const logger = require('@/middlewares/loggerMiddleware');
 
 
 const showDataCtrl = require('@/controllers/merchant/showDataCtrl')
-router.get('/showData', auth.checkMerchant, showDataCtrl.showData)
+router.get('/showData', auth.checkMerchant, logger.writeLogMiddleware, showDataCtrl.showData)
 
 module.exports = router

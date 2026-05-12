@@ -3,8 +3,13 @@ const mysql = require('mysql2/promise')
 const db = mysql.createPool({
     host: '127.0.0.1',
     user: 'root',
+<<<<<<< HEAD
     password: 'Hua20050924',
     database: 'ecommerce_system_test',
+=======
+    password: '1597532648Ljh',
+    database: 'ecommerce_system',
+>>>>>>> 4aa4020873f772079af78d53aa0d8a35351ac52f
     charset: 'utf8',
 })
 

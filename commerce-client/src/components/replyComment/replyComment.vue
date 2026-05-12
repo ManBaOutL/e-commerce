@@ -1,6 +1,6 @@
 <template>
   <!-- 关键修改：使用 v-model:model-value 替代直接 v-model -->
-  <el-dialog v-model:model-value="visible" title="回复评论" width="500px" append-to-body>
+  <el-dialog v-model:model-value="props.modelValue" title="回复评论" width="500px" append-to-body>
     <div class="user-comment">{{ comment.content }}</div>
     <el-input 
       v-model="replyContent" 

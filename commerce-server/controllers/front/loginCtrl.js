@@ -6,19 +6,19 @@ const AlipaySdkRaw = require('alipay-sdk');
 const AlipaySdk = AlipaySdkRaw.default || AlipaySdkRaw.AlipaySdk || AlipaySdkRaw;
 
 // 1. 获取 alipay-sdk 主文件的绝对路径 (比如 C:\...\dist\commonjs\alipay.js)
-const sdkMainPath = require.resolve('alipay-sdk'); 
+const sdkMainPath = require.resolve('alipay-sdk');
 // 2. 推导出同一目录下 form.js 的物理绝对路径
-const formFilePath = path.join(sdkMainPath, '../form.js'); 
+const formFilePath = path.join(sdkMainPath, '../form.js');
 // 3. 直接通过绝对路径引入，完美绕过拦截！
 const FormRaw = require(formFilePath);
 const AlipayFormData = FormRaw.default || FormRaw;
 
 // 初始化支付宝 SDK (参数从沙箱控制台获取)
 const alipaySdk = new AlipaySdk({
-  appId: process.env.ALIPAY_APP_ID,
-  privateKey: process.env.ALIPAY_PRIVATE_KEY,
-  alipayPublicKey: process.env.ALIPAY_PUBLIC_KEY,
-  gateway: process.env.ALIPAY_GATEWAY,
+    appId: process.env.ALIPAY_APP_ID,
+    privateKey: process.env.ALIPAY_PRIVATE_KEY,
+    alipayPublicKey: process.env.ALIPAY_PUBLIC_KEY,
+    gateway: process.env.ALIPAY_GATEWAY,
 });
 
 const verifyCodeStore = {};
@@ -250,13 +250,13 @@ exports.alipayLogin = async (req, res) => {
             grantType: 'authorization_code',
             code: auth_code,
         }).catch(err => {
-             // 捕获 sdk 内部错误
-             console.error("SDK 换取 token 失败:", err);
-             throw new Error(err.message.includes('504') ? '支付宝网关超时，请稍后再试' : '获取授权令牌失败');
+            // 捕获 sdk 内部错误
+            console.error("SDK 换取 token 失败:", err);
+            throw new Error(err.message.includes('504') ? '支付宝网关超时，请稍后再试' : '获取授权令牌失败');
         });
-        
+
         const accessToken = tokenResult.accessToken;
-        const alipayUserId = tokenResult.userId; 
+        const alipayUserId = tokenResult.userId;
 
         // 2. 拿着 access_token 去查用户昵称和头像
         // 沙箱环境下，这一步有时候非常容易报错。
@@ -305,7 +305,7 @@ exports.alipayLogin = async (req, res) => {
                  VALUES (?, ?, '普通用户', ?, ?, NOW(), '正常')`,
                 [nickName, dummyPassword, avatar, alipayUserId] // 🌟 按照顺序传入 dummyPassword
             );
-            
+
             user = {
                 user_id: insertRes.insertId,
                 username: nickName,
@@ -329,8 +329,8 @@ exports.alipayLogin = async (req, res) => {
         // 4. 生成系统 JWT Token
         const token = jwt.sign(
             { user_id: user.user_id, username: user.username, type: user.type },
-            'abcdef123456', 
-            { expiresIn: '7d' } 
+            'abcdef123456',
+            { expiresIn: '7d' }
         );
 
         res.json({ message: '支付宝登录成功', data: { token, user: safeUser }, status: 200, success: true });

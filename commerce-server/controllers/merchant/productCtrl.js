@@ -91,6 +91,7 @@ exports.getAllProduct = [paginationMiddleware, async (req, res) => {
             `;
         // 追加分页参数
         params.push(offset, pageSize);
+        console.log("查询SQL：", listSql);
 
 
         // 3. 执行查询，获取商品列表
@@ -210,8 +211,11 @@ exports.updateProductStatus = async (req, res) => {
 
                 // 插入规格
                 const skuData = specs.map(s => [s.name, s.price, s.stock, newId]);
-                await conn.query(`INSERT INTO sku_product (name, act_price, stock, product_id) VALUES ?`, [skuData]);
-                console.log("已产生商品编号", newId);
+                if (skuData.length !== 0) {
+                    await conn.query(`INSERT INTO sku_product (name, act_price, stock, product_id) VALUES ?`, [skuData]);
+                    console.log("已产生商品编号", newId);
+                }
+
 
                 // ==========================
                 // 图片处理（完全正确版）

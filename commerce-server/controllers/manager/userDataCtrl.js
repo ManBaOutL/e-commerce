@@ -195,6 +195,22 @@ exports.updateManagerUserList = async (req, res) => {
         const sql = `UPDATE user SET ?? = ? WHERE user_id IN (?)`;
         const [result] = await db.query(sql, [op.field, op.value, user_id]);
 
+        console.log(`批量操作用户：`, user_id);
+
+        if (operation == 'disable') {
+            console.log("禁用用户，连带禁用其商品");
+            await db.query(
+                `UPDATE product SET product_status = '禁用' WHERE product_status = '通过' AND shop_id IN (SELECT shop_id FROM shop WHERE user_id IN (?))`,
+                [user_id]
+            );
+        } else if (operation == 'enable') {
+            console.log("启用用户，连带启用其商品");
+            await db.query(
+                `UPDATE product SET product_status = '通过' WHERE product_status = '禁用' AND shop_id IN (SELECT shop_id FROM shop WHERE user_id IN (?))`,
+                [user_id]
+            );
+        }
+
         // 5. 返回布尔值（匹配你的前端 request<boolean>）
         const success = result.affectedRows > 0;
 

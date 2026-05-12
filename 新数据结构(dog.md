@@ -215,6 +215,8 @@ ALTER TABLE user ADD COLUMN alipay_user_id VARCHAR(100) DEFAULT NULL COMMENT '�
 ALTER TABLE user ADD UNIQUE INDEX idx_alipay_user (alipay_user_id);
 ALTER TABLE user ADD COLUMN balance DECIMAL(10, 2) DEFAULT 10000.00 COMMENT '用户余额(元)';
 -- 为了方便测试，你可以默认给新用户发1万块钱模拟金
+ALTER TABLE product DROP CONSTRAINT product_chk_3;
+ALTER TABLE product ADD CONSTRAINT product_chk_3 CHECK (product_status IN ('待审核','通过','已驳回','下架','禁用'));
 
 -- ----------------------------
 -- 13. 店铺表 (shop) - 依赖user(商家类型)
@@ -356,6 +358,10 @@ CREATE TABLE `order_details` (
   FOREIGN KEY (`order_id`) REFERENCES `order`(`order_id`) ON DELETE CASCADE,
   FOREIGN KEY (`sku_id`) REFERENCES `sku_product`(`sku_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='订单明细表';
+
+ALTER TABLE order_details 
+DROP PRIMARY KEY, 
+ADD id INT AUTO_INCREMENT PRIMARY KEY FIRST;
 
 -- ----------------------------
 -- 8. 购物车表 (cart) - 依赖user, sku_product

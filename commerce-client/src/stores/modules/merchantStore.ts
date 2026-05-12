@@ -2,11 +2,15 @@ import { defineStore } from 'pinia';
 import type {
   merchantInfo, merchantShowData,
   productList, pagination, productCategory, productCondition, productOperation,
+  commentList, commentCondition, commentOperation,
+  shop, merchant, shopOperation,
   MerchantOrder, OrderCondition, RefundOperation // 🌟 引入刚写的订单类型
 } from '@/api/merchant/type';
 import { getMerchantInfo, createShop } from '@/api/merchant/merchant';
 import { getMerchantShowData } from '@/api/merchant/showData';
 import { updateMerchantProductList, getMerchantProductList } from '@/api/merchant/product';
+import { getCommentList, updateCommentList } from '@/api/merchant/comment';
+import { getShopInfo, updateShopInfo } from '@/api/merchant/shop';
 import { getMerchantOrderList, handleMerchantRefund, shipMerchantOrder } from '@/api/merchant/order';
 
 export const useMerchantStore = defineStore('merchant', {
@@ -16,6 +20,9 @@ export const useMerchantStore = defineStore('merchant', {
     productList: [] as productList[],//商品列表
     pagination: {} as pagination,//分页信息
     categoryList: [] as productCategory[],//商品分类列表
+    commentList: [] as commentList[],//评论列表
+    shop: {} as shop,//商家店铺信息
+    user: {} as merchant,//商家用户信息
     orderList: [] as MerchantOrder[],//订单列表
     orderPagination: {} as pagination,//订单分页信息
   }),
@@ -52,6 +59,39 @@ export const useMerchantStore = defineStore('merchant', {
       const res = await updateMerchantProductList(data);
       return res;
     },
+
+    async getCommentList(params: commentCondition = {}, page: number = 1, pageSize: number = 10) {
+      const res = await getCommentList(params, page, pageSize);
+      this.commentList = res.data.commentList;
+      this.pagination = res.data.pagination;
+      console.log("商家获取评论列表:", this.commentList)
+      console.log("商家获取评论分页信息:", this.pagination)
+      return res;
+    },
+
+    async updateCommentList(data: commentOperation) {
+      const res = await updateCommentList(data);
+      return res;
+    },
+
+    async getShop() {
+      const res = await getShopInfo();
+      this.shop = res.data.shop;
+      this.user = res.data.merchant;
+      console.log("商家获取店铺信息:", this.shop)
+      console.log("商家获取用户信息:", this.user)
+      return res;
+    },
+
+    async updateShop(operation: shopOperation) {
+      console.log("商家更新店铺信息请求体: ", operation)
+      const res = await updateShopInfo(operation);
+      await this.getShop(); // 更新店铺信息后重新获取最新的店铺和用户信息
+      // console.log("商家更新店铺信息:", this.shop)
+      // console.log("商家更新用户信息:", this.user)
+      return res;
+    },
+
 
     async fetchOrderList(params: OrderCondition = {}, page: number = 1, pageSize: number = 10) {
       const res = await getMerchantOrderList(params, page, pageSize);
