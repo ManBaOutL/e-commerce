@@ -57,7 +57,7 @@ exports.login = async (req, res) => {
         if (!isMatch) {
             return res.status(401).json({ message: '密码错误', status: 401, success: false })
         }
-        if (user.user_status === '禁用') {
+        if (user.status === '禁用') {
             return res.status(403).json({ message: '账号已被封禁，请联系管理员', status: 403, success: false })
         }
         delete user.password;
