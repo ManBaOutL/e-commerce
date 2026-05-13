@@ -25,7 +25,7 @@
               <el-rate v-model="item.rating" disabled text-color="#ff9f00" />
               <span class="time">{{ item.create_time }}</span>
             </div>
-
+            <!-- 图片列表 -->
             <div class="text-content">{{ item.comment }}</div>
             <div class="image-list" v-if="item.images && item.images.length > 0">
               <el-image 

@@ -8,6 +8,9 @@ import {
 } from '@/api/user';
 import type { UserInfo } from '@/api/user/types';
 import type { LoginState } from '@/stores/types';
+import { useUserStore } from '@/stores/modules/user/userStore';
+import { useOrderStore } from '@/stores/modules/user/orderStore';
+import { useCartStore } from '@/stores/modules/user/cartStore';
 
 export const useLoginStore = defineStore('loginStore', {
   state: () : LoginState => ({
@@ -47,12 +50,26 @@ export const useLoginStore = defineStore('loginStore', {
       }
     },
 
-    // 2. 退出登录
+    // 2. 彻底退出登录逻辑
     logout() {
-      this.token = '';
-      this.userInfo = {} as UserInfo;
+      // 1. 物理清理：清除浏览器的本地缓存
       localStorage.removeItem('token');
       localStorage.removeItem('userInfo');
+
+      // 2. 状态清理：清空当前登录 Store 的内存状态
+      this.token = '';
+      this.userInfo = { } as UserInfo;
+
+      // 3. 业务清理：调用其他 Store 的 $reset()，一键恢复到初始空数组/空对象状态
+      const userStore = useUserStore();
+      userStore.$reset(); // 瞬间清空 addressList, myCoupons, favoriteList 等
+
+      const orderStore = useOrderStore();
+      orderStore.$reset(); // 瞬间清空 orderList
+
+      // 如果有购物车 Store
+      const cartStore = useCartStore();
+      cartStore.$reset(); 
     },
 
     // 3. 注册

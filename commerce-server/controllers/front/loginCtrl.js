@@ -238,19 +238,17 @@ exports.verifyCodeStore = verifyCodeStore;
 // 支付宝登录控制器
 exports.alipayLogin = async (req, res) => {
     const { auth_code } = req.body;
-    // console.log("支付宝登录请求体: ", req.body)
+    
     if (!auth_code) {
         return res.status(400).json({ message: '缺少授权码', status: 400, success: false });
     }
 
     try {
         // 1. 向支付宝换取 access_token
-        // 添加一个简单的超时控制和错误捕获
         const tokenResult = await alipaySdk.exec('alipay.system.oauth.token', {
             grantType: 'authorization_code',
             code: auth_code,
         }).catch(err => {
-            // 捕获 sdk 内部错误
             console.error("SDK 换取 token 失败:", err);
             throw new Error(err.message.includes('504') ? '支付宝网关超时，请稍后再试' : '获取授权令牌失败');
         });
@@ -259,7 +257,6 @@ exports.alipayLogin = async (req, res) => {
         const alipayUserId = tokenResult.userId;
 
         // 2. 拿着 access_token 去查用户昵称和头像
-        // 沙箱环境下，这一步有时候非常容易报错。
         let nickName = `支付宝用户_${alipayUserId.substring(alipayUserId.length - 4)}`;
         let avatar = '';
 
@@ -271,19 +268,20 @@ exports.alipayLogin = async (req, res) => {
             if (userInfoResult.avatar) avatar = userInfoResult.avatar;
         } catch (infoErr) {
             console.warn("沙箱获取用户信息失败，使用默认信息。原因:", infoErr.message);
-            // 这里不抛出错误，继续走下面的登录/注册流程
         }
 
         // 3. 在本地数据库查找该用户
         const [rows] = await db.execute('SELECT * FROM user WHERE alipay_user_id = ?', [alipayUserId]);
-        let safeUser = null;
+        let safeUser = null; // 🌟 提前在外部声明 safeUser
+
         if (rows.length > 0) {
-            // 老用户直接登录
-            user = rows[0];
-            if (user.status === '禁用') {
+            // ================== 老用户直接登录 ==================
+            const dbUser = rows[0];
+            if (dbUser.status === '禁用') {
                 return res.status(403).json({ message: '账号已被封禁', status: 403, success: false });
             }
 
+            // 组装老用户的脱敏对象
             safeUser = {
                 user_id: dbUser.user_id,
                 username: dbUser.username,
@@ -293,51 +291,56 @@ exports.alipayLogin = async (req, res) => {
                 phone: dbUser.phone,
                 age: dbUser.age,
                 gender: dbUser.gender,
+                balance: Number(dbUser.balance || 0), // 顺便把 balance 带上，防止前端报错
+                is_vip: dbUser.is_vip || 0
             };
         } else {
-            // 给第三方登录的用户生成一个占位虚拟密码
-            // 使用常规登录时，由于 bcrypt 无法匹配这个明文占位符，所以绝对安全！
+            // ================== 新用户自动注册 ==================
             const dummyPassword = 'ALIPAY_QUICK_LOGIN_NO_PASSWORD';
 
-            // 新用户自动注册绑定 (把 password 字段加上去)
             const [insertRes] = await db.execute(
                 `INSERT INTO user (username, password, type, img, alipay_user_id, create_time, status) 
                  VALUES (?, ?, '普通用户', ?, ?, NOW(), '正常')`,
-                [nickName, dummyPassword, avatar, alipayUserId] // 🌟 按照顺序传入 dummyPassword
+                [nickName, dummyPassword, avatar, alipayUserId] 
             );
 
-            user = {
+            // 🌟 直接在这里组装新用户的脱敏对象！
+            safeUser = {
                 user_id: insertRes.insertId,
                 username: nickName,
                 type: '普通用户',
-                img: avatar
+                img: avatar,
+                email: null,
+                phone: null,
+                age: null,
+                gender: '保密',
+                balance: 0,
+                is_vip: 0
             };
         }
 
-        // 🌟 新用户的脱敏对象
-        safeUser = {
-            user_id: insertRes.insertId,
-            username: nickName,
-            type: '普通用户',
-            img: avatar,
-            email: null,
-            phone: null,
-            age: null,
-            gender: '保密',
-        };
-
-        // 4. 生成系统 JWT Token
+        // 4. 生成系统 JWT Token 
+        // 🌟 注意：这里必须使用 safeUser，因为 user 变量已经不存在了！
         const token = jwt.sign(
-            { user_id: user.user_id, username: user.username, type: user.type },
+            { 
+                user_id: safeUser.user_id, 
+                username: safeUser.username, 
+                type: safeUser.type 
+            },
             'abcdef123456',
             { expiresIn: '7d' }
         );
 
-        res.json({ message: '支付宝登录成功', data: { token, user: safeUser }, status: 200, success: true });
+        // 5. 完美返回
+        res.json({ 
+            message: '支付宝登录成功', 
+            data: { token, user: safeUser }, 
+            status: 200, 
+            success: true 
+        });
 
     } catch (err) {
         console.error(`支付宝登录异常[${new Date().toLocaleTimeString()}]：`, err.message);
-        // 将友好的错误信息返回给前端
         res.status(500).json({ success: false, message: err.message || '支付宝授权验证失败' });
     }
 };
