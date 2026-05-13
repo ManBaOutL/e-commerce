@@ -8,12 +8,13 @@ const getFullUrl = (imgPath?: string) => {
   }
   
   // 确保 baseURL 总是以 '/' 结尾
+  // console.log('baseURL:', import.meta.env.VITE_APP_BASE_API);
   const baseURL = import.meta.env.VITE_APP_BASE_API as string || '';
   const safeBaseURL = baseURL.endsWith('/') ? baseURL : baseURL + '/';
   
   // 去除 imgPath 开头的 '/'
   const cleanPath = imgPath.startsWith('/') ? imgPath.slice(1) : imgPath;
-  
+  console.log('拼接后的 URL:', safeBaseURL + cleanPath);
   return safeBaseURL + cleanPath;
 }
 

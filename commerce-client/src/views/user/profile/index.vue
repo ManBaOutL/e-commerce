@@ -269,7 +269,8 @@ const save = async () => {
     }
     if (needCode.value) payload.code = verifyCode.value
 
-    const res: any = userStore.updateUserInfo(payload)
+    const res: any = await userStore.updateUserInfo(payload)
+    // console.log('更新个人资料接口返回：', res)
     if (res.success || res.status === 200) {
       ElMessage.success('个人资料更新成功')
       const finalAvatarUrl = res.data?.avatar || payload.img;

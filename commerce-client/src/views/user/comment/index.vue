@@ -11,6 +11,7 @@
         <el-empty v-if="!loading && commentList.length === 0" description="您还没有发表过任何评价哦~" />
 
         <div v-for="item in commentList" :key="item.review_id" class="comment-card card">
+          
           <div class="product-info" @click="goToDetail(item.product_id)">
             <el-image 
               class="product-img" 
