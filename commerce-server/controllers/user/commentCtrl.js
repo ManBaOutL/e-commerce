@@ -152,13 +152,41 @@ exports.appendComment = async (req, res) => {
     }
 };
 
-//  获取我的评价列表
+// 👇 🌟 新增：动态探测商品主图的“雷达”函数
+const getDynamicMainImage = (productId) => {
+    // 拼接该商品专属图片文件夹的绝对物理路径
+    // 例如: D:\your_project\public\upload\product\img\10001
+    const targetAbsDir = path.join(process.cwd(), 'public', 'upload', 'product', 'img', String(productId));
+
+    try {
+        // 如果这个专属文件夹存在
+        if (fs.existsSync(targetAbsDir)) {
+            // 读取文件夹里的所有文件
+            const files = fs.readdirSync(targetAbsDir);
+            
+            // 找出一个名字以 "1." 开头的文件（完美兼容 1.png, 1.jpg, 1.jpeg, 1.webp）
+            const mainImgFile = files.find(file => file.startsWith('1.'));
+
+            if (mainImgFile) {
+                // 找到了！拼接成前端能访问的相对网络路径
+                return `/upload/product/img/${productId}/${mainImgFile}`;
+            }
+        }
+    } catch (err) {
+        console.error(`读取商品 ${productId} 图片目录失败:`, err);
+    }
+
+    return ''; // 如果文件夹不存在或者没找到 1.xxx，兜底返回空字符串
+};
+
+
+// 🌟 修改：获取我的评价列表
 exports.getMyComments = async (req, res) => {
     // 解析当前登录用户的 ID
     const user_id = req.user.user_id || req.user.id;
     
     try {
-        // 核心 SQL：联表查询商品信息，且必须排除状态为 '用户删除' 的记录
+        // SQL 查询：不需要再查 p.img 了，只查 p.name 即可
         const [rows] = await db.execute(`
             SELECT c.review_id, c.order_id, c.product_id, c.rating, c.comment, c.images,
                    DATE_FORMAT(c.create_time, '%Y-%m-%d %H:%i') as create_time,
@@ -169,7 +197,7 @@ exports.getMyComments = async (req, res) => {
             JOIN product p ON c.product_id = p.product_id
             WHERE c.user_id = ? 
               AND c.comment_status != '删除' 
-              AND c.parent_id IS NULL  -- 只查首评主记录
+              AND c.parent_id IS NULL
             ORDER BY c.create_time DESC
         `, [user_id]);
 
@@ -179,8 +207,8 @@ exports.getMyComments = async (req, res) => {
             rows[i].images = rows[i].images ? rows[i].images.split(',') : [];
             rows[i].append_images = rows[i].append_images ? rows[i].append_images.split(',') : [];
 
-            // 2. 组装商品主图 (这里使用最通用的相对路径组装方式，如果有更精确的主图字段可以替换)
-            rows[i].product_image = `/upload/product/img/${rows[i].product_id}/1.jpg`;
+            // 👇 🌟 核心修改：传唤我们的“雷达”函数，让它去硬盘里抓取真实的后缀名！
+            rows[i].product_image = getDynamicMainImage(rows[i].product_id);
 
             // 3. 查找是否包含商家回复
             const [replies] = await db.execute(

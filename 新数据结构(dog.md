@@ -718,7 +718,7 @@ CREATE TABLE `favorites` (
 SET FOREIGN_KEY_CHECKS = 1;
 ```
 
-#### 初始化数据
+## 2 .初始化数据
 
 ```
 USE `ecommerce_system_t`;

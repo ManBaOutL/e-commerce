@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('@/middlewares/auth'); // 引入你的 Token 验证中间件
-
+const logger = require('@/middlewares/loggerMiddleware');
 
 // 👇 🌟 关键修复 1：引入 orderCtrl 控制器
 const orderController = require('@/controllers/user/orderCtrl');
@@ -12,7 +12,7 @@ router.post('/user/order/alipayNotify', orderController.alipayNotify);
 // ==========================================
 //  User (普通用户模块，必须验证 Token)
 // ==========================================
-router.use('/user', auth.checkLogin, (req, res, next) => {
+router.use('/user', auth.checkLogin, logger.writeUserLogMiddleware, (req, res, next) => {
     next();
 });
 
