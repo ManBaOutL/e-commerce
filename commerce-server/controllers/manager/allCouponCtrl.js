@@ -48,25 +48,25 @@ exports.getAllCoupon = [paginationMiddleware, async (req, res) => {
         else {
             listSql = `
         SELECT 
-        coupon.coupon_id AS id,
-        coupon.name,
-        coupon.type,
-        coupon.discount_value,
-        coupon.min_order_amount,
-        coupon.start_time,
-        coupon.end_time,
-        coupon.status,
-        coupon.create_time, 
-        user.user_id,
-        user.username
-        FROM coupon
-        JOIN user ON coupon.user_id = user.user_id
-        WHERE coupon.status != '已创建'
+        c.coupon_id AS id,
+        c.name,
+        c.type,
+        c.discount_value,
+        c.min_order_amount,
+        c.start_time,
+        c.end_time,
+        c.status,
+        c.create_time, 
+        u.user_id,
+        u.username
+        FROM coupon c
+        JOIN user u ON c.user_id = u.user_id
+        WHERE c.status != '已创建'
       `;
             countSql = `
-        SELECT COUNT(*) AS total FROM coupon
-        JOIN user ON coupon.user_id = user.user_id
-        WHERE coupon.status != '已创建'
+        SELECT COUNT(*) AS total FROM coupon c
+        JOIN user u ON c.user_id = u.user_id
+        WHERE c.status != '已创建'
       `;
         }
 
@@ -82,8 +82,13 @@ exports.getAllCoupon = [paginationMiddleware, async (req, res) => {
             queryParams.push(coupon_type);
         }
         if (coupon_status) {
-            whereConditions.push("status = ?");
-            queryParams.push(coupon_status);
+            if (coupon_status === '已过期') {
+                whereConditions.push("end_time < NOW()");
+            } else {
+                whereConditions.push("c.status = ?");
+                queryParams.push(coupon_status); //只有非过期状态才用参数传值
+            }
+
         }
 
         // 拼接条件
@@ -136,7 +141,7 @@ exports.getAllCoupon = [paginationMiddleware, async (req, res) => {
                     type: item.type,
                     value: item.discount_value,
                     min: item.min_order_amount,
-                    status: item.status,
+                    status: Date.now() < new Date(item.end_time) ? item.status : '已过期', // 已过期不分优惠券是否使用
                     create_time: dateUtils.formatIsoDate(item.create_time, false), // 领取时间对应create_time格式化为YYYY-MM-DD HH:mm:ss格式
                     valid_days: validDays,
                     user_id: item.user_id,

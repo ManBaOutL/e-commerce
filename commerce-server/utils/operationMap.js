@@ -32,7 +32,7 @@ export const operationMap = {
         "delete": { content: "删除优惠券", operation_type: "营销管理" },
         "toAll": { content: "发放优惠券给所有用户", operation_type: "营销管理" },
         "toUser": { content: "发放优惠券给指定用户", operation_type: "营销管理" },
-        "toVip": { content: "发放优惠券给VIP用户", type: "营销管理" }
+        "toVip": { content: "发放优惠券给VIP用户", operation_type: "营销管理" }
     },
     "/api/manager/allactivities": {
         "get": { content: "分页获取活动数据", operation_type: "数据查询" },
