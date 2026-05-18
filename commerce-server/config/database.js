@@ -1,11 +1,12 @@
 // 数据库连接配置
+require('dotenv').config();
 const mysql = require('mysql2/promise')
 const db = mysql.createPool({
-    host: '127.0.0.1',
-    user: 'root',
-    password: 'Hua20050924',
-    database: 'ecommerce_system_test',
-    charset: 'utf8',
+    host: process.env.DB_HOST || '127.0.0.1',
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || '',
+    database: process.env.DB_NAME || 'ecommerce_system_test',
+    charset: process.env.DB_CHARSET || 'utf8',
 })
 
 // 测试连接

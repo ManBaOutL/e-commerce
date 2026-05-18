@@ -187,6 +187,21 @@ exports.updateProductStatus = async (req, res) => {
         if (operation === 'add') {
             const { name, categoryName, price, stock, rate, desc, status } = req.body;
 
+            // ==========================================
+            // 🛡️ 表单验证
+            // ==========================================
+            if (!name || name.trim().length < 2 || name.trim().length > 100) {
+                return res.json({ status: 400, success: false, message: '商品名称必须在2-100字符之间' });
+            }
+
+            if (!price || isNaN(price) || Number(price) <= 0 || Number(price) > 9999999.99) {
+                return res.json({ status: 400, success: false, message: '商品价格必须在0-9999999.99之间' });
+            }
+
+            if (!stock || isNaN(stock) || Number(stock) < 0 || Number(stock) > 999999) {
+                return res.json({ status: 400, success: false, message: '库存数量必须在0-999999之间' });
+            }
+
             // 获取分类
             const [cates] = await db.query(`SELECT category_id FROM category WHERE name = ? LIMIT 1`, [categoryName]);
             if (!cates.length) return res.json({ status: 400, success: false, message: '分类不存在' });
@@ -285,10 +300,12 @@ exports.updateProductStatus = async (req, res) => {
 
             try {
                 // ==========================
-                // 图片处理（完全正确版）
+                // 🛡️ 图片处理（修复空图片清空问题）
                 // ==========================
-                let finalImgStr = '';
+                let finalImgStr = null; // 初始为 null，表示不更新图片
                 if (img && img.trim() !== '') {
+                    finalImgStr = ''; // 有新图片时，先清空旧图片设置
+
                     const imgArr = img.split(',').map(i => i.trim()).filter(Boolean);
 
                     const targetDir = path.join(__dirname, '../../public/upload/product/img/', product_id.toString());
@@ -324,13 +341,22 @@ exports.updateProductStatus = async (req, res) => {
                 }
                 console.log(finalImgStr);
 
-                // 更新商品（不更新分类）
-                await conn.query(
-                    `UPDATE product
-                    SET name=?, description=?, price=?, stock=?, shop_id=?, product_status=?, img=?, rate=?, update_time=NOW()
-                    WHERE product_id=?`,
-                    [name, desc, price, stock, shop_id, status || '待审核', finalImgStr, rate || 0, product_id]
-                );
+                // 🛡️ 更新商品（只有传了新图片才更新图片字段）
+                if (finalImgStr !== null) {
+                    await conn.query(
+                        `UPDATE product
+                        SET name=?, description=?, price=?, stock=?, shop_id=?, product_status=?, img=?, rate=?, update_time=NOW()
+                        WHERE product_id=?`,
+                        [name, desc, price, stock, shop_id, status || '待审核', finalImgStr, rate || 0, product_id]
+                    );
+                } else {
+                    await conn.query(
+                        `UPDATE product
+                        SET name=?, description=?, price=?, stock=?, shop_id=?, product_status=?, rate=?, update_time=NOW()
+                        WHERE product_id=?`,
+                        [name, desc, price, stock, shop_id, status || '待审核', rate || 0, product_id]
+                    );
+                }
 
                 // 更新规格
                 await conn.query(`DELETE FROM sku_product WHERE product_id = ?`, [product_id]);

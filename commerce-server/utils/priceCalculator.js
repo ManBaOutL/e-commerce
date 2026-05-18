@@ -31,17 +31,34 @@ exports.calculateFinalPrice = async (items) => {
     // ==========================================
     // 🚀 规则一：秒杀优先（独占逻辑）
     // ==========================================
-    finalItems.forEach(item => {
+    for (const item of finalItems) {
         // goods_type_id = 0 代表全品类通用，或者匹配专属分类
         const applicableFlash = flashSales.find(a => a.goods_type_id == 0 || a.goods_type_id == item.category_id);
-        
+
         if (applicableFlash) {
+            // 🛡️ 秒杀库存校验：查询活动库存限制和用户已购买数量
+            const [flashStock] = await db.query(
+                `SELECT stock_limit, claimed_count FROM flash_sale WHERE activity_id = ?`,
+                [applicableFlash.activity_id]
+            );
+
+            if (flashStock.length > 0) {
+                const stockLimit = Number(flashStock[0].stock_limit || 0);
+                const claimedCount = Number(flashStock[0].claimed_count || 0);
+                const availableStock = stockLimit - claimedCount;
+
+                if (item.quantity > availableStock) {
+                    throw new Error(`秒杀商品库存不足，当前可购买 ${availableStock} 件`);
+                }
+            }
+
             // 秒杀价直接覆盖原价
             item.actual_price = Number(applicableFlash.max_discount_value);
             item.is_flash_sale = true; // 🌟 核心：打上秒杀标记，后续的满减和折扣将跳过该商品
             item.applied_activities.push(applicableFlash.name);
+            item.flash_activity_id = applicableFlash.activity_id; // 记录秒杀活动ID，用于后续扣减库存
         }
-    });
+    }
 
     // ==========================================
     // 🚀 规则二：满减核算（按比例分摊算法）

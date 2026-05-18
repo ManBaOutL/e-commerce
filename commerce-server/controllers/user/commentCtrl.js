@@ -152,35 +152,40 @@ exports.appendComment = async (req, res) => {
     }
 };
 
-// 👇 🌟 新增：动态探测商品主图的“雷达”函数
+// 1. 在文件顶部定义一个全局内存缓存字典
+const mainImageCache = new Map();
+
+// 2. 升级版“雷达”：带缓存的动态探测函数
 const getDynamicMainImage = (productId) => {
-    // 拼接该商品专属图片文件夹的绝对物理路径
-    // 例如: D:\your_project\public\upload\product\img\10001
+    // 【第一步】：先查内存！如果缓存里有，直接 0毫秒 返回，不碰硬盘！
+    if (mainImageCache.has(productId)) {
+        return mainImageCache.get(productId);
+    }
+
+    // 【第二步】：内存没有，说明是系统启动后第一次访问这个商品，老老实实扫一次硬盘
     const targetAbsDir = path.join(process.cwd(), 'public', 'upload', 'product', 'img', String(productId));
 
     try {
-        // 如果这个专属文件夹存在
         if (fs.existsSync(targetAbsDir)) {
-            // 读取文件夹里的所有文件
             const files = fs.readdirSync(targetAbsDir);
-            
-            // 找出一个名字以 "1." 开头的文件（完美兼容 1.png, 1.jpg, 1.jpeg, 1.webp）
             const mainImgFile = files.find(file => file.startsWith('1.'));
 
             if (mainImgFile) {
-                // 找到了！拼接成前端能访问的相对网络路径
-                return `/upload/product/img/${productId}/${mainImgFile}`;
+                const finalUrl = `/upload/product/img/${productId}/${mainImgFile}`;
+                
+                // 【第三步】：把扫出来的结果存进缓存，造福后人
+                mainImageCache.set(productId, finalUrl);
+                return finalUrl;
             }
         }
     } catch (err) {
         console.error(`读取商品 ${productId} 图片目录失败:`, err);
     }
 
-    return ''; // 如果文件夹不存在或者没找到 1.xxx，兜底返回空字符串
+    return ''; // 兜底返回
 };
 
-
-// 🌟 修改：获取我的评价列表
+// 获取我的评价列表
 exports.getMyComments = async (req, res) => {
     // 解析当前登录用户的 ID
     const user_id = req.user.user_id || req.user.id;
