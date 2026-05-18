@@ -85,7 +85,11 @@ exports.getAllCoupon = [paginationMiddleware, async (req, res) => {
             if (coupon_status === '已过期') {
                 whereConditions.push("end_time < NOW()");
             } else {
-                whereConditions.push("c.status = ?");
+                if(isTemplate === 'true'){
+                    whereConditions.push("status = ?");
+                }else{
+                    whereConditions.push("c.status = ?");
+                }
                 queryParams.push(coupon_status); //只有非过期状态才用参数传值
             }
 
@@ -208,8 +212,19 @@ exports.updateCouponStatus = async (req, res) => {
             // 删除模板优惠券
             // ------------------------------
             if (operation === 'delete') {
-                const deleteSql = "DELETE FROM coupon WHERE coupon_id IN (?)";
-                await db.query(deleteSql, [coupon_id]);
+                // 安全验证：确保 coupon_id 是数组且不为空
+                if (!Array.isArray(coupon_id) || coupon_id.length === 0) {
+                    return res.status(400).json({
+                        status: 400,
+                        success: false,
+                        message: "请传入有效的优惠券ID数组",
+                        data: null
+                    });
+                }
+                // 使用参数化查询，防止 SQL 注入
+                const placeholders = coupon_id.map(() => '?').join(',');
+                const deleteSql = `DELETE FROM coupon WHERE coupon_id IN (${placeholders})`;
+                await db.query(deleteSql, coupon_id);
                 return res.json({
                     status: 200,
                     success: true,
@@ -230,10 +245,8 @@ exports.updateCouponStatus = async (req, res) => {
 
                 // 从 token 取出当前登录用户（创建人）
                 const createUserId = req.user.user_id
-                //console.log("【创建优惠券】创建人：", createUserId)
 
                 const {
-                    //coupon_id,
                     name,
                     coupon_type,
                     value,
@@ -243,6 +256,36 @@ exports.updateCouponStatus = async (req, res) => {
                     create_time,
                     coupon_status,
                 } = newCoupon;
+
+                // 必填字段验证
+                if (!name || name.trim() === '') {
+                    return res.status(400).json({
+                        status: 400,
+                        success: false,
+                        message: "优惠券名称不能为空",
+                        data: null
+                    });
+                }
+
+                // 时间顺序验证
+                if (new Date(start_time) >= new Date(end_time)) {
+                    return res.status(400).json({
+                        status: 400,
+                        success: false,
+                        message: "开始时间必须早于结束时间",
+                        data: null
+                    });
+                }
+
+                // 金额逻辑验证：折扣金额必须小于最低订单金额
+                if (Number(value) >= Number(min_order_amount)) {
+                    return res.status(400).json({
+                        status: 400,
+                        success: false,
+                        message: "折扣金额必须小于最低订单金额",
+                        data: null
+                    });
+                }
 
                 console.log("【创建优惠券】优惠券信息：", newCoupon)
 
@@ -322,7 +365,7 @@ exports.updateCouponStatus = async (req, res) => {
 
                 // 批量插入
                 const values = userList.map(u => [
-                    coupon.coupon_type,
+                    coupon.type,
                     coupon.discount_value,
                     coupon.min_order_amount,
                     newStartTime,
@@ -441,8 +484,19 @@ exports.updateCouponStatus = async (req, res) => {
         // ==============================================
         else {
             if (operation === 'delete') {
-                const selectSql = "SELECT coupon_id FROM coupon WHERE coupon_id IN (?)";
-                const [expiredList] = await db.query(selectSql, [coupon_id]);
+                // 安全验证：确保 coupon_id 是数组且不为空
+                if (!Array.isArray(coupon_id) || coupon_id.length === 0) {
+                    return res.status(400).json({
+                        status: 400,
+                        success: false,
+                        message: "请传入有效的优惠券ID数组",
+                        data: null
+                    });
+                }
+                // 使用参数化查询，防止 SQL 注入
+                const placeholders = coupon_id.map(() => '?').join(',');
+                const selectSql = `SELECT coupon_id FROM coupon WHERE coupon_id IN (${placeholders})`;
+                const [expiredList] = await db.query(selectSql, coupon_id);
                 if (!expiredList.length) {
                     return res.status(400).json({
                         status: 400,
@@ -451,10 +505,8 @@ exports.updateCouponStatus = async (req, res) => {
                         data: null
                     });
                 }
-                const deleteIds = expiredList.map(item => item.coupon_id);
-                console.log(deleteIds)
-                const deleteSql = "DELETE FROM coupon WHERE coupon_id IN (?)";
-                await db.query(deleteSql, [deleteIds]);
+                const deleteSql = `DELETE FROM coupon WHERE coupon_id IN (${placeholders})`;
+                await db.query(deleteSql, coupon_id);
                 return res.json({
                     status: 200,
                     success: true,

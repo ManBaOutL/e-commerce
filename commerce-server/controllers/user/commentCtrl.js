@@ -32,6 +32,22 @@ exports.addComment = async (req, res) => {
     const { order_id, product_id, rating, content, images, video } = req.body;
     const user_id = req.user.user_id || req.user.id; 
 
+    // 参数必填验证
+    if (!order_id || !product_id || !rating || !content) {
+        return res.status(400).json({ success: false, message: '参数不全', status: 400, data: null });
+    }
+    
+    // 评分范围验证（1-5星）
+    const ratingNum = Number(rating);
+    if (isNaN(ratingNum) || ratingNum < 1 || ratingNum > 5) {
+        return res.status(400).json({ success: false, message: '评分必须在1-5之间', status: 400, data: null });
+    }
+    
+    // 内容长度限制
+    if (content.length > 2000) {
+        return res.status(400).json({ success: false, message: '评价内容不能超过2000字', status: 400, data: null });
+    }
+
     try {
         // 1. 安全校验 (判断订单是否合法等，保留你原有的校验代码)
         const [orders] = await db.execute(
