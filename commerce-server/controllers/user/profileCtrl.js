@@ -36,29 +36,7 @@ exports.updateProfile = async (req, res) => {
             return res.status(400).json({ success: false, message: '该用户名已被占用' });
         }
 
-        // 🛡️ 3. 检查手机号是否被其他用户占用
-        if (phone) {
-            const [phoneUser] = await db.execute(
-                `SELECT user_id FROM user WHERE phone = ? AND user_id != ?`, 
-                [phone, user_id]
-            );
-            if (phoneUser.length > 0) {
-                return res.status(400).json({ success: false, message: '该手机号已被其他用户使用' });
-            }
-        }
-
-        // 🛡️ 4. 检查邮箱是否被其他用户占用
-        if (email) {
-            const [emailUser] = await db.execute(
-                `SELECT user_id FROM user WHERE email = ? AND user_id != ?`, 
-                [email, user_id]
-            );
-            if (emailUser.length > 0) {
-                return res.status(400).json({ success: false, message: '该邮箱已被其他用户使用' });
-            }
-        }
-
-        // 5. 处理头像图片“转正”到专属用户目录 ---
+        // 3. 处理头像图片“转正”到专属用户目录 ---
         let finalImgPath = img;
         
         // 如果前端传过来的路径包含 '/upload/temp/'，说明是刚刚通过 /api/user/media/upload 传上来的新头像
@@ -115,10 +93,10 @@ exports.recharge = async (req, res) => {
     const amount = Number(req.body.amount);
 
     // ==========================================
-    // 🛡️ 1. 单次交易额度限制拦截（使用环境变量配置）
+    // 🛡️ 1. 单次交易额度限制拦截
     // ==========================================
-    const MIN_RECHARGE = Number(process.env.MIN_RECHARGE_AMOUNT) || 0.01;
-    const MAX_RECHARGE = Number(process.env.MAX_RECHARGE_AMOUNT) || 50000;
+    const MIN_RECHARGE = 0.01;
+    const MAX_RECHARGE = 50000; // 单次最高 5 万
 
     if (!amount || amount < MIN_RECHARGE) {
         return res.status(400).json({ success: false, message: `充值金额异常，不能低于 ¥${MIN_RECHARGE}` });
@@ -133,13 +111,13 @@ exports.recharge = async (req, res) => {
 
     try {
         // ==========================================
-        // 🛡️ 2. 账户总容量限制拦截 (锁行查询，使用环境变量配置)
+        // 🛡️ 2. 账户总容量限制拦截 (锁行查询)
         // ==========================================
-        const MAX_BALANCE = Number(process.env.MAX_BALANCE) || 999999.99;
+        const MAX_BALANCE = 999999.99; // 假设平台规定普通用户账户最多存放 100 万
 
         // FOR UPDATE 会锁住该用户的这行数据，直到事务提交，彻底杜绝并发刷钱
         const [users] = await connection.execute(`SELECT balance FROM user WHERE user_id = ? FOR UPDATE`, [user_id]);
-
+        
         const currentBalance = Number(users[0].balance || 0);
 
         if (currentBalance + amount > MAX_BALANCE) {
@@ -150,7 +128,7 @@ exports.recharge = async (req, res) => {
         // 💰 3. 安全更新余额
         // ==========================================
         await connection.execute(`UPDATE user SET balance = balance + ? WHERE user_id = ?`, [amount, user_id]);
-
+        
         // 提交事务
         await connection.commit();
         res.json({ success: true, message: '充值成功', status: 200 });
