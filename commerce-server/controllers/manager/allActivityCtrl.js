@@ -76,7 +76,7 @@ exports.getAllActivity = [paginationMiddleware, async (req, res) => {
             categoryName: a.categoryName || '所有商品',
             discountRate: a.discountRate,
             minOrderAmount: a.minOrderAmount,
-            status: a.status,
+            status: Date.now() < new Date(a.startTime) ? '未开始' : (Date.now() > new Date(a.endTime) ? '已结束' : '进行中'),
             actType: a.actType,
             startTime: formatIsoDate(a.startTime),
             endTime: formatIsoDate(a.endTime),
