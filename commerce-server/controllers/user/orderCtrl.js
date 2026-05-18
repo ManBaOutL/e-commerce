@@ -78,15 +78,6 @@ exports.createOrder = async (req, res) => {
 
         } else if (direct_buy && direct_buy.sku_id) {
             // 直接购买模式
-            
-            // ==========================================
-            // 🛡️ 验证购买数量
-            // ==========================================
-            const quantity = Number(direct_buy.quantity);
-            if (!direct_buy.quantity || isNaN(quantity) || quantity <= 0 || quantity > 999) {
-                throw new Error('购买数量必须在1-999之间');
-            }
-
             const [productInfo] = await connection.execute(`
                 SELECT s.sku_id, s.act_price as price, s.product_id, p.category_id
                 FROM sku_product s
@@ -102,7 +93,7 @@ exports.createOrder = async (req, res) => {
                 product_id: productInfo[0].product_id,
                 category_id: productInfo[0].category_id,
                 price: productInfo[0].price,      // 真实的底层价格
-                quantity: quantity                 // 购买数量
+                quantity: direct_buy.quantity     // 购买数量
             }];
         } else {
             throw new Error('未选择任何商品');
@@ -151,44 +142,18 @@ exports.createOrder = async (req, res) => {
         );
 
         // ==========================================
-        // 🌟 步骤 5：库存预扣校验 (关键！防止超卖)
-        // ==========================================
-        for (let item of processedItems) {
-            // 🌟 使用 FOR UPDATE 锁行，防止并发超卖
-            const [stockCheck] = await connection.execute(
-                `SELECT stock FROM sku_product WHERE sku_id = ? FOR UPDATE`,
-                [item.sku_id]
-            );
-            
-            if (stockCheck.length === 0 || stockCheck[0].stock < item.quantity) {
-                throw new Error(`商品库存不足`);
-            }
-        }
-
-        // ==========================================
-        // 🌟 步骤 6：写入订单明细 & 扣减库存
+        // 🌟 步骤 5：写入订单明细 & 扣减库存
         // ==========================================
         for (let item of processedItems) {
             // 注意：这里存的 price 是 item.actual_price，它已经被活动引擎分摊过了！
             await connection.execute(
-                `INSERT INTO order_details (sku_id, order_id, quantity, price) VALUES (?, ?, ?, ?)`,
+                `INSERT INTO order_details (sku_id, order_id, quantity, price) VALUES (?, ?, ?, ?)`, 
                 [item.sku_id, order_id, item.quantity, item.actual_price]
             );
-
+            
             // 扣除底层双表库存
             await connection.execute(`UPDATE sku_product SET stock = stock - ? WHERE sku_id = ?`, [item.quantity, item.sku_id]);
             await connection.execute(`UPDATE product SET stock = stock - ? WHERE product_id = ?`, [item.quantity, item.product_id]);
-
-            // 🛡️ 扣减秒杀活动库存（如果参与了秒杀）
-            if (item.is_flash_sale && item.flash_activity_id) {
-                const [flashResult] = await connection.execute(
-                    `UPDATE flash_sale SET claimed_count = claimed_count + ? WHERE activity_id = ?`,
-                    [item.quantity, item.flash_activity_id]
-                );
-                if (flashResult.affectedRows === 0) {
-                    throw new Error('秒杀活动库存更新失败');
-                }
-            }
         }
 
         // ==========================================
@@ -484,56 +449,16 @@ exports.cancelOrder = async (req, res) => {
 
 // 6. 支付宝异步回调通知 (给支付宝服务器调用的)
 exports.alipayNotify = async (req, res) => {
-    console.log('==========================================');
-    console.log('[支付宝回调] 收到请求');
-    console.log('[支付宝回调] 请求方法:', req.method);
-    console.log('[支付宝回调] 请求头:', JSON.stringify(req.headers));
-    console.log('[支付宝回调] 请求体:', req.body);
-    console.log('[支付宝回调] 原始请求体:', req.rawBody ? '存在' : '不存在');
-
-    // 处理不同格式的请求体
-    let postData = req.body;
-    
-    // 如果是表单格式，可能需要解析
-    if (typeof postData === 'string') {
-        try {
-            postData = JSON.parse(postData);
-        } catch (e) {
-            // 尝试解析 URL 编码格式
-            const params = new URLSearchParams(postData);
-            const obj = {};
-            params.forEach((value, key) => {
-                obj[key] = value;
-            });
-            postData = obj;
-        }
-    }
-
-    console.log('[支付宝回调] 解析后的数据:', postData);
+    const postData = req.body;
+    console.log('收到支付宝异步回调:', postData);
 
     try {
-        // 验证签名
-        console.log('[支付宝回调] 开始验签...');
         const checkResult = alipaySdk.checkNotifySign(postData);
-        console.log('[支付宝回调] 验签结果:', checkResult);
-        
-        // 测试模式：如果设置了 MOCK_ALIPAY=true，则跳过验签
-        const isMockMode = process.env.MOCK_ALIPAY === 'true';
-        
-        if (!checkResult && !isMockMode) {
-            console.error('[支付宝回调] 验签失败！');
-            return res.status(400).send('fail'); // 验签失败
-        } else if (isMockMode) {
-            console.log('[支付宝回调] Mock模式跳过验签');
-        }
+        if (!checkResult) return res.status(400).send('fail'); // 验签失败
 
         const { out_trade_no, trade_status } = postData;
 
-        console.log('[支付宝回调] 订单号:', out_trade_no);
-        console.log('[支付宝回调] 交易状态:', trade_status);
-
-        // 处理多种交易状态
-        if (trade_status === 'TRADE_SUCCESS' || trade_status === 'TRADE_FINISHED') {
+        if (trade_status === 'TRADE_SUCCESS') {
             const connection = await db.getConnection();
             await connection.beginTransaction();
 

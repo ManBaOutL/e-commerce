@@ -1,4 +1,3 @@
-require('dotenv').config();
 const db = require('@/config/database')
 const jwt = require('jsonwebtoken')
 const bcrypt = require('bcryptjs')
@@ -20,22 +19,9 @@ const alipaySdk = new AlipaySdk({
     privateKey: process.env.ALIPAY_PRIVATE_KEY,
     alipayPublicKey: process.env.ALIPAY_PUBLIC_KEY,
     gateway: process.env.ALIPAY_GATEWAY,
-    // 增加超时时间和重试机制（解决网络超时问题）
-    timeout: 30000, // 30秒超时
-    retry: 2, // 重试2次
-    requestOptions: {
-        timeout: 30000,
-        retries: 2
-    }
 });
 
 const verifyCodeStore = {};
-
-// 验证工具函数
-const validatePhone = (phone) => /^1[3-9]\d{9}$/.test(phone);
-const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-const validateUsername = (username) => /^[a-zA-Z0-9_]{3,20}$/.test(username);
-const validatePassword = (password) => password.length >= 6 && password.length <= 32;
 
 // 登录控制器
 exports.login = async (req, res) => {
@@ -44,30 +30,13 @@ exports.login = async (req, res) => {
     let query = '';
     let queryParams = [];
 
-    // 验证密码不为空
-    if (!password || !password.trim()) {
-        return res.status(400).json({ message: '密码不能为空', status: 400, success: false });
-    }
-
     if (loginType === 'username') {
-        // 验证用户名格式
-        if (!validateUsername(username)) {
-            return res.status(400).json({ message: '用户名格式错误（3-20位字母数字下划线）', status: 400, success: false });
-        }
         query = 'SELECT * FROM user WHERE username = ?';
         queryParams = [username];
     } else if (loginType === 'email') {
-        // 验证邮箱格式
-        if (!validateEmail(email)) {
-            return res.status(400).json({ message: '邮箱格式错误', status: 400, success: false });
-        }
         query = 'SELECT * FROM user WHERE email = ?';
         queryParams = [email];
     } else if (loginType === 'phone') {
-        // 验证手机号格式
-        if (!validatePhone(phone)) {
-            return res.status(400).json({ message: '手机号格式错误', status: 400, success: false });
-        }
         query = 'SELECT * FROM user WHERE phone = ?';
         queryParams = [phone];
     } else {
@@ -99,8 +68,8 @@ exports.login = async (req, res) => {
                 username: user.username,
                 type: user.type    // 存类型，也可以
             },
-            process.env.JWT_SECRET || 'default_fallback_secret_should_not_be_used_in_production',
-            { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+            'abcdef123456', // 密钥，随便写，别泄露
+            { expiresIn: '7d' } // 7天过期
         )
 
         const safeUser = {
@@ -182,11 +151,6 @@ exports.forget = async (req, res) => {
         console.log("请填写完整信息");
         return res.json({ status: 400, message: '请填写完整信息' });
     }
-    // 检查验证码是否存在
-    if (!storedCode) {
-        console.log("验证码不存在或已失效");
-        return res.json({ status: 400, message: '验证码不存在或已失效' });
-    }
     // 检查验证码是否过期
     if (now - storedCode.expireTime > 0) {
         //销毁过期验证码
@@ -202,12 +166,6 @@ exports.forget = async (req, res) => {
         console.log("验证码错误");
         return res.status(400).json({ message: '验证码错误' });
     }
-    // 验证新密码强度
-    if (!validatePassword(newPwd)) {
-        console.log("密码强度不足");
-        return res.status(400).json({ message: '密码长度必须在6-32位之间' });
-    }
-
     if (newPwd !== repeatPwd) {
         console.log("两次密码不一致");
         return res.status(400).json({ message: '两次密码不一致' });
@@ -231,13 +189,13 @@ exports.forget = async (req, res) => {
         if (rows.affectedRows === 0) {
             return res.status(400).json({ message: '忘记密码失败' })
         }
-        // 重置成功后，先销毁验证码（防止重复使用）
+        res.json({ message: '忘记密码成功', data: rows, status: 200, success: true })
+        // 重置成功后，销毁验证码
         if (type === 'phone') {
             delete verifyCodeStore[phone];
         } else if (type === 'email') {
             delete verifyCodeStore[email];
         }
-        res.json({ message: '忘记密码成功', data: rows, status: 200, success: true })
     } catch (err) {
         // 只打印关键错误，不打印完整堆栈（避免刷屏）
         console.error(`忘记密码错误[${new Date().toLocaleTimeString()}]：`, err.message);
@@ -249,62 +207,15 @@ exports.register = async (req, res) => {
     // console.log("注册请求:", req.body)
     const { username, password, repassword, email, phone, type } = req.body
     try {
-        // ==========================================
-        // 🛡️ 表单验证
-        // ==========================================
-        // 验证用户名
-        if (!username || !validateUsername(username)) {
-            return res.status(400).json({ message: '用户名格式错误（3-20位字母数字下划线）' })
-        }
-
-        // 验证密码
-        if (!password || !validatePassword(password)) {
-            return res.status(400).json({ message: '密码长度必须在6-32位之间' })
-        }
-
-        // 验证密码一致性
-        if (password !== repassword) {
-            return res.status(400).json({ message: '两次密码不一致' })
-        }
-
-        // 验证邮箱（如果提供）
-        if (email && !validateEmail(email)) {
-            return res.status(400).json({ message: '邮箱格式错误' })
-        }
-
-        // 验证手机号（如果提供）
-        if (phone && !validatePhone(phone)) {
-            return res.status(400).json({ message: '手机号格式错误' })
-        }
-
-        // 验证用户类型
-        const validTypes = ['普通用户', '商家', '管理员'];
-        if (!type || !validTypes.includes(type)) {
-            return res.status(400).json({ message: '用户类型无效' })
-        }
-
         // 检查用户名是否存在
         const [rows1] = await db.execute('SELECT * FROM user WHERE username = ?', [username])
         if (rows1.length > 0) {
             return res.status(400).json({ message: '用户名已存在' })
         }
-
-        // 🛡️ 检查手机号是否重复（如果提供了手机号）
-        if (phone) {
-            const [phoneRows] = await db.execute('SELECT * FROM user WHERE phone = ?', [phone])
-            if (phoneRows.length > 0) {
-                return res.status(400).json({ message: '该手机号已被注册' })
-            }
+        // 检查密码是否一致
+        if (password !== repassword) {
+            return res.status(400).json({ message: '两次密码不一致' })
         }
-
-        // 🛡️ 检查邮箱是否重复（如果提供了邮箱）
-        if (email) {
-            const [emailRows] = await db.execute('SELECT * FROM user WHERE email = ?', [email])
-            if (emailRows.length > 0) {
-                return res.status(400).json({ message: '该邮箱已被注册' })
-            }
-        }
-
         // 生成盐并加密密码
         const salt = bcrypt.genSaltSync(10); // 10 是加密强度，默认即可
         const hashedPassword = bcrypt.hashSync(password, salt);
@@ -334,78 +245,29 @@ exports.alipayLogin = async (req, res) => {
 
     try {
         // 1. 向支付宝换取 access_token
-        console.log('支付宝登录 - 开始换取token, auth_code:', auth_code);
-        console.log('支付宝配置 - APP_ID:', process.env.ALIPAY_APP_ID);
-        
-        // ================ Mock模式（用于测试） ================
-        // 如果环境变量设置了 MOCK_ALIPAY=true，则使用模拟数据
-        const mockEnvValue = process.env.MOCK_ALIPAY;
-        console.log('支付宝登录 - MOCK_ALIPAY环境变量值:', JSON.stringify(mockEnvValue));
-        console.log('支付宝登录 - MOCK_ALIPAY类型:', typeof mockEnvValue);
-        const isMockMode = mockEnvValue === 'true' || mockEnvValue === true;
-        console.log('支付宝登录 - 是否使用Mock模式:', isMockMode);
-        let tokenResult;
-        
-        if (isMockMode) {
-            console.log('支付宝登录 - 使用Mock模式');
-            // 模拟支付宝返回数据
-            tokenResult = {
-                code: '10000',
-                access_token: 'mock_access_token_' + Date.now(),
-                user_id: '2088' + Math.random().toString().substring(2, 10),
-                expires_in: 3600
-            };
-        } else {
-            // 真实调用支付宝API
-            try {
-                tokenResult = await alipaySdk.exec('alipay.system.oauth.token', {
-                    grantType: 'authorization_code',
-                    code: auth_code,
-                });
-                console.log('支付宝登录 - tokenResult原始值:', JSON.stringify(tokenResult));
-            } catch (sdkErr) {
-                console.error("SDK 换取 token 异常:", sdkErr);
-                throw new Error('支付宝网关请求失败: ' + (sdkErr.message || '未知错误'));
-            }
-        }
+        const tokenResult = await alipaySdk.exec('alipay.system.oauth.token', {
+            grantType: 'authorization_code',
+            code: auth_code,
+        }).catch(err => {
+            console.error("SDK 换取 token 失败:", err);
+            throw new Error(err.message.includes('504') ? '支付宝网关超时，请稍后再试' : '获取授权令牌失败');
+        });
 
-        // 检查 tokenResult 是否是错误响应
-        if (tokenResult && tokenResult.code && tokenResult.code !== '10000') {
-            console.error('支付宝登录失败 - 错误码:', tokenResult.code, '错误信息:', tokenResult.msg);
-            throw new Error('支付宝授权失败: ' + (tokenResult.sub_msg || tokenResult.msg || '未知错误'));
-        }
-
-        // 支付宝SDK返回的响应格式可能是：{ access_token: '...', user_id: '...', code: '10000' }
-        const accessToken = tokenResult.access_token || tokenResult.accessToken;
-        const alipayUserId = tokenResult.user_id || tokenResult.userId;
-
-        if (!accessToken || !alipayUserId) {
-            console.error('支付宝登录失败 - tokenResult无效:', tokenResult);
-            throw new Error('支付宝授权失败，无法获取用户信息');
-        }
+        const accessToken = tokenResult.accessToken;
+        const alipayUserId = tokenResult.userId;
 
         // 2. 拿着 access_token 去查用户昵称和头像
         let nickName = `支付宝用户_${alipayUserId.substring(alipayUserId.length - 4)}`;
         let avatar = '';
 
-        // Mock模式下跳过真实API调用
-        if (!isMockMode) {
-            try {
-                const userInfoResult = await alipaySdk.exec('alipay.user.info.share', {
-                    auth_token: accessToken,
-                });
-                console.log('支付宝登录 - 用户信息:', JSON.stringify(userInfoResult));
-                
-                // 支付宝SDK返回格式可能是：{ code: '10000', nick_name: '...', avatar: '...', ... }
-                // 或者直接是：{ nickName: '...', avatar: '...' }
-                const userInfo = userInfoResult.alipay_user_info_share_response || userInfoResult;
-                if (userInfo.nickName) nickName = userInfo.nickName;
-                if (userInfo.avatar) avatar = userInfo.avatar;
-            } catch (infoErr) {
-                console.warn("沙箱获取用户信息失败，使用默认信息。原因:", infoErr.message);
-            }
-        } else {
-            console.log('支付宝登录 - Mock模式跳过用户信息获取');
+        try {
+            const userInfoResult = await alipaySdk.exec('alipay.user.info.share', {
+                auth_token: accessToken,
+            });
+            if (userInfoResult.nickName) nickName = userInfoResult.nickName;
+            if (userInfoResult.avatar) avatar = userInfoResult.avatar;
+        } catch (infoErr) {
+            console.warn("沙箱获取用户信息失败，使用默认信息。原因:", infoErr.message);
         }
 
         // 3. 在本地数据库查找该用户
@@ -465,8 +327,8 @@ exports.alipayLogin = async (req, res) => {
                 username: safeUser.username, 
                 type: safeUser.type 
             },
-            process.env.JWT_SECRET || 'default_fallback_secret_should_not_be_used_in_production',
-            { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+            'abcdef123456',
+            { expiresIn: '7d' }
         );
 
         // 5. 完美返回

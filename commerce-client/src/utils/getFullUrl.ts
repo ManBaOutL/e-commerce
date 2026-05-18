@@ -14,7 +14,7 @@ const getFullUrl = (imgPath?: string) => {
   
   // 去除 imgPath 开头的 '/'
   const cleanPath = imgPath.startsWith('/') ? imgPath.slice(1) : imgPath;
-  // console.log('拼接后的 URL:', safeBaseURL + cleanPath);
+  console.log('拼接后的 URL:', safeBaseURL + cleanPath);
   return safeBaseURL + cleanPath;
 }
 
