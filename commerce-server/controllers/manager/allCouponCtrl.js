@@ -85,7 +85,12 @@ exports.getAllCoupon = [paginationMiddleware, async (req, res) => {
             if (coupon_status === '已过期') {
                 whereConditions.push("end_time < NOW()");
             } else {
-                whereConditions.push("c.status = ?");
+                if (isTemplate === 'true') {
+                    whereConditions.push("status = ?");
+                }
+                else {
+                    whereConditions.push("c.status = ?");
+                }
                 queryParams.push(coupon_status); //只有非过期状态才用参数传值
             }
 
@@ -322,7 +327,7 @@ exports.updateCouponStatus = async (req, res) => {
 
                 // 批量插入
                 const values = userList.map(u => [
-                    coupon.coupon_type,
+                    coupon.type,
                     coupon.discount_value,
                     coupon.min_order_amount,
                     newStartTime,
