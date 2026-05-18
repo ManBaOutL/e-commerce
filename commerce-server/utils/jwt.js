@@ -1,7 +1,8 @@
+require('dotenv').config();
 const jwt = require('jsonwebtoken')
 
-// 密钥
-const secret = 'abcdef123456'
+// 密钥 - 从环境变量读取
+const secret = process.env.JWT_SECRET || 'default_fallback_secret_should_not_be_used_in_production'
 
 // 生成 Token
 exports.createToken = (user) => {

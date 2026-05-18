@@ -52,6 +52,10 @@ app.use((req, res, next) => {
     });
 });
 
+// 全局请求频率限制（每分钟最多100次请求）
+const { rateLimit } = require('@/middlewares/rateLimit');
+app.use(rateLimit(100, 60000));
+
 //挂载登录路由
 app.use('/api', loginRouter)
 // 挂载用户路由

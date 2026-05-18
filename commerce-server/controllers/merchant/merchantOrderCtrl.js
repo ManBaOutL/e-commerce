@@ -238,14 +238,15 @@ exports.shipOrder = async (req, res) => {
 
     try {
         // 确保状态是“待发货”，并且只能发自己商铺的订单
-        // 注：由于涉及到 JOIN 更新，不同的 MySQL 版本支持力度不同，这里稳妥起见先查再更新
+        // 关键修复：通过 shop 表关联查询商家ID，而不是直接使用 product.user_id
         const [orders] = await db.execute(
             `SELECT o.order_id 
              FROM \`order\` o
              JOIN order_details od ON o.order_id = od.order_id
              JOIN sku_product s ON od.sku_id = s.sku_id
              JOIN product p ON s.product_id = p.product_id
-             WHERE o.order_id = ? AND o.status = '待发货' AND p.user_id = ?
+             JOIN shop sh ON p.shop_id = sh.shop_id
+             WHERE o.order_id = ? AND o.status = '待发货' AND sh.user_id = ?
              LIMIT 1`,
             [order_id, merchant_id]
         );

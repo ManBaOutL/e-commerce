@@ -125,32 +125,71 @@ exports.getCartList = async (req, res) => {
         res.status(500).json({ success: false, message: '获取购物车失败' });
     }
 };
-// 3. 更新购物车商品数量
+// 3. 更新购物车商品数量（增加用户权限校验和库存校验）
 exports.updateQuantity = async (req, res) => {
+    const user_id = req.user.user_id || req.user.id;
     const { cart_id, quantity } = req.body;
+
+    // 🛡️ 基础参数校验
+    if (!cart_id || quantity === undefined || quantity === null) {
+        return res.status(400).json({ success: false, message: '参数不完整', status: 400, data: null });
+    }
+
+    // 🛡️ 数量必须是正整数
+    const numQuantity = Number(quantity);
+    if (isNaN(numQuantity) || numQuantity <= 0 || !Number.isInteger(numQuantity)) {
+        return res.status(400).json({ success: false, message: '购买数量必须是正整数', status: 400, data: null });
+    }
+
+    // 🛡️ 数量上限校验
+    if (numQuantity > 999) {
+        return res.status(400).json({ success: false, message: '单次购买数量不能超过999件', status: 400, data: null });
+    }
+
     try {
-        await db.execute(`UPDATE cart SET quantity = ? WHERE cart_id = ?`, [quantity, cart_id]);
-        
+        // 🛡️ 查询购物车商品信息和库存
+        const [items] = await db.query(`
+            SELECT c.cart_id, c.sku_id, c.quantity, s.stock as sku_stock
+            FROM cart c
+            JOIN sku_product s ON c.sku_id = s.sku_id
+            WHERE c.cart_id = ? AND c.user_id = ?
+        `, [cart_id, user_id]);
+
+        if (items.length === 0) {
+            return res.status(404).json({ success: false, message: '购物车商品不存在', status: 404, data: null });
+        }
+
+        const item = items[0];
+
+        // 🛡️ 校验不超过库存
+        if (numQuantity > item.sku_stock) {
+            return res.status(400).json({ success: false, message: `库存不足，当前可购买 ${item.sku_stock} 件`, status: 400, data: null });
+        }
+
+        // 🛡️ 关键修复：添加用户权限校验，确保只能修改自己的购物车
+        await db.execute(`UPDATE cart SET quantity = ? WHERE cart_id = ? AND user_id = ?`, [numQuantity, cart_id, user_id]);
+
         // 🌟 统一规范响应
-        res.json({ 
-            success: true, 
-            message: '商品数量更新成功', 
-            status: 200, 
-            data: null 
+        res.json({
+            success: true,
+            message: '商品数量更新成功',
+            status: 200,
+            data: null
         });
     } catch (err) {
         console.error('更新购物车数量异常:', err);
-        res.status(500).json({ 
-            success: false, 
-            message: '更新数量失败', 
-            status: 500, 
-            data: null 
+        res.status(500).json({
+            success: false,
+            message: '更新数量失败',
+            status: 500,
+            data: null
         });
     }
 };
 
-// 4. 删除购物车商品 (支持批量删除)
+// 4. 删除购物车商品 (支持批量删除，增加用户权限校验)
 exports.removeItems = async (req, res) => {
+    const user_id = req.user.user_id || req.user.id;
     const { cart_ids } = req.body; 
     try {
         if (!cart_ids || cart_ids.length === 0) {
@@ -162,8 +201,9 @@ exports.removeItems = async (req, res) => {
             });
         }
         
+        // 🌟 关键修复：添加用户权限校验，确保只能删除自己的购物车
         const placeholders = cart_ids.map(() => '?').join(',');
-        await db.execute(`DELETE FROM cart WHERE cart_id IN (${placeholders})`, cart_ids);
+        await db.execute(`DELETE FROM cart WHERE cart_id IN (${placeholders}) AND user_id = ?`, [...cart_ids, user_id]);
         
         // 🌟 统一规范响应
         res.json({ 
