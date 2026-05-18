@@ -1,9 +1,27 @@
 const db = require('@/config/database');
 
+// 验证工具函数
+const validatePhone = (phone) => /^1[3-9]\d{9}$/.test(phone);
+
 // 1. 添加地址 (加事务：防止取消默认地址后失败，所有地址也被取消)
 exports.addAddress = async (req, res) => {
     const user_id = req.user.user_id || req.user.id;
     const { recipient_name, phone, province, city, district, street, streetNumber, address, lng, lat, type, is_default } = req.body;
+
+    // 必填字段验证
+    if (!recipient_name || recipient_name.trim() === '') {
+        return res.status(400).json({ success: false, message: '收货人姓名不能为空', status: 400, data: null });
+    }
+    
+    // 手机号格式验证
+    if (!phone || !validatePhone(phone)) {
+        return res.status(400).json({ success: false, message: '手机号格式不正确', status: 400, data: null });
+    }
+    
+    // 地址验证
+    if (!address || address.trim() === '') {
+        return res.status(400).json({ success: false, message: '详细地址不能为空', status: 400, data: null });
+    }
 
     const connection = await db.getConnection();
     await connection.beginTransaction();

@@ -1,5 +1,5 @@
 <template>
-      <!-- 登录标题 -->
+          <!-- 登录标题 -->
        <Title>电商系统登录</Title>
       <!-- 登录表单 -->
       <van-form @submit="handleSubmit">

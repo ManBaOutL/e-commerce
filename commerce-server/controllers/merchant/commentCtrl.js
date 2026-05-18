@@ -206,9 +206,9 @@ exports.updateComment = async (req, res) => {
             }
             const [result] = await db.query(`
                 INSERT INTO \`comment\`
-                (product_id, user_id,order_id, comment,rating,comment_status, parent_id)
+                (product_id, user_id, order_id, comment, rating, comment_status, parent_id)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
-            `, [parentRow[0].product_id, user_id, replyComment.orderId, replyComment.comment, 5, replyComment.comment_status, replyComment.parent_id]);
+            `, [parentRow[0].product_id, user_id, replyComment.orderId, replyComment.comment, 5, '正常', comment_id]);
         }
         return res.json({
             status: 200,

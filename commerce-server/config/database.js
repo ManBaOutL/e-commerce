@@ -1,11 +1,12 @@
 // 数据库连接配置
 const mysql = require('mysql2/promise')
 const db = mysql.createPool({
-    host: '127.0.0.1',
-    user: 'root',
-    password: '1597532648Ljh',
-    database: 'ecommerce_system',
-    charset: 'utf8',
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+    charset: process.env.DB_CHARSET || 'utf8mb4',
+    timezone: '+08:00', // 设置时区为中国标准时间
 })
 
 // 测试连接

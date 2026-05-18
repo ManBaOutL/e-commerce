@@ -159,7 +159,7 @@ exports.postOrder = async (req, res) => {
         });
     }
     console.log("operation", operations)
-    const updateSql = `UPDATE order SET ${operations.field} = ? WHERE order_id in (${order_id.map(() => '?').join(',')})`;
+    const updateSql = `UPDATE \`order\` SET ${operations.field} = ? WHERE order_id in (${order_id.map(() => '?').join(',')})`;
     console.log(updateSql, [operations.value, ...order_id])
     await db.query(updateSql, [operations.value, ...order_id]);
     return res.json({

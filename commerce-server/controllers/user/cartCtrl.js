@@ -100,7 +100,7 @@ exports.getCartList = async (req, res) => {
             spec: item.sku_name,               // sku_name -> spec
             main_image: item.main_image,       // 动态抓取的真实图片路径
             count: item.quantity,              // quantity -> count
-            price: Number(item.price),         // 补充上被漏掉的基础单价
+            price: Number(item.actual_price),  // 使用活动计算后的价格（修复：之前用的是原始价格）
             stock: item.sku_stock,             // sku_stock -> stock
             product_status: item.product_status, // 决定商品是否置灰失效的关键状态
             

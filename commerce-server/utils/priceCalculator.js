@@ -6,12 +6,11 @@ const db = require('@/config/database');
  * @returns {Object} - 返回 { totalAmount(最终总价), originalTotal(原总价), finalItems(处理后的商品明细) }
  */
 exports.calculateFinalPrice = async (items) => {
-    // 1. 查询当前所有处于“进行中”且在时间范围内的有效活动
+    // 1. 根据活动时间自动判断活动是否在活跃期
     const [activities] = await db.query(`
         SELECT * FROM activity 
-        WHERE act_status = '进行中' 
-        AND start_time <= NOW() 
-        AND end_time >= NOW()
+        WHERE start_time <= NOW() 
+          AND end_time >= NOW()
     `);
 
     // 将活动按类型分类，方便后续按优先级执行

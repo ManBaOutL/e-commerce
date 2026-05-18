@@ -229,7 +229,7 @@ exports.auditRefund = async (req, res) => {
 };
 
 /**
- * 3. 商家订单发货
+ * 3. 商家订单发货（默认发货，因此该接口暂时无用，只做参考）
  * @route POST /api/merchant/orders/ship
  */
 exports.shipOrder = async (req, res) => {
@@ -245,7 +245,8 @@ exports.shipOrder = async (req, res) => {
              JOIN order_details od ON o.order_id = od.order_id
              JOIN sku_product s ON od.sku_id = s.sku_id
              JOIN product p ON s.product_id = p.product_id
-             WHERE o.order_id = ? AND o.status = '待发货' AND p.user_id = ?
+             JOIN shop sh ON p.shop_id = sh.shop_id
+             WHERE o.order_id = ? AND o.status = '待发货' AND sh.user_id = ?
              LIMIT 1`,
             [order_id, merchant_id]
         );
