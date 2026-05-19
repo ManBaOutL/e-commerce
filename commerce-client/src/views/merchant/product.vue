@@ -72,7 +72,7 @@
 
     <el-dialog v-model="showDetail" title="商品详情" width="550px">
       <div style="text-align: center;">
-        <img v-if="currentGoods.img" :src="currentGoods.img" style="width:130px;height:130px;object-fit:cover;border-radius:8px" />
+        <img v-if="currentGoods.img" :src="getImageUrl(currentGoods.img)" style="width:130px;height:130px;object-fit:cover;border-radius:8px" />
         <div v-else class="img-block" style="background:#eee"></div>
         <div style="margin-top: 10px;">商品名称：{{ currentGoods.name }}</div>
         <div>价格：{{ currentGoods.price }} 元</div>
@@ -125,7 +125,7 @@
           :on-error="handleUploadError"
         >
           <div v-if="form.img" class="upload-preview-wrapper">
-            <img :src="getFullUrl(form.img)" class="upload-preview" />
+            <img :src="getFullUrl(getImageUrl(form.img))" class="upload-preview" />
             <div class="hover-mask"><el-icon color="#fff" :size="24"><Camera /></el-icon></div>
           </div>
           <div v-else class="upload-placeholder">
@@ -334,6 +334,19 @@ const calcAutoStock = () => {
 // 图片选择（可用）
 const handleImgChange = ({ raw }) => {
   form.value.img = URL.createObjectURL(raw)
+}
+
+// 智能获取图片URL（判断是目录路径还是完整文件路径）
+const getImageUrl = (imgPath) => {
+  if (!imgPath) return ''
+  // 判断是否已经包含文件名（有扩展名）
+  const ext = imgPath.split('.').pop()
+  if (['png', 'jpg', 'jpeg', 'gif', 'webp'].includes(ext.toLowerCase())) {
+    // 已经是完整图片路径
+    return imgPath
+  }
+  // 是目录路径，需要拼接主图
+  return imgPath + '/1.png'
 }
 
 const openEdit = (row) => {

@@ -28,9 +28,11 @@ import { useProductStore } from '@/stores/modules/user/productStore'
 
 const productStore = useProductStore()
 
-// 进入页面 → 重置 page = 1 → 加载第一页
+// 进入页面 → 重置 page = 1 → 加载第一页（保留当前的筛选参数）
 onMounted(() => {
-  productStore.init()
+  if (Object.keys(productStore.currentParams).length === 0) {
+    productStore.init()
+  }
   window.addEventListener('scroll', handleScroll)
 })
 

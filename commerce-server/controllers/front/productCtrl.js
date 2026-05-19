@@ -40,6 +40,16 @@ exports.getList = async (req, res) => {
             sql += ` AND name LIKE ?`;
             queryParams.push(`%${keyword}%`);
         }
+        
+        // 🌟 添加价格区间筛选（使用原价进行筛选）
+        if (minPrice !== undefined && minPrice !== '') {
+            sql += ` AND price >= ?`;
+            queryParams.push(Number(minPrice));
+        }
+        if (maxPrice !== undefined && maxPrice !== '') {
+            sql += ` AND price <= ?`;
+            queryParams.push(Number(maxPrice));
+        }
 
         const countSql = sql.replace(selectFields, 'COUNT(*) as total');
         const [[{ total }]] = await db.execute(countSql, queryParams);

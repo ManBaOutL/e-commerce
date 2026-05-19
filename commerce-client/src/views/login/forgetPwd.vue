@@ -55,8 +55,8 @@
     </div>
     <!-- 密码找回方式切换 -->
       <div class="login-switch">
-          <div @click="form.type='email'">邮箱登录</div>
-          <div @click="form.type='phone'">手机号登录</div>
+          <div :class="{ active: form.type === 'email' }" @click="form.type='email'">邮箱找回</div>
+          <div :class="{ active: form.type === 'phone' }" @click="form.type='phone'">手机号找回</div>
       </div>
 </template>
 
@@ -229,13 +229,21 @@ onUnmounted(() => {
   display: flex;
   justify-content: center;
   margin-bottom: 5px;
+  gap: 20px;
 }
 .login-switch div {
-  padding: 5px 10px;
+  padding: 5px 15px;
   cursor: pointer;
-  font-size:10px;
+  font-size:14px;
+  color: #666;
+  border-radius: 20px;
+  transition: all 0.3s ease;
 }
 .login-switch div:hover {
-  color: #409eff;
+  color: #ff4400;
+}
+.login-switch div.active {
+  background: linear-gradient(135deg, #ff6600 0%, #ff4400 100%);
+  color: #fff;
 }
 </style>

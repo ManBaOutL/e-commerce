@@ -49,12 +49,15 @@
       <div class="item">
         <label>邮箱</label>
         <el-input v-model="userForm.email" :disabled="!isEdit" placeholder="请输入邮箱" class="input-el" @change="handleContactChange" />
+        <el-button v-if="isEdit && needCode && !userForm.phone" type="primary" :disabled="codeDisabled" @click="getCode" class="code-btn">
+          {{ codeText }}
+        </el-button>
       </div>
 
       <div class="item">
         <label>手机号</label>
         <el-input v-model="userForm.phone" :disabled="!isEdit" placeholder="请输入手机号" class="input-el phone-input" @change="handleContactChange" />
-        <el-button v-if="isEdit && needCode" type="primary" :disabled="codeDisabled" @click="getCode" class="code-btn">
+        <el-button v-if="isEdit && needCode && userForm.phone" type="primary" :disabled="codeDisabled" @click="getCode" class="code-btn">
           {{ codeText }}
         </el-button>
       </div>
@@ -126,7 +129,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import type { UploadProps } from 'element-plus'
 import { Camera } from '@element-plus/icons-vue'
 import { storeToRefs } from 'pinia'
@@ -224,15 +227,31 @@ const codeDisabled = ref<boolean>(false)
 const codeText = ref<string>('获取验证码')
 
 const getCode = async () => {
-  if (!userForm.phone) return ElMessage.warning('请输入手机号')
+  // 判断使用手机号还是邮箱发送
+  if (!userForm.phone && !userForm.email) return ElMessage.warning('请输入手机号或邮箱')
   try {
     codeDisabled.value = true
     const res: any = await loginStore.sendCodeAction({
       phone: userForm.phone,
+      email: userForm.email,
       scene: 'update_profile'
     })
     if (res.success) {
       ElMessage.success('验证码已发送')
+      // 使用MessageBox弹窗显示验证码，需要用户点击确定才能关闭
+      if (res.data) {
+        ElMessageBox.alert(
+          `您的验证码是：${res.data}`,
+          '验证码已发送',
+          {
+            confirmButtonText: '我知道了',
+            confirmButtonClass: 'confirm-btn',
+            showClose: true,
+            closeOnClickModal: false,
+            closeOnPressEscape: false
+          }
+        )
+      }
       let sec = 60
       codeText.value = `${sec}s 重新获取`
       timer = setInterval(() => {

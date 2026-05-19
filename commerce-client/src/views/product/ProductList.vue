@@ -41,17 +41,19 @@
       <div class="filter-block">
         <div class="block-title">价格区间 (元)</div>
         <div class="price-range">
-          <el-input 
-            v-model="tempParams.minPrice" 
-            type="number" 
-            placeholder="最低价" 
+          <el-input
+            v-model="tempParams.minPrice"
+            type="number"
+            :min="0"
+            placeholder="最低价"
             class="pill-input"
           />
           <span class="split-line"></span>
-          <el-input 
-            v-model="tempParams.maxPrice" 
-            type="number" 
-            placeholder="最高价" 
+          <el-input
+            v-model="tempParams.maxPrice"
+            type="number"
+            :min="0"
+            placeholder="最高价"
             class="pill-input"
           />
         </div>
@@ -144,8 +146,14 @@ const handleReset = () => {
 
 // 确定筛选：将临时参数同步到全局 queryParams
 const handleConfirm = () => {
-  // 判断最大最小价格是否合法
-  if (tempParams.minPrice !== undefined && tempParams.maxPrice !== undefined && tempParams.minPrice > tempParams.maxPrice) {
+  // 将 null 转为 undefined（清除分类时Cascader返回null）
+  if (tempParams.category_id === null) {
+    tempParams.category_id = undefined
+  }
+  // 判断最大最小价格是否合法（转换为数字比较，避免字符串比较错误）
+  const min = Number(tempParams.minPrice)
+  const max = Number(tempParams.maxPrice)
+  if (tempParams.minPrice !== undefined && tempParams.maxPrice !== undefined && min > max) {
     tempParams.minPrice = undefined
     tempParams.maxPrice = undefined
     ElMessage.error('最低价不能高于最高价, 请重新输入')
