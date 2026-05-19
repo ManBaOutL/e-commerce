@@ -39,9 +39,9 @@ export const useAdminStore = defineStore('admin', {
   }),
   actions: {
     // 初始化管理员数据
-    async initShowData() {
+    async initShowData(day: number = 7) {
       console.log('初始化管理员展示数据...')
-      const res = await getManagerShowData()
+      const res = await getManagerShowData(day)
       console.log("展示数据res:", res)
       this.showData = res.data
       console.log("展示数据:", this.showData)

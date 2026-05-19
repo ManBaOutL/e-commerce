@@ -3,7 +3,7 @@
     <div class="admin-header">
       <div class="logo">商城管理系统</div>
       <div class="user-info">
-        <span>超级管理员</span>
+        <span>{{ loginStore.userInfo.username }}</span>
         <el-button type="primary" link @click="logout">退出登录</el-button>
       </div>
     </div>

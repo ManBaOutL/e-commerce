@@ -26,7 +26,23 @@ export interface managerShowData {
     xData: string[]
     orderData: number[]
     saleData: number[]
-    pieData: { categoryName: string, value: number }[]
+    pieData: { categoryName: string, value: number }[],
+    regionAnalysis: {
+        region: string,
+        totalAmount: number,
+        orderCount: number
+    }[],
+    ageGroupAnalysis: {
+        ageGroup: string,
+        totalAmount: number,
+        userCount: number,
+        orderCount: number
+    }[],
+    hotProducts: {
+        name: string,
+        totalQuantity: number,
+        totalAmount: number
+    }[]
 }
 
 // 管理员用户列表查询条件类型定义

@@ -35,7 +35,23 @@ export interface merchantShowData {
     xData: string[]
     orderData: number[]
     saleData: number[]
-    pieData: { categoryName: string, value: number }[]
+    pieData: { categoryName: string, value: number }[],
+
+    regionAnalysis: {
+        region: string,
+        totalAmount: number,
+        orderCount: number
+    }[],
+    ageGroupAnalysis: {
+        ageGroup: string,
+        totalAmount: number,
+        orderCount: number
+    }[],
+    hotProducts: {
+        name: string,
+        totalQuantity: number,
+        totalAmount: number
+    }[]
 }
 
 export interface productList {

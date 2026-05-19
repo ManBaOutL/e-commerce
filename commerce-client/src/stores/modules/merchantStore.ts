@@ -38,8 +38,8 @@ export const useMerchantStore = defineStore('merchant', {
       return res;
     },
 
-    async getShowData() {
-      const res = await getMerchantShowData();
+    async getShowData(days: number = 7) {
+      const res = await getMerchantShowData(days);
       this.showData = res.data;
       return res;
     },
