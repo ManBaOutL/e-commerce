@@ -124,6 +124,16 @@ exports.updateActivityStatus = async (req, res) => {
         if (!actName || !actType || categoryID === undefined || categoryID === null || !rule || discountRate === undefined || minOrderAmount === undefined || !startTime || !endTime || !status) {
             return res.status(400).json({ status: 400, success: false, message: '新活动信息不能为空', data: {} });
         }
+        
+        // 时间顺序验证
+        if (new Date(startTime) >= new Date(endTime)) {
+            return res.status(400).json({ status: 400, success: false, message: '开始时间必须早于结束时间', data: {} });
+        }
+        
+        // 折扣值范围验证
+        if (Number(discountRate) <= 0 || Number(discountRate) > 100) {
+            return res.status(400).json({ status: 400, success: false, message: '折扣率必须在0-100之间', data: {} });
+        }
 
         // 🌟 2. 处理图片“转正”逻辑 (从 temp 移动到 activities 目录)
         let finalImgPath = img;
@@ -154,7 +164,7 @@ exports.updateActivityStatus = async (req, res) => {
 
     } else if (operation === 'delete') {
         // 删除活动
-        if (!activity_id || activity_id.length === 0) {
+        if (!activity_id || !Array.isArray(activity_id) || activity_id.length === 0) {
             return res.status(400).json({
                 status: 400,
                 success: false,
@@ -162,10 +172,11 @@ exports.updateActivityStatus = async (req, res) => {
                 data: {}
             });
         }
-        // 删除数据库
+        // 使用参数化查询，防止 SQL 注入
+        const placeholders = activity_id.map(() => '?').join(',');
         await db.query(`
-            DELETE FROM activity WHERE act_id IN (${activity_id.map(id => `'${id}'`).join(',')})
-        `, []);
+            DELETE FROM activity WHERE act_id IN (${placeholders})
+        `, activity_id);
         return res.json({
             status: 200,
             success: true,

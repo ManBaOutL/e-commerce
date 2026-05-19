@@ -1,5 +1,5 @@
 const db = require('@/config/database')
-const jwt = require('jsonwebtoken')
+const { createToken } = require('@/utils/jwt')
 const bcrypt = require('bcryptjs')
 const path = require('path');
 const AlipaySdkRaw = require('alipay-sdk');
@@ -61,16 +61,8 @@ exports.login = async (req, res) => {
             return res.status(403).json({ message: '账号已被封禁，请联系管理员', status: 403, success: false })
         }
         delete user.password;
-        // 生成 JWT
-        const token = jwt.sign(
-            {
-                user_id: user.user_id,       // 只存 id！
-                username: user.username,
-                type: user.type    // 存类型，也可以
-            },
-            'abcdef123456', // 密钥，随便写，别泄露
-            { expiresIn: '7d' } // 7天过期
-        )
+        // 生成 JWT（使用统一的工具函数）
+        const token = createToken(user)
 
         const safeUser = {
             user_id: user.user_id,
@@ -203,33 +195,76 @@ exports.forget = async (req, res) => {
 }
 
 // 注册账户
+// 验证工具函数
+const validatePhone = (phone) => /^1[3-9]\d{9}$/.test(phone);
+const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
 exports.register = async (req, res) => {
-    // console.log("注册请求:", req.body)
     const { username, password, repassword, email, phone, type } = req.body
     try {
+        // ====== 表单验证优先于数据库操作 ======
+        // 验证用户名长度
+        if (!username || username.length < 3 || username.length > 20) {
+            return res.status(400).json({ message: '用户名长度必须在3-20字符之间' })
+        }
+        
+        // 验证密码强度
+        if (!password || password.length < 6) {
+            return res.status(400).json({ message: '密码长度不能少于6位' })
+        }
+        
+        // 检查密码是否一致
+        if (password !== repassword) {
+            return res.status(400).json({ message: '两次密码不一致' })
+        }
+        
+        // 验证手机号格式（如果填写了）
+        if (phone && !validatePhone(phone)) {
+            return res.status(400).json({ message: '手机号格式不正确' })
+        }
+        
+        // 验证邮箱格式（如果填写了）
+        if (email && !validateEmail(email)) {
+            return res.status(400).json({ message: '邮箱格式不正确' })
+        }
+
         // 检查用户名是否存在
         const [rows1] = await db.execute('SELECT * FROM user WHERE username = ?', [username])
         if (rows1.length > 0) {
             return res.status(400).json({ message: '用户名已存在' })
         }
-        // 检查密码是否一致
-        if (password !== repassword) {
-            return res.status(400).json({ message: '两次密码不一致' })
+
+        // 检查手机号是否已被注册
+        if (phone) {
+            const [phoneRows] = await db.execute('SELECT * FROM user WHERE phone = ?', [phone])
+            if (phoneRows.length > 0) {
+                return res.status(400).json({ message: '该手机号已被注册' })
+            }
         }
+
+        // 检查邮箱是否已被注册
+        if (email) {
+            const [emailRows] = await db.execute('SELECT * FROM user WHERE email = ?', [email])
+            if (emailRows.length > 0) {
+                return res.status(400).json({ message: '该邮箱已被注册' })
+            }
+        }
+
         // 生成盐并加密密码
         const salt = bcrypt.genSaltSync(10); // 10 是加密强度，默认即可
         const hashedPassword = bcrypt.hashSync(password, salt);
-        // 注册用户
+        // 注册用户（将 undefined 转为 null，避免 SQL 报错）
+        const safeParams = [username, hashedPassword, email || null, phone || null, type || '普通用户'];
         const [rows] = await db.execute('INSERT INTO user (username, password,email,phone,type) VALUES (?, ?, ?, ?, ?)',
-            [username, hashedPassword, email, phone, type])
+            safeParams)
         console.log("注册接口执行：", rows)
         if (rows.affectedRows === 0) {
             return res.status(400).json({ message: '注册失败' })
         }
         res.json({ message: '注册成功', data: rows, status: 200, success: true })
     } catch (err) {
-        // 只打印关键错误，不打印完整堆栈（避免刷屏）
         console.error(`注册错误[${new Date().toLocaleTimeString()}]：`, err.message);
+        return res.status(500).json({ success: false, message: '注册失败，请稍后重试' });
     }
 }
 
@@ -319,17 +354,8 @@ exports.alipayLogin = async (req, res) => {
             };
         }
 
-        // 4. 生成系统 JWT Token 
-        // 🌟 注意：这里必须使用 safeUser，因为 user 变量已经不存在了！
-        const token = jwt.sign(
-            { 
-                user_id: safeUser.user_id, 
-                username: safeUser.username, 
-                type: safeUser.type 
-            },
-            'abcdef123456',
-            { expiresIn: '7d' }
-        );
+        // 4. 生成系统 JWT Token（使用统一的工具函数）
+        const token = createToken(safeUser);
 
         // 5. 完美返回
         res.json({ 

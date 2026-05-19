@@ -230,8 +230,8 @@ exports.getDetail = async (req, res) => {
         const [activities] = await db.query(`
             SELECT act_id, name, act_type, rule, max_discount_value, min_amount, start_time, end_time 
             FROM activity 
-            WHERE act_status = '进行中' 
-            AND start_time <= NOW() 
+            WHERE 
+            start_time <= NOW() 
             AND end_time >= NOW()
             AND (goods_type_id = 0 OR goods_type_id = ?) 
         `, [productInfo.category_id]); // 0是全场通用，或者是专属分类

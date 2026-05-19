@@ -187,6 +187,23 @@ exports.updateProductStatus = async (req, res) => {
         if (operation === 'add') {
             const { name, categoryName, price, stock, rate, desc, status } = req.body;
 
+            // 必填字段验证
+            if (!name || name.trim() === '') {
+                return res.json({ status: 400, success: false, message: '商品名称不能为空' });
+            }
+
+            // 价格验证
+            const priceNum = Number(price);
+            if (isNaN(priceNum) || priceNum <= 0) {
+                return res.json({ status: 400, success: false, message: '商品价格必须大于0' });
+            }
+
+            // 库存验证
+            const stockNum = Number(stock);
+            if (isNaN(stockNum) || stockNum < 0) {
+                return res.json({ status: 400, success: false, message: '库存数量必须是非负整数' });
+            }
+
             // 获取分类
             const [cates] = await db.query(`SELECT category_id FROM category WHERE name = ? LIMIT 1`, [categoryName]);
             if (!cates.length) return res.json({ status: 400, success: false, message: '分类不存在' });
