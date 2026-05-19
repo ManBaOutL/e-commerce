@@ -81,7 +81,7 @@ exports.getList = async (req, res) => {
             const itemsToCalc = rows.map(row => ({
                 product_id: row.id,
                 category_id: row.category_id,
-                price: row.price,
+                price: Number(row.price) || 0, // 确保price是数字
                 quantity: 1
             }));
 
@@ -90,10 +90,12 @@ exports.getList = async (req, res) => {
 
             // 将引擎算出的活动价和标签，组装回给前端的列表里
             calcResult.finalItems.forEach((calcItem, index) => {
-                rows[index].original_price = calcItem.original_price;
-                rows[index].actual_price = calcItem.actual_price;
-                rows[index].is_flash_sale = calcItem.is_flash_sale;
-                rows[index].activities = calcItem.applied_activities; // 存入活动名称数组
+                if (rows[index]) {
+                    rows[index].original_price = calcItem.original_price;
+                    rows[index].actual_price = calcItem.actual_price;
+                    rows[index].is_flash_sale = calcItem.is_flash_sale;
+                    rows[index].activities = calcItem.applied_activities || []; // 存入活动名称数组
+                }
             });
         }
 
@@ -235,16 +237,37 @@ exports.getDetail = async (req, res) => {
         productInfo.sku_list = sku_list;
 
         // ==========================================
-        // 🌟 重点修改：查出该商品可用的所有进行中活动
+        // 🌟 重点修改：查出该商品可用的所有进行中活动（含子分类）
         // ==========================================
+        // 先获取分类树，用于判断子分类关系
+        const [categories] = await db.execute('SELECT category_id, parent_id FROM category');
+        
+        // 获取商品分类及其所有父分类ID
+        const getCategoryPathIds = (categoryId) => {
+            const pathIds = [Number(categoryId)];
+            let currentId = Number(categoryId);
+            while (currentId !== 0) {
+                const category = categories.find(c => c.category_id === currentId);
+                if (!category) break;
+                if (category.parent_id !== 0) {
+                    pathIds.push(category.parent_id);
+                }
+                currentId = category.parent_id;
+            }
+            return pathIds;
+        };
+        
+        const categoryPathIds = getCategoryPathIds(productInfo.category_id);
+        const placeholders = categoryPathIds.map(() => '?').join(',');
+        
         const [activities] = await db.query(`
             SELECT act_id, name, act_type, rule, max_discount_value, min_amount, start_time, end_time 
             FROM activity 
             WHERE 
             start_time <= NOW() 
             AND end_time >= NOW()
-            AND (goods_type_id = 0 OR goods_type_id = ?) 
-        `, [productInfo.category_id]); // 0是全场通用，或者是专属分类
+            AND (goods_type_id = 0 OR goods_type_id IN (${placeholders})) 
+        `, categoryPathIds); // 0是全场通用，或者匹配商品分类及其父分类
 
         // 分类存放，方便前端在详情页画不同样式的UI
         productInfo.active_campaigns = {

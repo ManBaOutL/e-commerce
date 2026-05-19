@@ -39,8 +39,16 @@ exports.userData = async (req, res) => {
 
         // 1. 构建查询总数的SQL（保留原有筛选条件）
         let countSql = `SELECT COUNT(*) AS total FROM user WHERE 1=1`;
-        // 2. 构建查询列表的SQL（保留原有筛选条件）
-        let listSql = `SELECT * FROM user WHERE 1=1`;
+        // 2. 构建查询列表的SQL（保留原有筛选条件），加入消费总额
+        let listSql = `
+            SELECT 
+                u.*,
+                COALESCE(SUM(o.total_amount), 0) as total_consumption
+            FROM user u
+            LEFT JOIN \`order\` o ON u.user_id = o.user_id AND o.status IN ('待发货', '已发货', '已完成', '申请退款')
+            WHERE 1=1
+            GROUP BY u.user_id
+        `;
         let params = []; // 防注入占位符参数
 
         // 用户名筛选（同时作用于总数和列表查询）
@@ -94,6 +102,7 @@ exports.userData = async (req, res) => {
             type: item.type == "普通用户" ? item.is_vip == 0 ? "普通用户" : "VIP用户" : item.type,
             phone: item.phone || '',
             email: item.email || '',
+            total_consumption: Number(item.total_consumption) || 0, // 新增：消费总额
             is_vip: item.is_vip ? true : false,
             age: item.age || null,
             gender: item.gender || '',

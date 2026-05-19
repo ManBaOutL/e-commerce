@@ -48,6 +48,13 @@
       </el-table-column>
       <el-table-column prop="phone" label="手机号" width="150" />
       <el-table-column prop="email" label="邮箱" width="200" :show-overflow-tooltip="true" />
+      <el-table-column prop="total_consumption" label="消费总额(元)" width="140">
+        <template #default="scope">
+          <span style="color: #ff5000; font-weight: bold;">
+            ¥{{ scope.row.total_consumption?.toFixed(2) || '0.00' }}
+          </span>
+        </template>
+      </el-table-column>
       <el-table-column prop="status" label="账号状态" width="100">
         <template #default="scope">
           <el-tag :type="scope.row.status === '正常' ? 'success' : 'danger'">

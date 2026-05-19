@@ -132,7 +132,7 @@ exports.showData = async (req, res) => {
         SELECT a.province, IFNULL(SUM(o.total_amount), 0) as totalAmount, COUNT(DISTINCT o.order_id) as orderCount
         FROM address a
         LEFT JOIN \`order\` o ON a.user_id = o.user_id AND o.status IN ("已完成", "退款驳回") ${dateCondition}
-        WHERE a.is_default = 1 AND a.province IS NOT NULL AND a.province != ''
+        WHERE a.is_deleted = 0 AND a.province IS NOT NULL AND a.province != ''
         GROUP BY a.province
         ORDER BY totalAmount DESC
         LIMIT 10
