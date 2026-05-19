@@ -27,7 +27,7 @@
             name="phone"
             label="手机号"
             placeholder="请输入手机号"
-            :rules="[{ required: true, message: '请填写手机号' },{ pattern: /^1[3-9]\\d{9}$/, message: '手机号格式错误' }]"
+            :rules="[{ required: true, message: '请填写手机号' },{ pattern: /^1[3-9]\d{9}$/, message: '手机号格式错误' }]"
           />
           <van-field
             v-model="form.password"
