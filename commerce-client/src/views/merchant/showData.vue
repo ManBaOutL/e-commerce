@@ -13,7 +13,7 @@
           :type="selectedDays === 7 ? 'primary' : 'default'" 
           @click="loadData(7)"
         >
-          一周
+          近7天
         </el-button>
         <el-button 
           :type="selectedDays === 31 ? 'primary' : 'default'" 
