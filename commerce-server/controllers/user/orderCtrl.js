@@ -195,16 +195,16 @@ exports.getOrderList = async (req, res) => {
                    od.quantity, od.price,
                    p.name as product_name, p.product_id,
                    c.name as coupon_name, c.discount_value,
-                   cm.review_id, cm.is_appended -- 🌟 新增：查出该订单下对应商品的评价信息
+                   cm.review_id, cm.is_appended     
             FROM \`order\` o
             LEFT JOIN order_details od ON o.order_id = od.order_id
             LEFT JOIN sku_product s ON od.sku_id = s.sku_id
             LEFT JOIN product p ON s.product_id = p.product_id
             LEFT JOIN coupon c ON o.coupon_id = c.coupon_id
-            LEFT JOIN \`comment\` cm ON cm.order_id = o.order_id AND cm.product_id = p.product_id -- 🌟 新增：左连接评论表
+            LEFT JOIN \`comment\` cm ON cm.order_id = o.order_id AND cm.product_id = p.product_id AND cm.user_id = ?
             WHERE o.user_id = ?
             ORDER BY o.create_time DESC
-        `, [user_id]);
+        `, [user_id, user_id]);
         const ordersMap = {};
         rows.forEach(row => {
             if (!ordersMap[row.order_id]) {
@@ -285,8 +285,8 @@ exports.payOrder = async (req, res) => {
             // 1. 扣除买家余额
             await connection.execute(`UPDATE user SET balance = balance - ? WHERE user_id = ?`, [payAmount, user_id]);
             
-            // 2. 订单状态改为已完成
-            await connection.execute(`UPDATE \`order\` SET status = '已完成' WHERE order_id = ?`, [order_id]);
+            // 2. 订单状态改为待发货（等待商家发货）
+            await connection.execute(`UPDATE \`order\` SET status = '待发货' WHERE order_id = ?`, [order_id]);
 
             // 3. 增加商品销量
             const [details] = await connection.execute(
@@ -467,8 +467,8 @@ exports.alipayNotify = async (req, res) => {
                 const [orders] = await connection.execute(`SELECT status FROM \`order\` WHERE order_id = ? FOR UPDATE`, [out_trade_no]);
                 
                 if (orders.length > 0 && orders[0].status === '待支付') {
-                    // 改状态为完成
-                    await connection.execute(`UPDATE \`order\` SET status = '已完成' WHERE order_id = ?`, [out_trade_no]);
+                    // 改状态为待发货（等待商家发货）
+                    await connection.execute(`UPDATE \`order\` SET status = '待发货' WHERE order_id = ?`, [out_trade_no]);
 
                     // 增加销量并清算商家资金
                     const [details] = await connection.execute(
@@ -535,8 +535,8 @@ exports.checkAlipayStatus = async (req, res) => {
                 if (orders.length > 0 && orders[0].status === '待支付') {
                     console.log(`[主动查询兜底生效] 订单号: ${order_id}，正在执行状态流转和清算...`);
 
-                    // 1) 改状态为已完成
-                    await connection.execute(`UPDATE \`order\` SET status = '已完成' WHERE order_id = ?`, [order_id]);
+                    // 1) 改状态为待发货（等待商家发货）
+                    await connection.execute(`UPDATE \`order\` SET status = '待发货' WHERE order_id = ?`, [order_id]);
 
                     // 2) 增加商品销量
                     const [details] = await connection.execute(

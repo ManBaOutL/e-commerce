@@ -97,13 +97,25 @@ exports.getAllProduct = [paginationMiddleware, async (req, res) => {
         // 3. 执行查询，获取商品列表
         const [productList] = await db.query(listSql, params);
 
-        // 循环给每个商品查 specs
+        // 循环给每个商品查 specs 和图片
         for (let item of productList) {
             const [specs] = await db.query(
                 `SELECT name, act_price AS price, stock FROM sku_product WHERE product_id = ?`,
                 [item.product_id]
             );
             item.specs = specs;
+            
+            // 自动查找商品主图（只存目录路径，保持和新增商品一致）
+            const folderPath = `/upload/product/img/${item.product_id}/`;
+            const absDirPath = path.join(process.cwd(), 'public', folderPath);
+            if (fs.existsSync(absDirPath)) {
+                const files = fs.readdirSync(absDirPath);
+                const mainFile = files.find(f => f.startsWith('1.'));
+                if (mainFile) {
+                    // 只存目录路径，前端渲染时自动拼接 /1.png
+                    item.img = `/upload/product/img/${item.product_id}`;
+                }
+            }
         }
 
 
@@ -302,57 +314,88 @@ exports.updateProductStatus = async (req, res) => {
 
             try {
                 // ==========================
-                // 图片处理（完全正确版）
+                // 图片处理（修复版）
                 // ==========================
                 let finalImgStr = '';
+                
+                // 先获取现有商品的图片路径
+                const [existingProduct] = await conn.query(`SELECT img FROM product WHERE product_id = ?`, [product_id]);
+                const existingImg = existingProduct[0]?.img || '';
+
                 if (img && img.trim() !== '') {
                     const imgArr = img.split(',').map(i => i.trim()).filter(Boolean);
 
                     const targetDir = path.join(__dirname, '../../public/upload/product/img/', product_id.toString());
                     await fs.mkdir(targetDir, { recursive: true });
 
-                    let existingFiles = [];
+                    let nextNumber = 1;
+                    
+                    // 检查已有的最大编号
                     if (await fs.exists(targetDir)) {
-                        existingFiles = await fs.readdir(targetDir);
+                        const existingFiles = await fs.readdir(targetDir);
+                        const numbers = existingFiles
+                            .map(file => parseInt(path.parse(file).name))
+                            .filter(num => !isNaN(num));
+                        if (numbers.length > 0) {
+                            nextNumber = Math.max(...numbers) + 1;
+                        }
                     }
-
-                    const numbers = existingFiles
-                        .map(file => parseInt(path.parse(file).name))
-                        .filter(num => !isNaN(num));
-
-                    let nextNumber = numbers.length > 0 ? Math.max(...numbers) + 1 : 1;
 
                     const newPaths = [];
                     for (let i = 0; i < imgArr.length; i++) {
                         const tempPath = imgArr[i];
+                        const sourcePath = path.join(__dirname, '../../public', tempPath);
+                        
+                        // 关键修复：只处理真实文件，跳过目录
+                        const stat = await fs.stat(sourcePath).catch(() => null);
+                        if (!stat || !stat.isFile()) {
+                            console.warn(`跳过非文件路径: ${tempPath}`);
+                            continue;
+                        }
+
                         const ext = path.extname(tempPath);
                         const newFileName = `${nextNumber + i}${ext}`;
-
-                        const sourcePath = path.join(__dirname, '../../public', tempPath);
                         const targetPath = path.join(targetDir, newFileName);
 
-                        if (await fs.exists(sourcePath)) {
-                            await fs.rename(sourcePath, targetPath);
-                            newPaths.push(`/upload/product/img/${product_id}/${newFileName}`);
-                        }
+                        await fs.rename(sourcePath, targetPath);
+                        newPaths.push(`/upload/product/img/${product_id}/${newFileName}`);
                     }
-                    console.log(newPaths);
-                    finalImgStr = `/upload/product/img/${product_id}`;
+                    
+                    if (newPaths.length > 0) {
+                        finalImgStr = `/upload/product/img/${product_id}`;
+                    }
                 }
-                console.log(finalImgStr);
 
-                // 更新商品（不更新分类）
+                // 更新商品（不更新分类，保留原有图片如果没有上传新图片）
                 await conn.query(
                     `UPDATE product
                     SET name=?, description=?, price=?, stock=?, shop_id=?, product_status=?, img=?, rate=?, update_time=NOW()
                     WHERE product_id=?`,
-                    [name, desc, price, stock, shop_id, status || '待审核', finalImgStr, rate || 0, product_id]
+                    [name, desc, price, stock, shop_id, status || '待审核', finalImgStr || existingImg, rate || 0, product_id]
                 );
 
-                // 更新规格
-                await conn.query(`DELETE FROM sku_product WHERE product_id = ?`, [product_id]);
-                const skuData = specs.map(s => [s.name, s.price, s.stock, product_id]);
-                await conn.query(`INSERT INTO sku_product (name, act_price, stock, product_id) VALUES ?`, [skuData]);
+                // 更新规格（不删除旧SKU，避免外键约束错误）
+                const [existingSkus] = await conn.query(`SELECT sku_id, name FROM sku_product WHERE product_id = ?`, [product_id]);
+                
+                // 更新现有SKU或新增SKU
+                for (let i = 0; i < specs.length; i++) {
+                    const spec = specs[i];
+                    const existingSku = existingSkus.find(s => s.name === spec.name);
+                    
+                    if (existingSku) {
+                        // 更新现有SKU
+                        await conn.query(
+                            `UPDATE sku_product SET act_price = ?, stock = ? WHERE sku_id = ?`,
+                            [spec.price, spec.stock, existingSku.sku_id]
+                        );
+                    } else {
+                        // 新增SKU
+                        await conn.query(
+                            `INSERT INTO sku_product (name, act_price, stock, product_id) VALUES (?, ?, ?, ?)`,
+                            [spec.name, spec.price, spec.stock, product_id]
+                        );
+                    }
+                }
 
                 await conn.commit();
                 conn.release();

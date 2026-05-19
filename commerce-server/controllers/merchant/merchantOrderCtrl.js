@@ -229,7 +229,7 @@ exports.auditRefund = async (req, res) => {
 };
 
 /**
- * 3. 商家订单发货（默认发货，因此该接口暂时无用，只做参考）
+ * 3. 商家订单发货（模拟发货操作，直接将订单状态改为已完成）
  * @route POST /api/merchant/orders/ship
  */
 exports.shipOrder = async (req, res) => {
@@ -238,7 +238,6 @@ exports.shipOrder = async (req, res) => {
 
     try {
         // 确保状态是“待发货”，并且只能发自己商铺的订单
-        // 注：由于涉及到 JOIN 更新，不同的 MySQL 版本支持力度不同，这里稳妥起见先查再更新
         const [orders] = await db.execute(
             `SELECT o.order_id 
              FROM \`order\` o
@@ -255,13 +254,13 @@ exports.shipOrder = async (req, res) => {
             return res.status(400).json({ success: false, message: '订单无法发货或无权操作' });
         }
 
-        // 执行发货
+        // 执行发货，状态改为已完成
         await db.execute(
-            `UPDATE \`order\` SET status = '已发货' WHERE order_id = ?`,
+            `UPDATE \`order\` SET status = '已完成' WHERE order_id = ?`,
             [order_id]
         );
 
-        res.json({ success: true, message: '发货成功', status: 200 });
+        res.json({ success: true, message: '发货成功，订单已完成', status: 200 });
     } catch (err) {
         console.error('发货异常:', err);
         res.status(500).json({ success: false, message: '发货操作失败' });
