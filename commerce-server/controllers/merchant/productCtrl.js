@@ -453,25 +453,36 @@ exports.updateProductStatus = async (req, res) => {
                     [stock, product_id]
                 );
 
-                // 2. 删除旧规格
-                await conn.query(
-                    `DELETE FROM sku_product WHERE product_id=?`,
-                    [product_id]
-                );
-
-                // 3. 如果有规格才插入（防止空规格）
+                // 2. 处理规格：更新现有规格，插入新规格（不删除被订单引用的SKU）
                 if (specs && specs.length > 0) {
-                    const skuData = specs.map(s => [
-                        s.name,
-                        s.price,
-                        s.stock,
-                        product_id
-                    ]);
-
-                    await conn.query(
-                        `INSERT INTO sku_product (name, act_price, stock, product_id) VALUES ?`,
-                        [skuData]
+                    // 获取现有规格列表
+                    const [existingSkus] = await conn.query(
+                        `SELECT sku_id, name FROM sku_product WHERE product_id=?`,
+                        [product_id]
                     );
+
+                    const existingSkuMap = new Map();
+                    existingSkus.forEach(sku => {
+                        existingSkuMap.set(sku.name, sku.sku_id);
+                    });
+
+                    // 更新或插入规格
+                    for (const spec of specs) {
+                        if (existingSkuMap.has(spec.name)) {
+                            // 更新现有规格
+                            const skuId = existingSkuMap.get(spec.name);
+                            await conn.query(
+                                `UPDATE sku_product SET act_price=?, stock=? WHERE sku_id=?`,
+                                [spec.price, spec.stock, skuId]
+                            );
+                        } else {
+                            // 插入新规格
+                            await conn.query(
+                                `INSERT INTO sku_product (name, act_price, stock, product_id) VALUES (?, ?, ?, ?)`,
+                                [spec.name, spec.price, spec.stock, product_id]
+                            );
+                        }
+                    }
                 }
 
                 await conn.commit();

@@ -32,6 +32,18 @@
         />
       </el-select>
 
+      <!-- 状态筛选 -->
+      <el-select
+        v-model="condition.result"
+        placeholder="操作结果"
+        style="width: 120px"
+        clearable
+      >
+        <el-option label="全部" value="" />
+        <el-option label="成功" value="成功" />
+        <el-option label="失败" value="失败" />
+      </el-select>
+
       <!-- 新增筛选按钮 -->
       <el-button type="primary" @click="showSearchCondition">筛选</el-button>
       <el-button @click="resetSearch">清空</el-button>
@@ -101,7 +113,8 @@ const operationTypes = ref([])
 const condition = ref({
   username: '',
   content: '',
-  type: ''
+  type: '',
+  result: ''
 })
 
 // 新增：展示筛选条件（不执行筛选逻辑）
@@ -127,7 +140,8 @@ const resetSearch = () => {
   condition.value = {
     username: '',
     content: '',
-    type: ''
+    type: '',
+    result: ''
   }
   ElMessage.success('已清空筛选条件')
   getPageData(1,10)

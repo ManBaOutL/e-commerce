@@ -133,23 +133,26 @@
     <!-- 新建弹窗 -->
     <el-dialog title="新建优惠券" v-model="addCouponVisible" width="480px">
       <el-form :model="addCouponForm" label-width="120px">
-        <el-form-item label="券名称">
-          <el-input v-model="addCouponForm.name" placeholder="请输入" />
+        <el-form-item label="券名称" required>
+          <el-input v-model="addCouponForm.name" placeholder="请输入优惠券名称" />
         </el-form-item>
-        <el-form-item label="类型">
+        <el-form-item label="类型" required>
           <el-select v-model="addCouponForm.type">
             <el-option label="满减" value="满减" />
             <el-option label="折扣" value="折扣" />
             <el-option label="秒杀" value="秒杀" />
           </el-select>
         </el-form-item>
-        <el-form-item label="面额/折扣">
-          <el-input v-model.number="addCouponForm.value" type="number" min="1" placeholder="≥1" />
+        <el-form-item label="面额/折扣" required>
+          <el-input v-model.number="addCouponForm.value" type="number" :min="addCouponForm.type === '折扣' ? 1 : 1" :max="addCouponForm.type === '折扣' ? 99 : undefined" :placeholder="addCouponForm.type === '折扣' ? '1-99' : '≥1'" />
+          <div style="font-size:12px;color:#909399;margin-top:5px">
+            {{ addCouponForm.type === '折扣' ? '折扣率范围：1-99（如90表示9折）' : '满减/秒杀金额范围：≥1' }}
+          </div>
         </el-form-item>
         <el-form-item label="最低消费">
-          <el-input v-model.number="addCouponForm.min" type="number" min="1" placeholder="≥1" />
+          <el-input v-model.number="addCouponForm.min" type="number" min="0" placeholder="≥0，0表示无门槛" />
         </el-form-item>
-        <el-form-item label="有效期(天)">
+        <el-form-item label="有效期(天)" required>
           <el-input v-model.number="addCouponForm.valid_days" type="number" min="1" placeholder="≥1" />
         </el-form-item>
       </el-form>
@@ -284,10 +287,46 @@ const openAddCoupon = () => {
 const opreationData = ref({})
 const createCoupon = async () => {
   const f = addCouponForm.value
-  if (!f.name || !f.type || f.value < 1 || f.min < 1 || f.valid_days < 1) {
-    ElMessage.warning('请填写合法信息，所有数字≥1')
+  
+  // 基础验证
+  if (!f.name || f.name.trim() === '') {
+    ElMessage.warning('请填写优惠券名称')
     return
   }
+  if (!f.type) {
+    ElMessage.warning('请选择优惠券类型')
+    return
+  }
+  if (f.valid_days < 1) {
+    ElMessage.warning('有效期必须≥1天')
+    return
+  }
+
+  // 根据类型验证 value
+  if (f.type === '折扣') {
+    if (f.value < 1 || f.value > 99) {
+      ElMessage.warning('折扣券的折扣率必须在1-99之间')
+      return
+    }
+  } else {
+    if (f.value < 1) {
+      ElMessage.warning('面额必须≥1')
+      return
+    }
+  }
+
+  // 验证最低消费
+  if (f.min < 0) {
+    ElMessage.warning('最低消费必须≥0')
+    return
+  }
+
+  // 满减/秒杀券：面额必须≥最低消费金额（折扣券不需要此判断）
+  if (f.type !== '折扣' && f.value < f.min) {
+    ElMessage.warning('面额必须≥最低消费金额')
+    return
+  }
+
   const newCoupon={
     coupon_id: Date.now(),
     name: f.name,

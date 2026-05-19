@@ -131,6 +131,7 @@ export interface merchant {
     update_time: string
     img?: string
     status: string
+    balance?: number  // 新增余额字段
 }
 
 export interface shop {

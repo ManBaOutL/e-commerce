@@ -22,7 +22,7 @@
           <div class="left-part">
             <div class="price">
               <span class="symbol" v-if="item.type !== '折扣'">¥</span>
-              <span class="num">{{ item.discount_value }}</span>
+              <span class="num">{{ item.type === '折扣' ? (item.discount_value as number / 10).toFixed(1) : item.discount_value }}</span>
               <span class="symbol" v-if="item.type === '折扣'" style="font-size: 16px; margin-left: 2px;">折</span>
             </div>
             <div class="condition">

@@ -1,12 +1,56 @@
 const db = require('@/config/database');
 
 /**
+ * 获取商品分类及其所有父分类ID
+ * @param {number} categoryId - 当前商品的分类ID
+ * @param {Array} allCategories - 所有分类数据
+ * @returns {Array} - 包含当前分类ID和所有父分类ID的数组
+ */
+const getCategoryPathIds = (categoryId, allCategories) => {
+    const pathIds = [categoryId];
+    let currentId = categoryId;
+    
+    // 向上查找所有父分类
+    while (currentId !== 0) {
+        const category = allCategories.find(c => c.category_id === currentId);
+        if (!category) break;
+        if (category.parent_id !== 0) {
+            pathIds.push(category.parent_id);
+        }
+        currentId = category.parent_id;
+    }
+    
+    return pathIds;
+};
+
+/**
+ * 检查商品是否符合活动分类条件
+ * @param {number} goodsTypeId - 活动设置的分类ID (0表示全品类)
+ * @param {number} itemCategoryId - 商品的分类ID
+ * @param {Array} allCategories - 所有分类数据
+ * @returns {boolean} - 是否符合条件
+ */
+const isCategoryMatch = (goodsTypeId, itemCategoryId, allCategories) => {
+    // goods_type_id = 0 代表全品类通用
+    if (goodsTypeId === 0) return true;
+    
+    // 获取商品分类的完整路径（包括所有父分类）
+    const categoryPathIds = getCategoryPathIds(itemCategoryId, allCategories);
+    
+    // 检查活动分类ID是否在商品分类路径中
+    return categoryPathIds.includes(goodsTypeId);
+};
+
+/**
  * 🌟 核心活动计费引擎
  * @param {Array} items - 购物车或结算页传来的商品列表 [{ sku_id, category_id, price, quantity }]
  * @returns {Object} - 返回 { totalAmount(最终总价), originalTotal(原总价), finalItems(处理后的商品明细) }
  */
 exports.calculateFinalPrice = async (items) => {
-    // 1. 根据活动时间自动判断活动是否在活跃期
+    // 1. 先获取所有分类数据，用于后续分类层级匹配
+    const [categories] = await db.query(`SELECT category_id, parent_id FROM category`);
+    
+    // 2. 根据活动时间自动判断活动是否在活跃期
     const [activities] = await db.query(`
         SELECT * FROM activity 
         WHERE start_time <= NOW() 
@@ -31,8 +75,8 @@ exports.calculateFinalPrice = async (items) => {
     // 🚀 规则一：秒杀优先（独占逻辑）
     // ==========================================
     finalItems.forEach(item => {
-        // goods_type_id = 0 代表全品类通用，或者匹配专属分类
-        const applicableFlash = flashSales.find(a => a.goods_type_id == 0 || a.goods_type_id == item.category_id);
+        // goods_type_id = 0 代表全品类通用，或者匹配专属分类（含子分类）
+        const applicableFlash = flashSales.find(a => isCategoryMatch(a.goods_type_id, item.category_id, categories));
         
         if (applicableFlash) {
             // 秒杀价直接覆盖原价
@@ -43,41 +87,36 @@ exports.calculateFinalPrice = async (items) => {
     });
 
     // ==========================================
-    // 🚀 规则二：满减核算（按比例分摊算法）
+    // 🚀 规则二：满减核算（每个商品单独享受满减）
     // ==========================================
     fullReductions.forEach(fr => {
-        // 过滤出【未参与秒杀】且【符合该满减分类】的商品
+        // 过滤出【未参与秒杀】且【符合该满减分类（含子分类）】的商品
         let applicableItems = finalItems.filter(item => 
-            !item.is_flash_sale && (fr.goods_type_id == 0 || fr.goods_type_id == item.category_id)
+            !item.is_flash_sale && isCategoryMatch(fr.goods_type_id, item.category_id, categories)
         );
 
-        // 计算这些适用商品的总价值（按当前 actual_price 算）
-        let totalApplicableAmount = applicableItems.reduce((sum, item) => sum + (item.actual_price * item.quantity), 0);
-
-        // 判断是否达到满减门槛 (min_amount)
-        if (totalApplicableAmount >= Number(fr.min_amount)) {
-            const reductionAmount = Number(fr.max_discount_value); // 要减掉的总金额 (如 50元)
-
-            // 🌟 企业级核心算法：按金额比例分摊减免额
-            applicableItems.forEach(item => {
-                const itemTotal = item.actual_price * item.quantity; // 当前商品总额
-                const ratio = itemTotal / totalApplicableAmount; // 占比 (如 30%)
-                const itemReduction = reductionAmount * ratio; // 该商品分摊到的减免额 (如减 15元)
+        // 🌟 每个商品单独判断是否达到满减门槛
+        applicableItems.forEach(item => {
+            const itemTotal = item.actual_price * item.quantity; // 当前商品总额
+            
+            // 判断该商品是否达到满减门槛
+            if (itemTotal >= Number(fr.min_amount)) {
+                const reductionAmount = Number(fr.max_discount_value); // 要减掉的金额 (如 50元)
                 
-                // 更新单价：(当前总额 - 分摊减免额) / 数量
-                item.actual_price = Number(((itemTotal - itemReduction) / item.quantity).toFixed(2));
+                // 更新单价：(当前总额 - 减免额) / 数量
+                item.actual_price = Number(((itemTotal - reductionAmount) / item.quantity).toFixed(2));
                 item.applied_activities.push(fr.name);
-            });
-        }
+            }
+        });
     });
 
     // ==========================================
     // 🚀 规则三：折扣核算（满减后继续打折）
     // ==========================================
     discounts.forEach(disc => {
-        // 同样过滤出【未参与秒杀】且【符合分类】的商品
+        // 同样过滤出【未参与秒杀】且【符合分类（含子分类）】的商品
         let applicableItems = finalItems.filter(item => 
-            !item.is_flash_sale && (disc.goods_type_id == 0 || disc.goods_type_id == item.category_id)
+            !item.is_flash_sale && isCategoryMatch(disc.goods_type_id, item.category_id, categories)
         );
 
         applicableItems.forEach(item => {

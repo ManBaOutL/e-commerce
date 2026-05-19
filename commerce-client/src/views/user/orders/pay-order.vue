@@ -154,7 +154,7 @@
           >
             <div class="c-left">
               <span class="unit" v-if="coupon.type !== '折扣'">¥</span>
-              <span class="val">{{ coupon.discount_value }}</span>
+              <span class="val">{{ coupon.type === '折扣' ? (coupon.discount_value / 10).toFixed(1) : coupon.discount_value }}</span>
               <span class="unit" v-if="coupon.type === '折扣'" style="font-size: 14px;">折</span>
             </div>
             <div class="c-right">
@@ -335,7 +335,9 @@ const finalAmount = computed(() => {
   if (activeCoupon.value) {
     if (activeCoupon.value.type === '折扣') {
       discount = subTotal.value * (1 - Number(activeCoupon.value.discount_value) / 100);
-    } else {
+    } else if (activeCoupon.value.type === '秒杀') {
+      discount = subTotal.value - Number(activeCoupon.value.discount_value);
+    } else{
       discount = Number(activeCoupon.value.discount_value);
     }
   }

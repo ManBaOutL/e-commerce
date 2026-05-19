@@ -38,8 +38,21 @@
             </div>
 
             <div class="auth-btns" v-else>
-              <el-button type="primary" size="small" @click="router.push('/user/house')">个人中心</el-button>
+              <el-button type="primary" size="small" class="tb-manage-btn" @click="router.push('/user/house')">个人中心</el-button>
               <el-button size="small" plain @click="handleLogout">退出</el-button>
+            </div>
+
+            <!-- 商家/管理员管理按钮 -->
+            <div v-if="showManageButton" class="manage-btn-wrap">
+              <el-button 
+                type="primary" 
+                size="small" 
+                class="tb-manage-btn"
+                @click="goToManagePage"
+              >
+                <el-icon><Setting /></el-icon>
+                {{ manageButtonText }}
+              </el-button>
             </div>
           </div>
         </el-col>
@@ -55,6 +68,7 @@
 
 <script setup>
 import { computed, ref, onMounted } from 'vue' // 🌟 新增 ref 和 onMounted
+import { Setting } from '@element-plus/icons-vue'
 import { useRouter } from 'vue-router'
 import HomeMenu from './HomeMenu.vue'
 import { storeToRefs } from 'pinia'
@@ -73,6 +87,28 @@ const loginStore = useLoginStore()
 const { userInfo, token } = storeToRefs(loginStore)
 
 const isLoggedIn = computed(() => !!token.value)
+
+// 判断是否显示管理按钮
+const showManageButton = computed(() => {
+  const userType = userInfo.value?.type
+  return userType === '商家' || userType === '管理员'
+})
+
+// 管理按钮文字
+const manageButtonText = computed(() => {
+  const userType = userInfo.value?.type
+  return userType === '管理员' ? '后台管理' : '商家管理'
+})
+
+// 跳转到对应管理页面
+const goToManagePage = () => {
+  const userType = userInfo.value?.type
+  if (userType === '管理员') {
+    router.push('/manager')
+  } else if (userType === '商家') {
+    router.push('/merchant')
+  }
+}
 
 // 🌟 1. 将轮播图变为响应式数据
 const bannerList = ref([])
@@ -244,6 +280,28 @@ const handleLogout = () => {
 .auth-btns {
   display: flex;
   gap: 10px;
+}
+
+
+
+.manage-btn-wrap {
+  margin-top: 10px;
+}
+
+.tb-manage-btn {
+  background: linear-gradient(90deg, #ff9000 0%, #ff5000 100%);
+  color: #fff;
+  border: none;
+  border-radius: 16px;
+  padding: 6px 16px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tb-manage-btn:hover {
+  opacity: 0.9;
 }
 
 .goods-section {

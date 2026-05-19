@@ -117,10 +117,13 @@ exports.createOrder = async (req, res) => {
             
             if (coupons.length > 0 && finalPayAmount >= coupons[0].min_order_amount) {
                 const coupon = coupons[0];
-                if (coupon.type === '满减' || coupon.type === '无门槛') {
+                if (coupon.type === '满减' || coupon.type === '无门槛' ) {
                     finalPayAmount -= Number(coupon.discount_value);
                 } else if (coupon.type === '折扣') {
                     finalPayAmount *= (Number(coupon.discount_value) / 100);
+                }
+                 else if (coupon.type === '无门槛' || coupon.type === '秒杀') {
+                    finalPayAmount = Number(coupon.discount_value);
                 }
                 // 核销优惠券
                 await connection.execute(`UPDATE coupon SET status = '已使用' WHERE coupon_id = ?`, [coupon_id]);

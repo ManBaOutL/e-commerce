@@ -4,7 +4,7 @@ const formatIsoDate = require('@/utils/date').formatIsoDate;
 
 
 exports.getAllOperationLog = [paginationMiddleware, async (req, res) => {
-    const { username, content, type } = req.query;
+    const { username, content, type, result } = req.query;
     const { currentPage, pageSize, offset, formatResult } = req.pagination;
 
     console.log("筛选条件:", req.query)
@@ -25,6 +25,10 @@ exports.getAllOperationLog = [paginationMiddleware, async (req, res) => {
         if (type) {
             conditions.push('log_type = ?');
             params.push(type);
+        }
+        if (result) {
+            conditions.push('result = ?');
+            params.push(result);
         }
 
         const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
