@@ -9,6 +9,7 @@ const paginationMiddleware = require('@/middlewares/paginationMiddleware');
 //     stock: number,// 库存数量，可能要用到触发器更新库存
 //     desc: string,
 //     img?: string,
+//     allImg?: string[],
 //     specs: [
 //         {
 //             name: string,
@@ -104,18 +105,39 @@ exports.getAllProduct = [paginationMiddleware, async (req, res) => {
                 [item.product_id]
             );
             item.specs = specs;
-            
-            // 自动查找商品主图（只存目录路径，保持和新增商品一致）
+
+            // 自动查找商品主图和所有图片
             const folderPath = `/upload/product/img/${item.product_id}/`;
             const absDirPath = path.join(process.cwd(), 'public', folderPath);
+
+            // 存储所有图片的完整路径
+            const allImg = [];
+
             if (fs.existsSync(absDirPath)) {
                 const files = fs.readdirSync(absDirPath);
-                const mainFile = files.find(f => f.startsWith('1.'));
-                if (mainFile) {
-                    // 只存目录路径，前端渲染时自动拼接 /1.png
+
+                // 过滤出图片文件并按数字排序
+                const imageFiles = files
+                    .filter(f => /\.(png|jpg|jpeg|gif|webp)$/i.test(f))
+                    .sort((a, b) => {
+                        const numA = parseInt(path.parse(a).name);
+                        const numB = parseInt(path.parse(b).name);
+                        return (isNaN(numA) ? Infinity : numA) - (isNaN(numB) ? Infinity : numB);
+                    });
+
+                // 构建所有图片的完整路径
+                for (const file of imageFiles) {
+                    allImg.push(`/upload/product/img/${item.product_id}/${file}`);
+                }
+
+                // 设置主图（第一张图片的目录路径）
+                if (imageFiles.length > 0) {
                     item.img = `/upload/product/img/${item.product_id}`;
                 }
             }
+
+            // 设置所有图片数组
+            item.allImg = allImg;
         }
 
 
@@ -317,7 +339,7 @@ exports.updateProductStatus = async (req, res) => {
                 // 图片处理（修复版）
                 // ==========================
                 let finalImgStr = '';
-                
+
                 // 先获取现有商品的图片路径
                 const [existingProduct] = await conn.query(`SELECT img FROM product WHERE product_id = ?`, [product_id]);
                 const existingImg = existingProduct[0]?.img || '';
@@ -329,7 +351,7 @@ exports.updateProductStatus = async (req, res) => {
                     await fs.mkdir(targetDir, { recursive: true });
 
                     let nextNumber = 1;
-                    
+
                     // 检查已有的最大编号
                     if (await fs.exists(targetDir)) {
                         const existingFiles = await fs.readdir(targetDir);
@@ -345,7 +367,7 @@ exports.updateProductStatus = async (req, res) => {
                     for (let i = 0; i < imgArr.length; i++) {
                         const tempPath = imgArr[i];
                         const sourcePath = path.join(__dirname, '../../public', tempPath);
-                        
+
                         // 关键修复：只处理真实文件，跳过目录
                         const stat = await fs.stat(sourcePath).catch(() => null);
                         if (!stat || !stat.isFile()) {
@@ -360,7 +382,7 @@ exports.updateProductStatus = async (req, res) => {
                         await fs.rename(sourcePath, targetPath);
                         newPaths.push(`/upload/product/img/${product_id}/${newFileName}`);
                     }
-                    
+
                     if (newPaths.length > 0) {
                         finalImgStr = `/upload/product/img/${product_id}`;
                     }
@@ -376,12 +398,12 @@ exports.updateProductStatus = async (req, res) => {
 
                 // 更新规格（不删除旧SKU，避免外键约束错误）
                 const [existingSkus] = await conn.query(`SELECT sku_id, name FROM sku_product WHERE product_id = ?`, [product_id]);
-                
+
                 // 更新现有SKU或新增SKU
                 for (let i = 0; i < specs.length; i++) {
                     const spec = specs[i];
                     const existingSku = existingSkus.find(s => s.name === spec.name);
-                    
+
                     if (existingSku) {
                         // 更新现有SKU
                         await conn.query(

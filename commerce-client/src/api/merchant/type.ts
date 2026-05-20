@@ -63,6 +63,7 @@ export interface productList {
     rate: number,
     desc: string,
     img?: string,
+    allImg?: string[],
     auditStatus: string,
     specs: [
         {

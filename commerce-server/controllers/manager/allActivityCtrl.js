@@ -124,12 +124,12 @@ exports.updateActivityStatus = async (req, res) => {
         if (!actName || !actType || categoryID === undefined || categoryID === null || !rule || discountRate === undefined || minOrderAmount === undefined || !startTime || !endTime || !status) {
             return res.status(400).json({ status: 400, success: false, message: '新活动信息不能为空', data: {} });
         }
-        
+
         // 时间顺序验证
         if (new Date(startTime) >= new Date(endTime)) {
             return res.status(400).json({ status: 400, success: false, message: '开始时间必须早于结束时间', data: {} });
         }
-        
+
         // 折扣值范围验证
         if ((Number(discountRate) <= 0 || Number(discountRate) > 100) && actType === '折扣') {
             return res.status(400).json({ status: 400, success: false, message: '折扣率必须在0-100之间', data: {} });
