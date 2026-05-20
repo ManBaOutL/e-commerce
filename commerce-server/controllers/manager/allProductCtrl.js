@@ -1,5 +1,7 @@
 const db = require('@/config/database');
 const paginationMiddleware = require('@/middlewares/paginationMiddleware');
+const fs = require('fs-extra');
+const path = require('path');
 
 // export interface productList {
 //     product_id: number
@@ -73,6 +75,30 @@ exports.getAllProduct = [paginationMiddleware, async (req, res) => {
         // 3. 执行查询，获取商品列表
         const [productList] = await db.query(listSql, params);
 
+        // 3.5 扫描每个商品的图片目录，生成 allImg 数组
+        for (let item of productList) {
+            const folderPath = `/upload/product/img/${item.product_id}/`;
+            const absDirPath = path.join(process.cwd(), 'public', folderPath);
+            const allImg = [];
+
+            if (fs.existsSync(absDirPath)) {
+                const files = fs.readdirSync(absDirPath);
+                const imageFiles = files
+                    .filter(f => /\.(png|jpg|jpeg|gif|webp)$/i.test(f))
+                    .sort((a, b) => {
+                        const numA = parseInt(path.parse(a).name);
+                        const numB = parseInt(path.parse(b).name);
+                        return (isNaN(numA) ? Infinity : numA) - (isNaN(numB) ? Infinity : numB);
+                    });
+
+                for (const file of imageFiles) {
+                    allImg.push(`/upload/product/img/${item.product_id}/${file}`);
+                }
+            }
+
+            item.allImg = allImg;
+            item.img = allImg.length > 0 ? `/upload/product/img/${item.product_id}` : '';
+        }
 
         // 4. 查询总条数（用于分页）
         const countSql = `

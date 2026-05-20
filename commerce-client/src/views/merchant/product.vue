@@ -72,8 +72,12 @@
 
     <el-dialog v-model="showDetail" title="商品详情" width="550px">
       <div style="text-align: center;">
-        <img v-if="currentGoods.img" :src="getImageUrl(currentGoods.img)" style="width:130px;height:130px;object-fit:cover;border-radius:8px" />
+        <img v-if="currentGoods.img" :src="getFullUrl(getImageUrl(currentGoods.img))" style="width:130px;height:130px;object-fit:cover;border-radius:8px" />
         <div v-else class="img-block" style="background:#eee"></div>
+        <!-- 查看大图按钮 -->
+        <div style="margin-top: 8px;">
+          <el-button size="small" type="primary" @click="openImageViewer">查看大图</el-button>
+        </div>
         <div style="margin-top: 10px;">商品名称：{{ currentGoods.name }}</div>
         <div>价格：{{ currentGoods.price }} 元</div>
         <div>总库存：{{ currentGoods.stock }}</div>
@@ -89,6 +93,27 @@
         </div>
       </div>
     </el-dialog>
+
+    <!-- 大图预览弹窗（支持切换） -->
+    <div v-if="showViewer" class="image-viewer-modal">
+      <div class="viewer-mask" @click="closeViewer"></div>
+      <div class="viewer-content">
+        <!-- 关闭按钮 -->
+        <button class="viewer-close" @click="closeViewer">×</button>
+        
+        <!-- 左切换按钮 -->
+        <button v-if="viewerImages.length > 1" class="viewer-nav viewer-nav-left" @click="prevImage">‹</button>
+        
+        <!-- 图片 -->
+        <img :src="getFullUrl(viewerImages[viewerIndex])" class="viewer-img" />
+        
+        <!-- 右切换按钮 -->
+        <button v-if="viewerImages.length > 1" class="viewer-nav viewer-nav-right" @click="nextImage">›</button>
+        
+        <!-- 图片索引 -->
+        <div class="viewer-counter">{{ viewerIndex + 1 }} / {{ viewerImages.length }}</div>
+      </div>
+    </div>
 
     <!-- 新增 / 编辑弹窗 → 新增下拉分类，编辑隐藏分类 -->
     <el-dialog v-model="showEdit" title="商品编辑" width="600px">
@@ -303,9 +328,73 @@ const toggleStatus = async (row) => {
 
 const showDetail = ref(false)
 const currentGoods = ref({})
+const showViewer = ref(false)
+const viewerIndex = ref(0)
+
+// 获取商品所有图片（优先使用后端返回的 allImg 数组）
+const viewerImages = computed(() => {
+  const goods = currentGoods.value
+  if (!goods) return []
+  
+  // 优先使用后端返回的 allImg 数组
+  if (goods.allImg && Array.isArray(goods.allImg) && goods.allImg.length > 0) {
+    return goods.allImg.filter(img => img)
+  }
+  
+  // 兼容旧数据格式
+  const images = []
+  if (goods.img) {
+    images.push(getImageUrl(goods.img))
+  }
+  if (goods.images) {
+    if (Array.isArray(goods.images)) {
+      images.push(...goods.images)
+    } else if (typeof goods.images === 'string') {
+      try {
+        const parsed = JSON.parse(goods.images)
+        if (Array.isArray(parsed)) {
+          images.push(...parsed)
+        }
+      } catch {
+        images.push(goods.images)
+      }
+    }
+  }
+  return [...new Set(images.filter(img => img))]
+})
+
 const openDetail = (row) => {
   currentGoods.value = row
   showDetail.value = true
+}
+
+// 打开大图查看器
+const openImageViewer = () => {
+  viewerIndex.value = 0
+  showViewer.value = true
+}
+
+// 关闭大图查看器
+const closeViewer = () => {
+  showViewer.value = false
+}
+
+// 上一张
+const prevImage = () => {
+  if (viewerIndex.value > 0) {
+    viewerIndex.value--
+  } else {
+    viewerIndex.value = viewerImages.value.length - 1
+  }
+}
+
+// 下一张
+const nextImage = () => {
+  if (viewerIndex.value < viewerImages.value.length - 1) {
+    viewerIndex.value++
+  } else {
+    viewerIndex.value = 0
+  }
 }
 
 const showEdit = ref(false)
@@ -589,5 +678,111 @@ const getPageData = async (currentPage, pageSize) => {
 }
 .upload-preview-wrapper:hover .hover-mask {
   opacity: 1;
+}
+
+/* 大图查看器模态框 */
+.image-viewer-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 遮罩层 */
+.viewer-mask {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.85);
+}
+
+/* 内容区域 */
+.viewer-content {
+  position: relative;
+  max-width: 90%;
+  max-height: 90%;
+  z-index: 1;
+}
+
+/* 关闭按钮 */
+.viewer-close {
+  position: absolute;
+  top: -50px;
+  right: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: #fff;
+  font-size: 28px;
+  cursor: pointer;
+  transition: background 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.viewer-close:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* 导航按钮 */
+.viewer-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: #fff;
+  font-size: 36px;
+  cursor: pointer;
+  transition: background 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.viewer-nav:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.viewer-nav-left {
+  left: -60px;
+}
+
+.viewer-nav-right {
+  right: -60px;
+}
+
+/* 预览图片 */
+.viewer-img {
+  max-width: 100%;
+  max-height: 85vh;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+/* 图片计数器 */
+.viewer-counter {
+  position: absolute;
+  bottom: -40px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #fff;
+  font-size: 16px;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 6px 16px;
+  border-radius: 20px;
 }
 </style>

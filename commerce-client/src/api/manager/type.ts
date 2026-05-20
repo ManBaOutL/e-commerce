@@ -96,6 +96,8 @@ export interface productList {
     category_id: number
     category_name: string
     description: string
+    img?: string
+    allImg?: string[]
 }
 
 //管理员订单管理参数,筛选条件
