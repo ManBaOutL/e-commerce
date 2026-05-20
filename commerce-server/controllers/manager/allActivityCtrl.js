@@ -131,7 +131,7 @@ exports.updateActivityStatus = async (req, res) => {
         }
         
         // 折扣值范围验证
-        if (Number(discountRate) <= 0 || Number(discountRate) > 100) {
+        if ((Number(discountRate) <= 0 || Number(discountRate) > 100) && actType === '折扣') {
             return res.status(400).json({ status: 400, success: false, message: '折扣率必须在0-100之间', data: {} });
         }
 

@@ -31,11 +31,11 @@ exports.addToCart = async (req, res) => {
         );
 
         if (exist.length > 0) {
-            // 🌟 如果有了，数量累加 (强制转为 Number，防止变成字符串拼接 '1'+'1'='11')
-            await db.execute(
-                `UPDATE cart SET quantity = quantity + ? WHERE cart_id = ?`,
-                [Number(quantity), exist[0].cart_id]
-            );
+            // 🌟 如果已存在，拒绝添加并提示用户
+            return res.status(400).json({ 
+                success: false, 
+                message: '该商品已在购物车中，请勿重复添加' 
+            });
         } else {
             // 🌟 如果没有，新增一条记录 (必须显式写入 create_time = NOW())
             await db.execute(
@@ -56,15 +56,17 @@ exports.getCartList = async (req, res) => {
     const user_id = req.user.user_id || req.user.id;
 
     try {
-        // 🌟 1. 补全 SQL 查询字段：必须查出 product_status！
+        // 🌟 1. 补全 SQL 查询字段：必须查出 product_status 和店铺信息！
         const [rows] = await db.query(`
             SELECT 
                 c.cart_id, c.quantity, c.sku_id, 
                 s.name as sku_name, s.act_price as price, s.stock as sku_stock,
-                p.product_id, p.name as product_name, p.category_id, p.product_status
+                p.product_id, p.name as product_name, p.category_id, p.product_status,
+                sh.shop_id, sh.name as shop_name
             FROM cart c
             JOIN sku_product s ON c.sku_id = s.sku_id
             JOIN product p ON s.product_id = p.product_id
+            JOIN shop sh ON p.shop_id = sh.shop_id
             WHERE c.user_id = ?
             ORDER BY c.create_time DESC
         `, [user_id]);
@@ -100,9 +102,11 @@ exports.getCartList = async (req, res) => {
             spec: item.sku_name,               // sku_name -> spec
             main_image: item.main_image,       // 动态抓取的真实图片路径
             count: item.quantity,              // quantity -> count
-            price: Number(item.actual_price),  // 使用活动计算后的价格（修复：之前用的是原始价格）
+            price: Number(item.price),  // 使用活动计算后的价格（修复：之前用的是原始价格）
             stock: item.sku_stock,             // sku_stock -> stock
             product_status: item.product_status, // 决定商品是否置灰失效的关键状态
+            shop_id: item.shop_id,             // 店铺ID
+            shop_name: item.shop_name,         // 店铺名称
             
             // 活动展示字段
             original_price: item.original_price, 

@@ -22,7 +22,23 @@
     <el-table :data="orderList" border v-loading="loading">
       <el-table-column label="订单号" prop="orderId" width="180" />
       <el-table-column label="商品" prop="goodsName" />
-      <el-table-column label="金额(元)" prop="money" width="100" />
+      <el-table-column label="订单总金额" prop="money" width="110">
+        <template #default="scope">
+          ¥{{ scope.row.money }}
+        </template>
+      </el-table-column>
+      <el-table-column label="本店金额" width="110">
+        <template #default="scope">
+          <span style="color: #ff5000; font-weight: 500;">¥{{ Number(scope.row.shopAmount).toFixed(2) }}</span>
+        </template>
+      </el-table-column>
+      <el-table-column label="发货状态" width="120">
+        <template #default="scope">
+          <el-tag :type="getShipStatusTagType(scope.row.shippedStatus)">
+            {{ scope.row.shippedStatus }}
+          </el-tag>
+        </template>
+      </el-table-column>
       <el-table-column label="订单状态" width="120">
         <template #default="scope">
           <el-tag :type="getStatusTagType(scope.row.status)">
@@ -51,7 +67,7 @@
           <el-button 
             type="success" 
             link 
-            v-if="scope.row.status === '待发货'"
+            v-if="(scope.row.status === '待发货' || scope.row.status === '已发货') && (scope.row.shippedStatus === '待发货' || scope.row.shippedStatus === '部分发货')"
             @click="handleShip(scope.row)"
           >发货</el-button>
 
@@ -142,6 +158,14 @@ const getStatusTagType = (status: string) => {
   const map: Record<string, string> = {
     '待发货': 'warning', '已发货': 'primary', '已完成': 'success',
     '申请退款': 'warning', '已退款': 'info', '退款驳回': 'danger'
+  }
+  return map[status] || 'info'
+}
+
+// 发货状态标签颜色
+const getShipStatusTagType = (status: string) => {
+  const map: Record<string, string> = {
+    '待发货': 'warning', '已发货': 'success', '部分发货': 'primary'
   }
   return map[status] || 'info'
 }

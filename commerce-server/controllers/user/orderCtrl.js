@@ -148,10 +148,11 @@ exports.createOrder = async (req, res) => {
         // 🌟 步骤 5：写入订单明细 & 扣减库存
         // ==========================================
         for (let item of processedItems) {
-            // 注意：这里存的 price 是 item.actual_price，它已经被活动引擎分摊过了！
+            // 使用原始价格 item.price，不使用活动计算后的 actual_price
+            // shipped = 0 表示未发货，shipped_time 初始为 NULL
             await connection.execute(
-                `INSERT INTO order_details (sku_id, order_id, quantity, price) VALUES (?, ?, ?, ?)`, 
-                [item.sku_id, order_id, item.quantity, item.actual_price]
+                `INSERT INTO order_details (sku_id, order_id, quantity, price, shipped, shipped_time) VALUES (?, ?, ?, ?, 0, NULL)`, 
+                [item.sku_id, order_id, item.quantity, item.price]
             );
             
             // 扣除底层双表库存

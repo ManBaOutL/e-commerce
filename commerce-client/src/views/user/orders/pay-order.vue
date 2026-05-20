@@ -72,7 +72,11 @@
               </div>
               
               <div class="price-box" style="text-align: right;">
-                <div class="price">¥{{ Number(item.price).toFixed(2) }}</div>
+                <div class="price">
+                  <span v-if="item.actual_price !== undefined">¥{{ Number(item.actual_price).toFixed(2) }}</span>
+                  <span v-else>¥{{ Number(item.price).toFixed(2) }}</span>
+                  <span v-if="item.actual_price !== undefined && Number(item.actual_price) < Number(item.price)" class="original-price" style="font-size: 12px; color: #999; text-decoration: line-through; margin-left: 4px;">¥{{ Number(item.price).toFixed(2) }}</span>
+                </div>
                 <div class="count" style="color: #999; font-size: 13px; margin-top: 6px;">x {{ item.count }}</div>
               </div>
             </div>
@@ -323,7 +327,10 @@ onMounted(async () => {
 })
 
 // 金额计算
-const subTotal = computed(() => settleItems.value.reduce((sum, item) => sum + Number(item.price) * item.count, 0))
+const subTotal = computed(() => settleItems.value.reduce((sum, item) => {
+  const price = item.actual_price !== undefined ? item.actual_price : item.price;
+  return sum + Number(price) * item.count;
+}, 0))
 
 const finalAmount = computed(() => {
   // 🌟 如果是继续支付，直接用路由传过来的已经算好的金额，防止重复扣减！

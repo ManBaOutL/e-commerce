@@ -135,8 +135,8 @@
                   size="large" 
                   icon="ShoppingCart" 
                   @click="handleAddToCart"
-                  :disabled="!isAllSpecSelected"
-                >加入购物车</el-button>
+                  :disabled="!isAllSpecSelected || isInCart"
+                >{{ isInCart ? '已在购物车' : '加入购物车' }}</el-button>
                 <el-button 
                   :type="isFavorite ? 'warning' : 'danger'" 
                   :plain="isFavorite"
@@ -438,6 +438,13 @@ const isFavorite = computed(() => {
   const targetSkuId = selectedSku.value?.sku_id;
   if (!targetSkuId || !userStore.favoriteList) return false;
   return userStore.favoriteList.some(item => item.id === targetSkuId);
+})
+
+// 检查当前选中SKU是否已在购物车中
+const isInCart = computed(() => {
+  const targetSkuId = selectedSku.value?.sku_id;
+  if (!targetSkuId) return false;
+  return cartStore.isInCart(targetSkuId);
 })
 
 const selectSpec = (groupKey: string, specValue: string) => {

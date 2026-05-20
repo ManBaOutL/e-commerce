@@ -156,6 +156,7 @@ export interface MerchantOrder {
     goodsName: string;
     money: string | number;
     status: OrderStatus;
+    shippedStatus?: '待发货' | '已发货' | '部分发货';
     userName?: string;
     userPhone?: string;
     createTime?: string;

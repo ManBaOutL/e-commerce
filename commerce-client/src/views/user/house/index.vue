@@ -87,11 +87,13 @@ import { useRouter } from 'vue-router'
 import request from '@/utils/request' // 引入你的 axios 封装
 import { useOrderStore } from '@/stores/modules/user/orderStore'
 import { useCartStore } from '@/stores/modules/user/cartStore'
+import { useUserStore } from '@/stores/modules/user/userStore'
 import type { ApiResponse } from '@/api/types'
 
 const router = useRouter()
 const orderStore = useOrderStore()
 const cartStore = useCartStore()
+const userStore = useUserStore()
 
 // ================= 数据统计计算 =================
 // 动态计算各个状态的订单数量
@@ -103,8 +105,8 @@ const pendingReviewCount = computed(() => orderStore.orderList.filter(o => o.sta
 // 动态计算购物车数量
 const cartCount = computed(() => cartStore.cartList.length)
 
-// 收藏数量 (预留字段，等你写了收藏接口后替换为 store 里的真实数据)
-const favoriteCount = ref(0) 
+// 动态计算收藏数量
+const favoriteCount = computed(() => userStore.favoriteList.length) 
 
 // ================= 跳转逻辑 =================
 // 点击不同的订单状态，跳转到订单列表并带上状态参数
@@ -130,7 +132,10 @@ onMounted(async () => {
     cartStore.fetchCartList()
   }
 
-  // 3. 拉取猜你喜欢的商品列表 (调用获取商品列表接口，可按销量排序)
+  // 3. 拉取收藏列表
+  userStore.fetchFavoriteList()
+
+  // 4. 拉取猜你喜欢的商品列表 (调用获取商品列表接口，可按销量排序)
   try {
     loadingProducts.value = true
     const res = await request.get<any, ApiResponse<any>>('/front/product/list', {

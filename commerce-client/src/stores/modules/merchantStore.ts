@@ -98,6 +98,11 @@ export const useMerchantStore = defineStore('merchant', {
       if (res.success) {
         this.orderList = res.data.list;
         this.orderPagination = res.data.pagination;
+        // 调试日志：打印订单列表数据
+        console.log('商家订单列表:', this.orderList);
+        this.orderList.forEach(order => {
+          console.log(`订单 ${order.orderId}: status=${order.status}, shippedStatus=${order.shippedStatus}`);
+        });
       }
       return res;
     },

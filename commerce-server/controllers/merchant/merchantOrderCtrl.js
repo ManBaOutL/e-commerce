@@ -48,6 +48,7 @@ exports.getMerchantOrderList = async (req, res) => {
             SELECT 
                 o.order_id as orderId, 
                 o.total_amount as money, 
+                SUM(od.price * od.quantity) as shopAmount,  -- 该商家商品的实际金额
                 o.status, 
                 DATE_FORMAT(o.create_time, '%Y-%m-%d %H:%i:%s') as createTime,
                 o.refundReason as userRefundReason, 
@@ -55,7 +56,13 @@ exports.getMerchantOrderList = async (req, res) => {
                 u.username as userName, 
                 u.phone as userPhone,
                 GROUP_CONCAT(p.name SEPARATOR '，') as goodsName,
-                CONCAT(IFNULL(a.province,''), IFNULL(a.city,''), IFNULL(a.district,''), IFNULL(a.address,''), IFNULL(a.streetNumber,'')) as address
+                CONCAT(IFNULL(a.province,''), IFNULL(a.city,''), IFNULL(a.district,''), IFNULL(a.address,''), IFNULL(a.streetNumber,'')) as address,
+                -- 计算该商家在订单中的商品发货状态
+                CASE 
+                    WHEN SUM(CASE WHEN od.shipped = 0 THEN 1 ELSE 0 END) = 0 THEN '已发货'
+                    WHEN SUM(CASE WHEN od.shipped = 1 THEN 1 ELSE 0 END) = 0 THEN '待发货'
+                    ELSE '部分发货'
+                END as shippedStatus
             FROM \`order\` o
             JOIN order_details od ON o.order_id = od.order_id
             JOIN sku_product s ON od.sku_id = s.sku_id
@@ -229,7 +236,10 @@ exports.auditRefund = async (req, res) => {
 };
 
 /**
- * 3. 商家订单发货（模拟发货操作，直接将订单状态改为已完成）
+ * 3. 商家订单发货
+ * - 在订单明细表中标记自己店铺商品的发货状态
+ * - 检查订单中所有商品是否都已发货
+ * - 等所有商品都发货后，订单状态才变为"已完成"
  * @route POST /api/merchant/orders/ship
  */
 exports.shipOrder = async (req, res) => {
@@ -237,30 +247,85 @@ exports.shipOrder = async (req, res) => {
     const { order_id } = req.body;
 
     try {
-        // 确保状态是“待发货”，并且只能发自己商铺的订单
-        const [orders] = await db.execute(
-            `SELECT o.order_id 
-             FROM \`order\` o
-             JOIN order_details od ON o.order_id = od.order_id
+        // 0. 检查订单状态是否允许发货（只能在待发货或已发货状态下发货）
+        const [orderStatus] = await db.execute(
+            `SELECT status FROM \`order\` WHERE order_id = ?`,
+            [order_id]
+        );
+        
+        if (orderStatus.length === 0) {
+            return res.status(400).json({ success: false, message: '订单不存在' });
+        }
+        
+        const currentStatus = orderStatus[0].status;
+        if (currentStatus !== '待发货' && currentStatus !== '已发货') {
+            return res.status(400).json({ success: false, message: `当前订单状态为"${currentStatus}"，无法发货` });
+        }
+
+        // 1. 获取该商家在该订单中的商品明细（只获取未发货的）
+        const [orderDetails] = await db.execute(
+            `SELECT od.sku_id, od.shipped
+             FROM order_details od
              JOIN sku_product s ON od.sku_id = s.sku_id
              JOIN product p ON s.product_id = p.product_id
              JOIN shop sh ON p.shop_id = sh.shop_id
-             WHERE o.order_id = ? AND o.status = '待发货' AND sh.user_id = ?
-             LIMIT 1`,
+             WHERE od.order_id = ? AND sh.user_id = ? AND od.shipped = 0`,
             [order_id, merchant_id]
         );
 
-        if (orders.length === 0) {
+        if (orderDetails.length === 0) {
+            // 检查是否是重复发货
+            const [alreadyShipped] = await db.execute(
+                `SELECT od.sku_id 
+                 FROM order_details od
+                 JOIN sku_product s ON od.sku_id = s.sku_id
+                 JOIN product p ON s.product_id = p.product_id
+                 JOIN shop sh ON p.shop_id = sh.shop_id
+                 WHERE od.order_id = ? AND sh.user_id = ? AND od.shipped = 1`,
+                [order_id, merchant_id]
+            );
+            
+            if (alreadyShipped.length > 0) {
+                return res.status(400).json({ success: false, message: '您的商品已全部发货，请勿重复操作' });
+            }
+            
             return res.status(400).json({ success: false, message: '订单无法发货或无权操作' });
         }
 
-        // 执行发货，状态改为已完成
-        await db.execute(
-            `UPDATE \`order\` SET status = '已完成' WHERE order_id = ?`,
+        // 2. 更新该商家商品的发货状态（使用复合主键 sku_id + order_id）
+        for (const item of orderDetails) {
+            await db.execute(
+                `UPDATE order_details SET shipped = 1, shipped_time = NOW() WHERE sku_id = ? AND order_id = ?`,
+                [item.sku_id, order_id]
+            );
+        }
+
+        // 3. 检查订单中所有商品是否都已发货
+        const [allDetails] = await db.execute(
+            `SELECT COUNT(*) as total, SUM(CASE WHEN shipped = 1 THEN 1 ELSE 0 END) as shipped_count
+             FROM order_details WHERE order_id = ?`,
             [order_id]
         );
 
-        res.json({ success: true, message: '发货成功，订单已完成', status: 200 });
+        const totalCount = allDetails[0].total;
+        const shippedCount = allDetails[0].shipped_count;
+
+        // 4. 更新订单状态
+        if (shippedCount >= totalCount) {
+            // 所有商品都发货了，订单状态改为"已完成"
+            await db.execute(
+                `UPDATE \`order\` SET status = '已完成' WHERE order_id = ?`,
+                [order_id]
+            );
+            res.json({ success: true, message: '发货成功，所有商品已发货，订单已完成', status: 200 });
+        } else {
+            // 还有商品未发货，订单状态改为"已发货"
+            await db.execute(
+                `UPDATE \`order\` SET status = '已发货' WHERE order_id = ?`,
+                [order_id]
+            );
+            res.json({ success: true, message: `发货成功，还需等待其他 ${totalCount - shippedCount} 件商品发货`, status: 200 });
+        }
     } catch (err) {
         console.error('发货异常:', err);
         res.status(500).json({ success: false, message: '发货操作失败' });

@@ -69,6 +69,7 @@
                     </el-image>
                   </div>
                   <div class="text-content">
+                    <p class="shop-name">{{ item.shop_name }}</p>
                     <p class="p-name">{{ item.name }}</p>
                     <p class="p-desc">规格：{{ item.spec }}</p>
 
@@ -141,7 +142,7 @@
               </div>
 
               <div class="final-price-box">
-                <span class="total-label">合计 (不含运费)：</span>
+                <span class="total-label">合计 (含运费)：</span>
                 <span class="total-amount">¥ <em>{{ (totalPrice + shippingFee - discountTotal).toFixed(2) }}</em></span>
                 <!-- 🌟 新增省钱提示语 -->
                 <div class="save-tip" v-if="savedAmount > 0">已省 ¥{{ savedAmount.toFixed(2) }}</div>
@@ -150,11 +151,12 @@
               <el-button 
                 type="primary" 
                 class="checkout-btn" 
-                :disabled="selectedCount === 0"
+                :disabled="selectedCount === 0 || isCrossShop"
                 @click="handleCheckout"
               >
                 结 算
               </el-button>
+              <div v-if="isCrossShop" class="cross-shop-tip">所选商品必须属于同一店铺</div>
             </div>
 
             <!-- 优惠卷选择对话框 -->
@@ -172,7 +174,7 @@
                 >
                   <div class="c-left">
                     <span class="unit" v-if="coupon.type !== '折扣'">¥</span>
-                    <span class="val">{{ coupon.discount_value }}</span>
+                    <span class="val">{{ coupon.type === '折扣' ? (coupon.discount_value / 10).toFixed(1) : coupon.discount_value }}</span>
                     <span class="unit" v-if="coupon.type === '折扣'" style="font-size: 14px;">折</span>
                   </div>
                   <div class="c-right">
@@ -237,6 +239,17 @@ const isIndeterminate = computed(() => {
   return selectedCount > 0 && selectedCount < validItems.length
 })
 
+// 检查选中的商品是否属于同一店铺
+const selectedShops = computed(() => {
+  const selectedItems = cartList.value.filter(i => i.selected && i.product_status === '通过' && i.stock > 0)
+  const shops = [...new Set(selectedItems.map(i => i.shop_id))]
+  return shops
+})
+
+const isCrossShop = computed(() => {
+  return selectedShops.value.length > 1
+})
+
 const selectedCount = computed(() => cartList.value.filter(i => i.selected && i.product_status === '通过' && i.stock > 0).length);
 // 🌟 基于活动的真实总价计算
 const totalPrice = computed(() => {
@@ -262,7 +275,8 @@ const savedAmount = computed(() => {
   // 2. 加上底部选中的优惠券省下的钱 (discountTotal)
   return activitySaved + discountTotal.value;
 });
-const shippingFee = computed(() => (totalPrice.value >= 99 || totalPrice.value === 0 ? 0 : 10));
+// 暂时不添加运费
+const shippingFee = computed(() => (totalPrice.value >= 99 || totalPrice.value === 0 ? 0 : 0));
 
 // 🌟 2. 数量改变时，同步更新到数据库
 const handleCountChange = (cart_id, count) => {
@@ -346,6 +360,7 @@ const handleCheckout = () => {
 .product-info { display: flex; align-items: center; }
 .img-box { width: 80px; height: 80px; background: #eee; margin-right: 15px; position: relative; display: flex; align-items: center; justify-content: center; }
 .status-tag { position: absolute; top: 0; left: 0; }
+.shop-name { font-size: 12px; color: #999; margin-bottom: 4px; }
 
 .total-price { color: #ff5000; font-weight: bold; }
 
@@ -525,4 +540,5 @@ const handleCheckout = () => {
 .unit-price { color: #333; font-weight: bold; }
 .original-price { font-size: 12px; color: #999; text-decoration: line-through; }
 .save-tip { font-size: 12px; color: #ff5000; text-align: right; margin-top: 2px; font-weight: normal; }
+.cross-shop-tip { font-size: 12px; color: #f56c6c; margin-left: 10px; white-space: nowrap; }
 </style>
