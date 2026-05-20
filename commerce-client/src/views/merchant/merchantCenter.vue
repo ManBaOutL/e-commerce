@@ -13,6 +13,7 @@
       <div class="item"><label>用户名：</label>{{ user.username }}</div>
       <div class="item"><label>邮箱：</label>{{ user.email }}</div>
       <div class="item"><label>电话：</label>{{ user.phone }}</div>
+      <div class="item"><label>账户余额：</label><span style="color: #f56c6c; font-weight: bold;">¥{{ (user.balance || 0).toFixed(2) }}</span></div>
       <div class="item"><label>创建时间：</label>{{ user.create_time }}</div>
       <div class="item"><label>状态：</label>
         <el-tag type="success">{{ user.status }}</el-tag>
@@ -147,7 +148,7 @@ onMounted(async () => {
   try {
     await merchantStore.getShop()
     user.value = merchantStore.user
-    //console.log("商家中心获取用户信息:", user.value)
+    console.log("商家中心获取用户信息:", user.value)
     shop.value = merchantStore.shop
     //console.log("商家中心获取店铺信息:", shop.value)
     imgPath.value = user.value.img // 新增：保存原始图片路径
@@ -166,6 +167,7 @@ const user = ref({
   phone: "13800138000",
   age: 28,
   gender: "男",
+  balance: 0,
   create_time: "2025-01-01 12:00:00",
   update_time: "2025-05-01 15:30:00",
   img: "",

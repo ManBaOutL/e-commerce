@@ -22,7 +22,8 @@ exports.getMerchantInfo = async (req, res) => {
                 user_id as id,
                 username as nickname,
                 phone,
-                email
+                email,
+                balance
             FROM user
             WHERE user_id = ?
         `, [merchantId]);
@@ -38,6 +39,7 @@ exports.getMerchantInfo = async (req, res) => {
             nickname: merchants.nickname,
             phone: merchants.phone,
             email: merchants.email,
+            balance: Number(merchants.balance || 0), // 添加余额字段
             hasShop: hasShop,
             shopInfo: hasShop ? {
                 shopName: shopInfo.shopName,
@@ -45,6 +47,7 @@ exports.getMerchantInfo = async (req, res) => {
                 phone: merchants.phone
             } : null
         };
+        console.log("merchantInfo:", merchantInfo);
 
         res.json({
             status: 200,

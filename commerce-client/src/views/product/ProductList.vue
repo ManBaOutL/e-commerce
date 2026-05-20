@@ -6,9 +6,21 @@
       <div class="filter-card">
         <div class="filter-header">
           <FilterTreeItem :categoryTree="categoryStore.categoryTree" />
-          <el-button class="tb-trigger-btn" type="primary" plain @click="drawerVisible = true">
-            综合筛选 <el-icon class="el-icon--right"><Filter /></el-icon>
-          </el-button>
+          <div class="header-right">
+            <!-- 商家/管理员显示管理按钮 -->
+            <el-button 
+              v-if="showManageButton" 
+              class="tb-manage-btn" 
+              type="primary" 
+              @click="goToManagePage"
+            >
+              <el-icon><Setting /></el-icon>
+              {{ manageButtonText }}
+            </el-button>
+            <el-button class="tb-trigger-btn" type="primary" plain @click="drawerVisible = true">
+              综合筛选 <el-icon class="el-icon--right"><Filter /></el-icon>
+            </el-button>
+          </div>
         </div>
         <!-- 筛选框 -->
         <div class="sort-bar">
@@ -99,16 +111,42 @@
 
 <script setup lang="ts">
 import FilterTreeItem from './FilterTreeItem.vue'
-import { ref, onMounted, reactive, watch } from 'vue'
+import { ref, onMounted, reactive, watch, computed } from 'vue'
 import { useProductStore } from '@/stores/modules/user/productStore'
 import { useCategoryStore } from '@/stores/modules/common/categoryStore'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import type { ProductQueryParams } from '@/api/product/types'
 import { ElMessage } from 'element-plus'
+import { useLoginStore } from '@/stores/modules/common/loginStore'
+import { Setting } from '@element-plus/icons-vue'
 
 const route = useRoute()
+const router = useRouter()
 const productStore = useProductStore()
 const categoryStore = useCategoryStore()
+const loginStore = useLoginStore()
+
+// 判断是否显示管理按钮
+const showManageButton = computed(() => {
+  const userType = loginStore.userInfo?.type
+  return userType === '商家' || userType === '管理员'
+})
+
+// 管理按钮文字
+const manageButtonText = computed(() => {
+  const userType = loginStore.userInfo?.type
+  return userType === '管理员' ? '后台管理' : '商家管理'
+})
+
+// 跳转到对应管理页面
+const goToManagePage = () => {
+  const userType = loginStore.userInfo?.type
+  if (userType === '管理员') {
+    router.push('/manager')
+  } else if (userType === '商家') {
+    router.push('/merchant')
+  }
+}
 
 const drawerVisible = ref(false)
 const dateRange = ref<[string, string] | null>(null)
@@ -288,6 +326,28 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.header-right {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.tb-manage-btn {
+  background: linear-gradient(90deg, #ff9000 0%, #ff5000 100%);
+  color: #fff;
+  border: none;
+  border-radius: 16px;
+  padding: 6px 16px;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tb-manage-btn:hover {
+  opacity: 0.9;
 }
 .price-range {
   display: flex;

@@ -19,8 +19,8 @@
       <el-select v-model="search.status" placeholder="评论状态" style="width: 160px">
         <el-option label="全部" value="" />
         <el-option label="正常" value="正常" />
-        <el-option label="已举报" value="已举报" />
-        <el-option label="已屏蔽" value="已屏蔽" />
+        <el-option label="待审核" value="待审核" />
+        <el-option label="屏蔽" value="屏蔽" />
       </el-select>
       <el-button type="primary" @click="handleSearch">搜索</el-button>
       <el-button @click="resetSearch">重置</el-button>

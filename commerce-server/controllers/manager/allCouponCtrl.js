@@ -277,12 +277,45 @@ exports.updateCouponStatus = async (req, res) => {
                     });
                 }
 
-                // 金额逻辑验证：折扣金额必须小于最低订单金额
-                if (Number(value) >= Number(min_order_amount)) {
+                // 验证最低消费金额
+                if (Number(min_order_amount) < 0) {
                     return res.status(400).json({
                         status: 400,
                         success: false,
-                        message: "折扣金额必须小于最低订单金额",
+                        message: "最低消费金额不能小于0",
+                        data: null
+                    });
+                }
+
+                // 根据优惠券类型进行差异化验证
+                if (coupon_type === '折扣') {
+                    // 折扣券：折扣率必须在0.01-0.99之间（如0.9表示9折）
+                    if (Number(value) < 0.01 || Number(value) > 0.99) {
+                        return res.status(400).json({
+                            status: 400,
+                            success: false,
+                            message: "折扣率必须在0.01-0.99之间",
+                            data: null
+                        });
+                    }
+                } else {
+                    // 满减/秒杀券：金额必须≥1
+                    if (Number(value) < 1) {
+                        return res.status(400).json({
+                            status: 400,
+                            success: false,
+                            message: "面额必须≥1",
+                            data: null
+                        });
+                    }
+                }
+
+                // 满减/秒杀券：面额必须≥最低消费金额（折扣券不需要此判断）
+                if (coupon_type !== '折扣' && Number(value) < Number(min_order_amount)) {
+                    return res.status(400).json({
+                        status: 400,
+                        success: false,
+                        message: "面额必须≥最低消费金额",
                         data: null
                     });
                 }

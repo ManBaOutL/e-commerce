@@ -10,7 +10,7 @@ exports.getShopData = async (req, res) => {
     // 从请求体中获取商家ID
     const merchant_id = req.user.user_id
     console.log("商家ID: ", merchant_id)
-    const [merchantRaw] = await db.query('SELECT user_id, type, username, email, phone, age, gender, create_time, update_time, img, status FROM user WHERE user_id = ?', [merchant_id])
+    const [merchantRaw] = await db.query('SELECT user_id, type, username, email, phone, age, gender, create_time, update_time, img,balance, status FROM user WHERE user_id = ?', [merchant_id])
     //获取商店id
     const [shop_idRaw] = await db.query('SELECT * FROM shop WHERE user_id = ?', [merchant_id])
     console.log("商店: ", shop_idRaw[0])
@@ -25,6 +25,7 @@ exports.getShopData = async (req, res) => {
             phone: merchantRaw[0].phone,
             age: merchantRaw[0].age,
             gender: merchantRaw[0].gender,
+            balance: Number(merchantRaw[0].balance || 0),
             create_time: formatDate(merchantRaw[0].create_time, false),
             update_time: formatDate(merchantRaw[0].update_time, false),
             img: merchantRaw[0].img,

@@ -30,9 +30,8 @@ const productStore = useProductStore()
 
 // 进入页面 → 重置 page = 1 → 加载第一页（保留当前的筛选参数）
 onMounted(() => {
-  if (Object.keys(productStore.currentParams).length === 0) {
-    productStore.init()
-  }
+
+  productStore.init()
   window.addEventListener('scroll', handleScroll)
 })
 

@@ -151,14 +151,12 @@ const pieData = ref([
 
 // 新增数据（含测试数据）
 const regionAnalysis = ref([
-  { region: '广东省', totalAmount: 156000, orderCount: 320 },
-  { region: '浙江省', totalAmount: 128000, orderCount: 285 },
-  { region: '江苏省', totalAmount: 112000, orderCount: 245 },
-  { region: '上海市', totalAmount: 98000, orderCount: 210 },
-  { region: '北京市', totalAmount: 89000, orderCount: 195 },
-  { region: '山东省', totalAmount: 76000, orderCount: 168 },
-  { region: '四川省', totalAmount: 65000, orderCount: 145 },
-  { region: '湖北省', totalAmount: 58000, orderCount: 132 },
+  // { region: '浙江省', totalAmount: 128000, orderCount: 285 },
+  // { region: '江苏省', totalAmount: 112000, orderCount: 245 },
+  // { region: '北京市', totalAmount: 89000, orderCount: 195 },
+  // { region: '山东省', totalAmount: 76000, orderCount: 168 },
+  // { region: '四川省', totalAmount: 65000, orderCount: 145 },
+  // { region: '湖北省', totalAmount: 58000, orderCount: 132 },
 ])
 
 const ageGroupAnalysis = ref([
